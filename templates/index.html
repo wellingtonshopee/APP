@@ -14,15 +14,20 @@
       display: flex;
       justify-content: center;
       align-items: center;
+    }
+
+    .container {
+      display: flex;
       flex-direction: column;
+      align-items: center;
+      justify-content: center;
       padding: 20px;
     }
 
-    .center img {
+    .container img {
       width: 100%;
       max-width: 400px;
       height: auto;
-      display: block;
       margin-bottom: 20px;
     }
 
@@ -55,19 +60,41 @@
       background-color: #0056b3;
     }
 
-    .mensagem-confirmacao {
-      animation: fadeIn 1s ease-in-out;
-      opacity: 0;
-      animation-fill-mode: forwards;
-      margin-top: 20px;
-      color: green;
-      font-weight: bold;
+    .modal {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(0, 0, 0, 0.6);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      animation: fadeIn 0.5s ease-out;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
       text-align: center;
+      max-width: 500px;
+      width: 90%;
+    }
+
+    .modal-content img {
+      max-width: 100%;
+      height: auto;
+      margin-bottom: 15px;
+    }
+
+    .modal-content button {
+      margin-top: 15px;
+      background-color: #28a745;
     }
 
     @keyframes fadeIn {
-      0% { opacity: 0; transform: translateY(10px); }
-      100% { opacity: 1; transform: translateY(0); }
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
     }
 
     @media (max-width: 480px) {
@@ -76,7 +103,7 @@
         width: 90%;
       }
 
-      .center img {
+      .container img {
         max-width: 90%;
       }
     }
@@ -84,32 +111,33 @@
 </head>
 <body>
 
-  <div class="center">
+  <div class="container" id="form-container">
     <img src="{{ url_for('static', filename='imagens/3.jpg') }}" alt="Logo">
+    <form method="POST" action="/enviar">
+      <input name="nome" placeholder="Nome" required>
+      <input name="matricula" placeholder="Matrícula" required>
+      <input name="rota" placeholder="Rota" required>
+      <button type="submit">Enviar</button>
+    </form>
   </div>
 
-  <form method="POST" action="/enviar">
-    <input name="nome" placeholder="Nome" required>
-    <input name="matricula" placeholder="Matrícula" required>
-    <input name="rota" placeholder="Rota" required>
-    <button type="submit">Enviar</button>
-  </form>
-
   {% if sucesso == '1' %}
-    <div class="mensagem-confirmacao" id="mensagem">
-      Você entrou na fila! Em breve será chamado para carregar!
+    <div class="modal" id="modal">
+      <div class="modal-content">
+        <img src="{{ url_for('static', filename='imagens/confirmado.jpg') }}" alt="Confirmação">
+        <p>Você entrou na fila! Em breve será chamado para carregar!</p>
+        <button onclick="fecharModal()">Fechar</button>
+      </div>
     </div>
   {% endif %}
 
   <script>
-    setTimeout(() => {
-      const msg = document.getElementById('mensagem');
-      if (msg) {
-        msg.style.transition = 'opacity 0.5s';
-        msg.style.opacity = '0';
-        setTimeout(() => msg.remove(), 500);
-      }
-    }, 5000);
+    function fecharModal() {
+      const modal = document.getElementById('modal');
+      const formContainer = document.getElementById('form-container');
+      modal.style.display = 'none';
+      formContainer.style.display = 'none';
+    }
   </script>
 </body>
 </html>
