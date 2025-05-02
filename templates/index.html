@@ -8,14 +8,14 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      padding: 20px;
       margin: 0;
       background-color: #f9f9f9;
-    }
-
-    .center {
-      text-align: center;
-      margin-bottom: 20px;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      padding: 20px;
     }
 
     .center img {
@@ -23,12 +23,12 @@
       max-width: 400px;
       height: auto;
       display: block;
-      margin: 0 auto;
+      margin-bottom: 20px;
     }
 
     form {
+      width: 100%;
       max-width: 400px;
-      margin: auto;
       display: flex;
       flex-direction: column;
       gap: 12px;
@@ -59,6 +59,10 @@
       animation: fadeIn 1s ease-in-out;
       opacity: 0;
       animation-fill-mode: forwards;
+      margin-top: 20px;
+      color: green;
+      font-weight: bold;
+      text-align: center;
     }
 
     @keyframes fadeIn {
@@ -71,6 +75,7 @@
         padding: 15px;
         width: 90%;
       }
+
       .center img {
         max-width: 90%;
       }
@@ -78,6 +83,7 @@
   </style>
 </head>
 <body>
+
   <div class="center">
     <img src="{{ url_for('static', filename='imagens/3.jpg') }}" alt="Logo">
   </div>
@@ -90,7 +96,7 @@
   </form>
 
   {% if sucesso == '1' %}
-    <div class="center mensagem-confirmacao" id="mensagem" style="margin-top: 20px; color: green; font-weight: bold;">
+    <div class="mensagem-confirmacao" id="mensagem">
       Você entrou na fila! Em breve será chamado para carregar!
     </div>
   {% endif %}
@@ -101,9 +107,9 @@
       if (msg) {
         msg.style.transition = 'opacity 0.5s';
         msg.style.opacity = '0';
-        setTimeout(() => msg.remove(), 500); // remove do DOM após o fade
+        setTimeout(() => msg.remove(), 500);
       }
-    }, 5000); // após 5 segundos
+    }, 5000);
   </script>
 </body>
 </html>
