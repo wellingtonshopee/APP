@@ -94,7 +94,6 @@
 
   <div class="card-container">
     {% for r in registros %}
-      {% if not r['finalizado'] %}
       <div class="card {% if r['em_separacao'] %}em-separacao{% endif %}" data-id="{{ r['id'] }}" id="card_{{ r['id'] }}" ondblclick="toggleSeparacao(this)">
         <div class="card-header">
           <strong id="status_{{ r['id'] }}">Aguardando Carregamento</strong>
@@ -104,19 +103,11 @@
           <p><span class="title">Matrícula:</span> <strong>{{ r['matricula'] }}</strong></p>
           <p><span class="title">Rota:</span> <strong class="rota">{{ r['rota'] }}</strong></p>
           <p><span class="title">Data e Hora:</span> <strong>{{ r['dataHora'] }}</strong></p>
-          <label>
-            <input type="checkbox" onchange="finalizarCard({{ r['id'] }})"> Finalizado
-          </label>
         </div>
         <div class="card-footer" id="footer_{{ r['id'] }}">
-          {% if r['finalizado'] %}
-            Carregamento Finalizado
-          {% else %}
-            Em Separação
-          {% endif %}
+          Em Separação
         </div>
       </div>
-      {% endif %}
     {% endfor %}
   </div>
 
@@ -134,20 +125,6 @@
         });
     }
 
-    function finalizarCard(id) {
-      fetch(`/finalizar/${id}`, { method: 'POST' })
-        .then(response => {
-          if (response.ok) {
-            document.getElementById('card_' + id).style.display = 'none';
-            document.getElementById('status_' + id).innerText = 'Carregamento Finalizado';
-            document.getElementById('footer_' + id).innerText = 'Carregamento Finalizado';
-          } else {
-            alert('Erro ao finalizar carregamento.');
-          }
-        });
-    }
-
-    // Recarrega automaticamente a página a cada 30 segundos
     setInterval(() => {
       location.reload();
     }, 30000);
