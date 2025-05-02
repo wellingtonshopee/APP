@@ -1,31 +1,57 @@
 from flask import Flask, render_template, request, redirect, url_for
 import sqlite3
 from datetime import datetime
+import os
 
 app = Flask(__name__)
 
+# Caminho do banco de dados
+DB_PATH = 'sistema_cargas.db'
+
 # Conexão com o banco de dados
 def get_db_connection():
-    conn = sqlite3.connect('sistema_cargas.db')
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
-# Função para pegar os registros da carga com ordenação
+# Criação da coluna 'em_separacao' caso não exista
+def inicializar_banco():
+    conn = get_db_connection()
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS registros (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome TEXT NOT NULL,
+            matricula TEXT NOT NULL,
+            rota TEXT NOT NULL,
+            dataHora TEXT NOT NULL,
+            gaiola TEXT,
+            posicao TEXT,
+            em_separacao INTEGER DEFAULT 0
+        )
+    ''')
+    # Adiciona coluna se ela não existir
+    try:
+        conn.execute('SELECT em_separacao FROM registros LIMIT 1')
+    except sqlite3.OperationalError:
+        conn.execute('ALTER TABLE registros ADD COLUMN em_separacao INTEGER DEFAULT 0')
+    conn.commit()
+    conn.close()
+
+# Pega todos os registros
 def obter_registros():
     conn = get_db_connection()
     registros = conn.execute('SELECT * FROM registros').fetchall()
     conn.close()
-    # Ordenar: registros com gaiola ou posição vazia vêm primeiro
     registros_ordenados = sorted(
         registros,
-        key=lambda r: bool(r['gaiola']) and bool(r['posicao'])  # False (incompletos) vêm antes
+        key=lambda r: bool(r['gaiola']) and bool(r['posicao'])
     )
     return registros_ordenados
 
 @app.route('/')
 def index():
     registros = obter_registros()
-    sucesso = request.args.get('sucesso')  # Pega flag da URL
+    sucesso = request.args.get('sucesso')
     return render_template('index.html', registros=registros, sucesso=sucesso)
 
 @app.route('/separacao')
@@ -59,7 +85,6 @@ def atualizar():
     )
     conn.commit()
     conn.close()
-
     return redirect(url_for('carga'))
 
 @app.route('/enviar', methods=['POST'])
@@ -79,23 +104,29 @@ def enviar():
     )
     conn.commit()
     conn.close()
-
-    # ✅ Redireciona para index com parâmetro de sucesso
     return redirect(url_for('index', sucesso=1))
 
 @app.route('/excluir', methods=['POST'])
 def excluir():
     id_registro = request.form.get('id')
-
     if not id_registro:
         return "Erro: O ID do registro é obrigatório!", 400
-
     conn = get_db_connection()
     conn.execute('DELETE FROM registros WHERE id = ?', (id_registro,))
     conn.commit()
     conn.close()
-
     return redirect(url_for('carga'))
 
+@app.route('/separar/<int:id>', methods=['POST'])
+def marcar_separacao(id):
+    conn = get_db_connection()
+    atual = conn.execute('SELECT em_separacao FROM registros WHERE id = ?', (id,)).fetchone()
+    novo_estado = 0 if atual['em_separacao'] else 1
+    conn.execute('UPDATE registros SET em_separacao = ? WHERE id = ?', (novo_estado, id))
+    conn.commit()
+    conn.close()
+    return '', 204
+
 if __name__ == '__main__':
+    inicializar_banco()
     app.run(debug=True)
