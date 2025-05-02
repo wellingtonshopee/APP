@@ -48,16 +48,18 @@
       border: none;
       border-radius: 4px;
       cursor: pointer;
-      margin-top: 20px;
+      margin-top: 10px;
     }
     .play-btn:hover {
       background-color: #e6b800;
     }
   </style>
   <script>
-    function tocarAudio() {
-      const audio = document.getElementById("audio");
-      audio.play();
+    function tocarAudio(cardId) {
+      const audio = document.getElementById("audio_" + cardId);
+      if (audio) {
+        audio.play();
+      }
     }
 
     function habilitarEdicao(id) {
@@ -125,10 +127,14 @@
 
           <form method="POST" action="/atualizar" id="form_{{ r[0] }}">
             <label for="gaiola">Gaiola:</label>
-            <input type="text" name="gaiola" id="gaiola_{{ r[0] }}" value="{{ r['gaiola'] or '' }}" {% if r['gaiola'] and r['posicao'] %} disabled {% endif %} oninput="verificarCampos({{ r[0] }})" onblur="focusNext({{ r[0] }})">
+            <input type="text" name="gaiola" id="gaiola_{{ r[0] }}" value="{{ r['gaiola'] or '' }}" 
+              {% if r['gaiola'] and r['posicao'] %} disabled {% endif %}
+              oninput="verificarCampos({{ r[0] }})" onblur="focusNext({{ r[0] }})">
 
             <label for="posicao">Posição:</label>
-            <input type="text" name="posicao" id="posicao_{{ r[0] }}" value="{{ r['posicao'] or '' }}" {% if r['gaiola'] and r['posicao'] %} disabled {% endif %} oninput="verificarCampos({{ r[0] }})">
+            <input type="text" name="posicao" id="posicao_{{ r[0] }}" value="{{ r['posicao'] or '' }}" 
+              {% if r['gaiola'] and r['posicao'] %} disabled {% endif %}
+              oninput="verificarCampos({{ r[0] }})">
 
             <input type="hidden" name="id" value="{{ r[0] }}">
 
@@ -140,14 +146,12 @@
             <input type="hidden" name="id" value="{{ r[0] }}">
             <button type="button" class="delete-btn" onclick="confirmarExclusao({{ r[0] }})">Excluir</button>
           </form>
+
+          <button class="play-btn" onclick="tocarAudio({{ r[0] }})">Tocar Áudio</button>
+          <audio id="audio_{{ r[0] }}" src="{{ url_for('static', filename='audio/handbell-81953.mp3') }}" preload="auto"></audio>
         </div>
       </div>
     {% endfor %}
-
-    <button class="play-btn" onclick="tocarAudio()">Tocar Áudio</button>
-    <audio id="audio" src="{{ url_for('static', filename='audio/handbell-81953.mp3') }}" preload="auto"></audio>
   </div>
 </body>
 </html>
-
-
