@@ -55,7 +55,6 @@
       background-color: #0056b3;
     }
 
-    /* Animação de fade-in */
     .mensagem-confirmacao {
       animation: fadeIn 1s ease-in-out;
       opacity: 0;
@@ -90,10 +89,21 @@
     <button type="submit">Enviar</button>
   </form>
 
-  {% if request.args.get('sucesso') == '1' %}
-    <div class="center mensagem-confirmacao" style="margin-top: 20px; color: green; font-weight: bold;">
+  {% if sucesso == '1' %}
+    <div class="center mensagem-confirmacao" id="mensagem" style="margin-top: 20px; color: green; font-weight: bold;">
       Você entrou na fila! Em breve será chamado para carregar!
     </div>
   {% endif %}
+
+  <script>
+    setTimeout(() => {
+      const msg = document.getElementById('mensagem');
+      if (msg) {
+        msg.style.transition = 'opacity 0.5s';
+        msg.style.opacity = '0';
+        setTimeout(() => msg.remove(), 500); // remove do DOM após o fade
+      }
+    }, 5000); // após 5 segundos
+  </script>
 </body>
 </html>
