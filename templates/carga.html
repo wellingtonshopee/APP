@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="refresh" content="30">
+  <meta http-equiv="refresh" content="60">
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Associação</title>
   <link rel="stylesheet" href="/static/style.css" />
@@ -36,10 +36,11 @@
     .save-btn {
       background-color: #28a745;
       color: white;
-      display: none;
+      display: inline-block;
+      visibility: hidden;
     }
     .save-btn:hover {
-      background-color: #3d0bb3;
+      background-color: #218838;
     }
     .play-btn {
       padding: 10px 20px;
@@ -63,11 +64,16 @@
     }
 
     function habilitarEdicao(id) {
-      document.getElementById('gaiola_' + id).disabled = false;
-      document.getElementById('posicao_' + id).disabled = false;
-      document.getElementById('editar_' + id).style.display = 'none';
-      document.getElementById('salvar_' + id).style.display = 'inline-block';
-      document.getElementById('gaiola_' + id).focus();
+      const gaiolaInput = document.getElementById('gaiola_' + id);
+      const posicaoInput = document.getElementById('posicao_' + id);
+      const editarBtn = document.getElementById('editar_' + id);
+      const salvarBtn = document.getElementById('salvar_' + id);
+
+      gaiolaInput.disabled = false;
+      posicaoInput.disabled = false;
+      editarBtn.style.display = 'none';
+      salvarBtn.style.visibility = 'visible';
+      gaiolaInput.focus();
     }
 
     function verificarCampos(id) {
@@ -95,12 +101,38 @@
       }
     }
 
-    function focusNext(id) {
-      const gaiola = document.getElementById('gaiola_' + id).value;
-      if (gaiola.trim() !== '') {
-        document.getElementById('posicao_' + id).focus();
-      }
+    function iniciarEdicaoAutomatica(id) {
+      const gaiolaInput = document.getElementById('gaiola_' + id);
+      const posicaoInput = document.getElementById('posicao_' + id);
+      const salvarBtn = document.getElementById('salvar_' + id);
+      const editarBtn = document.getElementById('editar_' + id);
+
+      gaiolaInput.disabled = false;
+      posicaoInput.disabled = false;
+      editarBtn.style.display = 'none';
+      salvarBtn.style.visibility = 'visible';
+      gaiolaInput.focus();
+
+      gaiolaInput.addEventListener('input', () => {
+        if (gaiolaInput.value.trim() !== '') {
+          posicaoInput.focus();
+        }
+      });
+
+      posicaoInput.addEventListener('input', () => {
+        if (posicaoInput.value.trim() !== '') {
+          salvarBtn.focus();
+        }
+      });
     }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      {% for r in registros %}
+        {% if not r['gaiola'] and not r['posicao'] %}
+          iniciarEdicaoAutomatica({{ r[0] }});
+        {% endif %}
+      {% endfor %}
+    });
   </script>
 </head>
 <body>
@@ -129,7 +161,7 @@
             <label for="gaiola">Gaiola:</label>
             <input type="text" name="gaiola" id="gaiola_{{ r[0] }}" value="{{ r['gaiola'] or '' }}" 
               {% if r['gaiola'] and r['posicao'] %} disabled {% endif %}
-              oninput="verificarCampos({{ r[0] }})" onblur="focusNext({{ r[0] }})">
+              oninput="verificarCampos({{ r[0] }})">
 
             <label for="posicao">Posição:</label>
             <input type="text" name="posicao" id="posicao_{{ r[0] }}" value="{{ r['posicao'] or '' }}" 
