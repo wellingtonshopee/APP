@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
+  <meta http-equiv="refresh" content="30">
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Associação</title>
   <link rel="stylesheet" href="/static/style.css" />
@@ -15,11 +16,9 @@
       border-radius: 4px;
       margin-top: 10px;
     }
-
     .delete-btn:hover {
       background-color: rgb(235, 8, 8);
     }
-
     .edit-btn, .save-btn {
       padding: 6px 12px;
       margin-right: 6px;
@@ -27,29 +26,21 @@
       border-radius: 4px;
       cursor: pointer;
     }
-
     .edit-btn {
       background-color: #007bff;
       color: white;
     }
-
     .edit-btn:hover {
       background-color: #0056b3;
     }
-
     .save-btn {
       background-color: #28a745;
       color: white;
+      display: none;
     }
-
     .save-btn:hover {
       background-color: #3d0bb3;
     }
-
-    .save-btn {
-      display: none;
-    }
-
     .play-btn {
       padding: 10px 20px;
       background-color: #ffcc00;
@@ -59,13 +50,11 @@
       cursor: pointer;
       margin-top: 20px;
     }
-
     .play-btn:hover {
       background-color: #e6b800;
     }
   </style>
   <script>
-    // Função para tocar o áudio
     function tocarAudio() {
       const audio = document.getElementById("audio");
       audio.play();
@@ -155,12 +144,10 @@
       </div>
     {% endfor %}
 
-    <!-- Botão para tocar o áudio -->
     <button class="play-btn" onclick="tocarAudio()">Tocar Áudio</button>
-
-    <!-- Áudio -->
     <audio id="audio" src="{{ url_for('static', filename='audio/handbell-81953.mp3') }}" preload="auto"></audio>
   </div>
 </body>
 </html>
+
 
