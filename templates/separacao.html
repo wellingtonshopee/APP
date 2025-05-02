@@ -9,7 +9,7 @@
     .banner {
       display: flex;
       align-items: center;
-      background-color: #f7452e; /* fundo vermelho escuro */
+      background-color: #f7452e;
       padding: 15px 20px;
       border-bottom: 2px solid #900;
       color: white;
@@ -23,7 +23,6 @@
     .banner-text h1 {
       font-size: 26px;
       margin: 0;
-      color: white;
     }
 
     .card-container {
@@ -40,6 +39,26 @@
       margin: 10px;
       width: 300px;
       background-color: #fff;
+      transition: background-color 0.3s;
+      position: relative;
+    }
+
+    .card.em-separacao {
+      background-color: #ffcccc;
+      border-color: #cc0000;
+    }
+
+    .card-footer {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid #ccc;
+      font-weight: bold;
+      color: red;
+      display: none;
+    }
+
+    .card.em-separacao .card-footer {
+      display: block;
     }
 
     .card-header {
@@ -63,7 +82,6 @@
 </head>
 <body>
 
-  <!-- Banner com logotipo -->
   <header class="banner">
     <div class="logo">
       <img src="{{ url_for('static', filename='imagens/1.jpg') }}" alt="Logo">
@@ -73,12 +91,11 @@
     </div>
   </header>
 
-  <!-- Container flexível para os cards -->
   <div class="card-container">
     {% for r in registros %}
-      <div class="card">
+      <div class="card" ondblclick="marcarSeparacao(this)">
         <div class="card-header">
-          <strong> Aguardando Carregamento</strong>
+          <strong>Aguardando Carregamento</strong>
         </div>
         <div class="card-body">
           <p><span class="title">Nome:</span> <strong class="nome">{{ r[1] }}</strong></p>
@@ -86,9 +103,17 @@
           <p><span class="title">Rota:</span> <strong class="rota">{{ r[3] }}</strong></p>
           <p><span class="title">Data e Hora:</span> <strong>{{ r[4] }}</strong></p>
         </div>
+        <div class="card-footer">Em Separação</div>
       </div>
     {% endfor %}
   </div>
 
+  <script>
+    function marcarSeparacao(card) {
+      card.classList.toggle('em-separacao');
+    }
+  </script>
+
 </body>
 </html>
+
