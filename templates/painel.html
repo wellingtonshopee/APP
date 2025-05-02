@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Painel</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+
+    header img {
+      width: 100%;
+      height: auto;
+    }
+
+    #painel {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      gap: 20px; /* Espaçamento entre os cards */
+      padding: 20px;
+    }
+
+    .card {
+      width: 300px;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      padding: 15px;
+      background-color: #fff;
+      font-size: 16px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      z-index: 1;
+    }
+
+    /* Cards verdes terão maior z-index */
+    .verde {
+      background-color: #d4ffd4;
+      border-color: #2ecc71;
+      animation: piscar 1s infinite;
+      z-index: 2;
+    }
+
+    @keyframes piscar {
+      0%, 100% { background-color: #d4ffd4; }
+      50% { background-color: #aaffaa; }
+    }
+
+    .mensagem-carregar {
+      color: green;
+      font-weight: bold;
+      margin-top: 10px;
+      font-size: 18px;
+    }
+
+    .campo-titulo {
+      color: #444;
+      font-weight: bold;
+    }
+
+    .data-hora {
+      margin-bottom: 5px;
+    }
+
+    .discreto {
+      color: #999;
+      font-size: 0.9em;
+      font-weight: normal;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="banner">
+    <div class="logo">
+      <img src="http://localhost:5000/static/images/1.jpg" alt="Logo" />
+    </div>
+    <div class="banner-text">
+      <h1>Painel de Carreamento - Sistema de Gerenciamento</h1>
+    </div>
+  </header>
+  <!-- Áudio para alerta -->
+  <audio id="audio" src="{{ url_for('static', filename='audio/handbell-81953.mp3') }}" preload="auto"></audio>
+
+  <div id="painel">
+    {% for r in registros %}
+      <div class="card {% if r[5] and r[6] %}verde{% endif %}">
+        <p class="data-hora"><span class="campo-titulo">Data/Hora:</span> <span class="discreto">{{ r[4] }}</span></p>
+        <p><span class="campo-titulo">Nome:</span> <b>{{ r[1] }}</b></p>
+        <p><span class="campo-titulo">Matrícula:</span> <b>{{ r[2] }}</b></p>
+        <p><span class="campo-titulo">Rota:</span> <b>{{ r[3] }}</b></p>
+
+        {% if r[5] and r[6] %}
+          <p><span class="campo-titulo">Gaiola:</span> <b>{{ r[5] }}</b></p>
+          <p><span class="campo-titulo">Posição:</span> <b>{{ r[6] }}</b></p>
+          <p class="mensagem-carregar">🚚 Entre para carregar!</p>
+          
+          <!-- Toca o áudio quando o card ficar verde -->
+          <script>
+            document.getElementById("audio").play();
+          </script>
+        {% else %}
+          <p class="mensagem-carregar" style="color: gray;">⏳ Aguardando atualização...</p>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+
+</body>
+</html>
