@@ -1,20 +1,16 @@
 from flask import Flask, render_template, request, redirect, url_for
 import sqlite3
 from datetime import datetime
-import os
 
 app = Flask(__name__)
 
-# Caminho do banco de dados
-DB_PATH = 'sistema_cargas.db'
+DB_PATH = 'sistema_cargas_atualizado.db'  # Banco de dados corrigido
 
-# Conexão com o banco de dados
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
-# Criação da coluna 'em_separacao' caso não exista
 def inicializar_banco():
     conn = get_db_connection()
     conn.execute('''
@@ -29,7 +25,6 @@ def inicializar_banco():
             em_separacao INTEGER DEFAULT 0
         )
     ''')
-    # Adiciona coluna se ela não existir
     try:
         conn.execute('SELECT em_separacao FROM registros LIMIT 1')
     except sqlite3.OperationalError:
@@ -37,7 +32,6 @@ def inicializar_banco():
     conn.commit()
     conn.close()
 
-# Pega todos os registros
 def obter_registros():
     conn = get_db_connection()
     registros = conn.execute('SELECT * FROM registros').fetchall()
