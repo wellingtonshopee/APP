@@ -1,0 +1,474 @@
+body {
+    font-family: Arial;
+    background: #eef2f3;
+    padding: 20px;
+  }
+  .center {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  form {
+    background: white;
+    padding: 15px;
+    margin: 10px auto;
+    border-radius: 10px;
+    box-shadow: 0 0 5px #aaa;
+    max-width: 400px;
+  }
+  input, button {
+    width: 90%;
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 5px;
+  }
+  .card {
+    background: white;
+    padding: 10px;
+    margin: 10px;
+    border-radius: 10px;
+  }
+  .verde {
+    animation: piscar 1s infinite;
+    background: #c5f7c5;
+  }
+  @keyframes piscar {
+    0% { background: #c5f7c5; }
+    50% { background: #91e691; }
+    100% { background: #c5f7c5; }
+  }
+  /* Reset básico */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Estilo para o corpo */
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f4f4f4;
+  padding: 20px;
+}
+
+/* Banner no topo */
+.banner {
+  background-color: #4CAF50;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.banner .logo img {
+  width: 150px;
+  height: auto;
+}
+
+.banner .banner-text h1 {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+/* Container que envolve os cards */
+.container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  padding: 20px;
+}
+
+/* Estilo do card */
+.card {
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 50px;
+  transition: transform 0.3s;
+}
+
+.card:hover {
+  transform: scale(1.05);
+}
+
+.card-header {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 15px;
+}
+
+.card-body {
+  font-size: 14px;
+}
+
+.card form {
+  margin-top: 15px;
+}
+
+.card form label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.card form input {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+.card form button {
+  padding: 10px 15px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.card form button:hover {
+  background-color: #45a049;
+}
+
+.delete-btn {
+  display: block;
+  margin-top: 10px;
+  color: #ff4d4d;
+  text-decoration: none;
+}
+
+.delete-btn:hover {
+  text-decoration: underline;
+}
+/* Estilo para os títulos coloridos */
+strong {
+  font-weight: bold;
+}
+
+strong[style="color: blue;"] {
+  color: blue;
+}
+
+strong[style="color: red;"] {
+  color: red;
+}
+/* Estilo do banner */
+.banner {
+  background-color: #f7452e;
+  padding: 10px 0;
+  text-align: center;
+  color: white;
+}
+
+.banner .logo img {
+  width: 150px;
+}
+
+.banner-text h1 {
+  font-size: 24px;
+  margin: 10px 0;
+}
+
+/* Estilo dos cards */
+.container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
+  padding: 20px;
+}
+
+.card {
+  width: 100%;
+  max-width: 300px;
+  margin: 10px;
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  box-sizing: border-box;
+}
+
+.card-header {
+  font-size: 18px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.card-body p {
+  margin: 5px 0;
+}
+
+/* Estilo para os campos */
+input[type="text"] {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+/* Botões e links */
+button {
+  padding: 8px 15px;
+  background-color: #4CAF50;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #45a049;
+}
+
+.delete-btn {
+  display: inline-block;
+  padding: 5px 10px;
+  margin-top: 10px;
+  background-color: #f44336;
+  color: white;
+  border-radius: 4px;
+  text-decoration: none;
+}
+
+.delete-btn:hover {
+  background-color: #e53935;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .container {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .card {
+    width: 90%;
+    margin-bottom: 20px;
+  }
+}
+/* Estilo do card */
+.card {
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin: 20px auto;
+  width: 80%; /* Aumenta a largura do card */
+  max-width: 600px; /* Limita a largura máxima */
+  font-size: 18px; /* Aumenta o tamanho da fonte */
+}
+
+.card b {
+  font-size: 20px;
+  color: #333;
+}
+
+header img {
+  width: 100%;
+  height: auto;
+}
+/* Estilo do card */
+.card {
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin: 20px auto;
+  width: 80%; /* Aumenta a largura do card */
+  max-width: 600px; /* Limita a largura máxima */
+  font-size: 18px; /* Aumenta o tamanho da fonte */
+}
+
+.card-header {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.card-body p {
+  margin: 10px 0;
+}
+
+header img {
+  width: 100%;
+  height: auto;
+}
+
+/* Estilos específicos para os títulos */
+.card p strong {
+  font-size: 18px;
+}
+
+/* Nome em azul */
+.card p strong:nth-child(1) {
+  color: rgb(0, 0, 0);
+}
+
+/* Rota em vermelho */
+.card p strong:nth-child(3) {
+  color: red;
+}
+/* Estilo do card */
+.card-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px; /* Espaçamento entre os cards */
+  justify-content: space-around;
+}
+
+.card {
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  width: 100%; /* Responsivo, cada card ocupa 100% em telas pequenas */
+  max-width: 300px; /* Limita a largura máxima de cada card */
+  font-size: 18px; /* Aumenta o tamanho da fonte */
+  margin: 10px;
+}
+
+.card-header {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.card-body p {
+  margin: 10px 0;
+}
+
+/* Estilo para destacar a Rota */
+.rota-destaque {
+  color: red;
+  font-weight: bold;
+  background-color: #fce4e4; /* Cor de fundo leve para destacar */
+  padding: 5px;
+  border-radius: 5px;
+}
+
+header img {
+  width: 100%;
+  height: auto;
+}
+
+/* Responsividade para telas pequenas */
+@media (max-width: 768px) {
+  .card-container {
+    justify-content: center; /* Alinha os cards no centro */
+  }
+}
+/* Estilo do card */
+.card-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px; /* Espaçamento entre os cards */
+  justify-content: space-around;
+}
+
+.card {
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  width: 100%; /* Responsivo, cada card ocupa 100% em telas pequenas */
+  max-width: 300px; /* Limita a largura máxima de cada card */
+  font-size: 18px; /* Aumenta o tamanho da fonte */
+  margin: 10px;
+}
+
+.card-header {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.card-body p {
+  margin: 10px 0;
+}
+
+.title {
+  font-weight: normal; /* Títulos com fonte normal */
+}
+
+.rota-destaque {
+  color: red;
+  font-weight: bold;
+  background-color: #fce4e4; /* Cor de fundo leve para destacar */
+  padding: 5px;
+  border-radius: 5px;
+}
+
+header img {
+  width: 100%;
+  height: auto;
+}
+
+/* Responsividade para telas pequenas */
+@media (max-width: 768px) {
+  .card-container {
+    justify-content: center; /* Alinha os cards no centro */
+  }
+}
+/* Estilo do card */
+.card-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px; /* Espaçamento entre os cards */
+  justify-content: space-around;
+}
+
+.card {
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  width: 100%; /* Responsivo, cada card ocupa 100% em telas pequenas */
+  max-width: 300px; /* Limita a largura máxima de cada card */
+  font-size: 18px; /* Aumenta o tamanho da fonte */
+  margin: 10px;
+}
+
+.card-header {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.card-body p {
+  margin: 10px 0;
+}
+
+.title {
+  font-weight: normal; /* Títulos com fonte normal */
+}
+
+.nome {
+  color: rgb(9, 9, 138);
+  font-weight: bold; /* Nome em negrito */
+}
+
+.rota {
+  color: rgb(238, 59, 5);
+  font-weight: bold; /* Rota em negrito e verde */
+}
+
+header img {
+  width: 100%;
+  height: auto;
+}
+
+/* Responsividade para telas pequenas */
+@media (max-width: 768px) {
+  .card-container {
+    justify-content: center; /* Alinha os cards no centro */
+  }
+}
