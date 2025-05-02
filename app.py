@@ -10,16 +10,22 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-# Função para pegar os registros da carga
+# Função para pegar os registros da carga com ordenação
 def obter_registros():
     conn = get_db_connection()
     registros = conn.execute('SELECT * FROM registros').fetchall()
     conn.close()
-    return registros
+    # Ordenar: registros com gaiola ou posição vazia vêm primeiro
+    registros_ordenados = sorted(
+        registros,
+        key=lambda r: bool(r['gaiola']) and bool(r['posicao'])  # False (incompletos) vêm antes
+    )
+    return registros_ordenados
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    registros = obter_registros()
+    return render_template('index.html', registros=registros)
 
 @app.route('/separacao')
 def separacao():
@@ -46,8 +52,10 @@ def atualizar():
         return "Erro: Todos os campos são obrigatórios!", 400
 
     conn = get_db_connection()
-    conn.execute('UPDATE registros SET gaiola = ?, posicao = ? WHERE id = ?',
-                 (gaiola, posicao, id_registro))
+    conn.execute(
+        'UPDATE registros SET gaiola = ?, posicao = ? WHERE id = ?',
+        (gaiola, posicao, id_registro)
+    )
     conn.commit()
     conn.close()
 
@@ -64,8 +72,10 @@ def enviar():
         return "Erro: Todos os campos são obrigatórios!", 400
 
     conn = get_db_connection()
-    conn.execute('INSERT INTO registros (nome, matricula, rota, dataHora) VALUES (?, ?, ?, ?)',
-                 (nome, matricula, rota, data_hora))
+    conn.execute(
+        'INSERT INTO registros (nome, matricula, rota, dataHora) VALUES (?, ?, ?, ?)',
+        (nome, matricula, rota, data_hora)
+    )
     conn.commit()
     conn.close()
 
@@ -82,7 +92,9 @@ def excluir():
     conn.execute('DELETE FROM registros WHERE id = ?', (id_registro,))
     conn.commit()
     conn.close()
+
     return redirect(url_for('carga'))
 
 if __name__ == '__main__':
     app.run(debug=True)
+
