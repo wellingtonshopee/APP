@@ -25,7 +25,8 @@ def obter_registros():
 @app.route('/')
 def index():
     registros = obter_registros()
-    return render_template('index.html', registros=registros)
+    sucesso = request.args.get('sucesso')  # Pega flag da URL
+    return render_template('index.html', registros=registros, sucesso=sucesso)
 
 @app.route('/separacao')
 def separacao():
@@ -79,7 +80,8 @@ def enviar():
     conn.commit()
     conn.close()
 
-    return redirect(url_for('index'))
+    # ✅ Redireciona para index com parâmetro de sucesso
+    return redirect(url_for('index', sucesso=1))
 
 @app.route('/excluir', methods=['POST'])
 def excluir():
@@ -97,4 +99,3 @@ def excluir():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
