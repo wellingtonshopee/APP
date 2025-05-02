@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for
 import sqlite3
 from datetime import datetime
+import pytz
 
 app = Flask(__name__)
 
@@ -36,7 +37,20 @@ def obter_registros():
     conn = get_db_connection()
     registros = conn.execute('SELECT * FROM registros').fetchall()
     conn.close()
-    return sorted(registros, key=lambda r: (r['gaiola'] is None or r['posicao'] is None, r['id']))
+
+    fuso_brasilia = pytz.timezone('America/Sao_Paulo')
+    registros_formatados = []
+
+    for r in registros:
+        data_raw = datetime.strptime(r['dataHora'], '%Y-%m-%d %H:%M:%S')
+        data_local = data_raw.astimezone(fuso_brasilia)
+        data_formatada = data_local.strftime('%d/%m/%Y %H:%M')
+
+        r_dict = dict(r)
+        r_dict['dataHora'] = data_formatada
+        registros_formatados.append(r_dict)
+
+    return sorted(registros_formatados, key=lambda r: (r['gaiola'] is None or r['posicao'] is None, r['id']))
 
 @app.route('/')
 def index():
@@ -82,7 +96,8 @@ def enviar():
     nome = request.form.get('nome')
     matricula = request.form.get('matricula')
     rota = request.form.get('rota')
-    data_hora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    fuso_brasilia = pytz.timezone('America/Sao_Paulo')
+    data_hora = datetime.now(fuso_brasilia).strftime('%Y-%m-%d %H:%M:%S')
 
     if not nome or not matricula or not rota:
         return "Erro: Todos os campos são obrigatórios!", 400
@@ -120,4 +135,3 @@ def marcar_separacao(id):
 if __name__ == '__main__':
     inicializar_banco()
     app.run(debug=True)
-
