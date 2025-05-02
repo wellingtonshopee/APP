@@ -20,7 +20,7 @@
 
     .center img {
       width: 100%;
-      max-width: 400px; /* Mesma largura máxima do formulário */
+      max-width: 400px;
       height: auto;
       display: block;
       margin: 0 auto;
@@ -55,6 +55,18 @@
       background-color: #0056b3;
     }
 
+    /* Animação de fade-in */
+    .mensagem-confirmacao {
+      animation: fadeIn 1s ease-in-out;
+      opacity: 0;
+      animation-fill-mode: forwards;
+    }
+
+    @keyframes fadeIn {
+      0% { opacity: 0; transform: translateY(10px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
     @media (max-width: 480px) {
       form {
         padding: 15px;
@@ -77,6 +89,11 @@
     <input name="rota" placeholder="Rota" required>
     <button type="submit">Enviar</button>
   </form>
+
+  {% if request.args.get('sucesso') == '1' %}
+    <div class="center mensagem-confirmacao" style="margin-top: 20px; color: green; font-weight: bold;">
+      Você entrou na fila! Em breve será chamado para carregar!
+    </div>
+  {% endif %}
 </body>
 </html>
-
