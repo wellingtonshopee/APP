@@ -19,7 +19,7 @@ def obter_registros():
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_https://github.com/wellingtonshopee/APP/blob/main/('index.html')
 
 @app.route('/separacao')
 def separacao():
