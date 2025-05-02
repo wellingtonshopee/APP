@@ -82,7 +82,7 @@ def enviar():
     nome = request.form.get('nome')
     matricula = request.form.get('matricula')
     rota = request.form.get('rota')
-    data_hora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+   data_hora = datetime.now(fuso_brasilia).strftime('%Y-%m-%d %H:%M:%S')
 
     if not nome or not matricula or not rota:
         return "Erro: Todos os campos são obrigatórios!", 400
