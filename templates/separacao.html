@@ -93,7 +93,7 @@
 
   <div class="card-container">
     {% for r in registros %}
-      <div class="card" ondblclick="marcarSeparacao(this)">
+      <div class="card" data-id="{{ r[0] }}" ondblclick="marcarSeparacao(this)">
         <div class="card-header">
           <strong>Aguardando Carregamento</strong>
         </div>
@@ -110,10 +110,32 @@
 
   <script>
     function marcarSeparacao(card) {
-      card.classList.toggle('em-separacao');
+      const id = card.dataset.id;
+      let selecionados = JSON.parse(localStorage.getItem('separados')) || [];
+
+      if (card.classList.contains('em-separacao')) {
+        card.classList.remove('em-separacao');
+        selecionados = selecionados.filter(i => i !== id);
+      } else {
+        card.classList.add('em-separacao');
+        if (!selecionados.includes(id)) {
+          selecionados.push(id);
+        }
+      }
+
+      localStorage.setItem('separados', JSON.stringify(selecionados));
     }
+
+    // Restaurar seleção ao carregar
+    window.addEventListener('DOMContentLoaded', () => {
+      const selecionados = JSON.parse(localStorage.getItem('separados')) || [];
+      document.querySelectorAll('.card').forEach(card => {
+        if (selecionados.includes(card.dataset.id)) {
+          card.classList.add('em-separacao');
+        }
+      });
+    });
   </script>
 
 </body>
 </html>
-
