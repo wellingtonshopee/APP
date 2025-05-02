@@ -99,7 +99,7 @@
     <div class="mensagem-confirmacao" id="mensagem">
       Você entrou na fila! Em breve será chamado para carregar!
       <br>
-      <img src="{{  url_for('static', filename='imagens/4.jpg) }}" alt="Sucesso">
+      <img src="{{ url_for('static', filename='imagens/4.jpg') }}" alt="Sucesso">
       <br>
       <button onclick="fecharModal()">Fechar</button>
     </div>
@@ -112,6 +112,7 @@
     </form>
   {% endif %}
 
+  {% raw %}
   <script>
     function fecharModal() {
       window.location.href = "/";
@@ -125,5 +126,7 @@
       }
     }, 5000);
   </script>
+  {% endraw %}
+
 </body>
 </html>
