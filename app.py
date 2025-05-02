@@ -4,7 +4,7 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-DB_PATH = 'sistema_cargas_atualizado.db'  # Banco de dados corrigido
+DB_PATH = 'sistema_cargas.db'
 
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
@@ -36,11 +36,7 @@ def obter_registros():
     conn = get_db_connection()
     registros = conn.execute('SELECT * FROM registros').fetchall()
     conn.close()
-    registros_ordenados = sorted(
-        registros,
-        key=lambda r: bool(r['gaiola']) and bool(r['posicao'])
-    )
-    return registros_ordenados
+    return sorted(registros, key=lambda r: (r['gaiola'] is None or r['posicao'] is None, r['id']))
 
 @app.route('/')
 def index():
@@ -124,3 +120,4 @@ def marcar_separacao(id):
 if __name__ == '__main__':
     inicializar_banco()
     app.run(debug=True)
+
