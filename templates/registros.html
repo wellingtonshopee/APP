@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title></title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    .banner {
+      background-color: #f30909;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      z-index: 1000;
+      padding: 15px 0;
+    }
+
+    .banner-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .banner .logo {
+      height: 50px;
+      width: auto;
+      margin-right: 20px;
+    }
+
+    .banner h1 {
+      flex: 1;
+      text-align: right;
+      font-size: 24px;
+      margin: 0;
+      color: white;
+    }
+
+    .filters {
+      margin-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      max-width: 1200px;
+      margin: 15px auto;
+    }
+
+    .filters input,
+    .filters select {
+      padding: 8px;
+      margin: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    body {
+      padding-top: 180px; /* Ajustado para espaço do banner com filtros */
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+    }
+
+    .container {
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .cards {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-around;
+      margin-top: 30px;
+    }
+
+    .card {
+      width: 300px;
+      background-color: #f9f9f9;
+      margin: 15px;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      transition: transform 0.3s;
+      position: relative;
+    }
+
+    .card:hover {
+      transform: scale(1.05);
+    }
+
+    .card p {
+      margin: 5px 0;
+      font-size: 14px;
+    }
+
+    .card.separado {
+      background-color: #ffcccc;
+      border: 2px solid red;
+    }
+
+    .card.separado::after {
+      content: "Em Separação";
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background-color: red;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+
+    .card input {
+      width: 100%;
+      padding: 8px;
+      margin: 5px 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .card input.error {
+      border-color: red;
+      background-color: #fdd;
+    }
+
+    .card button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    .card button:hover {
+      background-color: #45a049;
+    }
+
+    a {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+    }
+
+    a:hover {
+      background-color: #f12704;
+    }
+  </style>
+</head>
+<body>
+  <!-- Banner -->
+  <div class="banner">
+    <div class="banner-content">
+      <img src="{{ url_for('static', filename='imagem/logop.png') }}" class="logo" alt="Logo">
+      <h1>Fila de Carregamento - Sistema de Gerenciamento</h1>
+    </div>
+    <!-- Filtros dentro do Banner -->
+    <div class="filters">
+      <input type="date" id="data" value="{{ data }}" onchange="filtrarPorData()">
+      <input type="text" id="filtroRota" placeholder="Filtrar por Rota" oninput="aplicarFiltros()">
+      <input type="text" id="filtroCidade" placeholder="Filtrar por Cidade" oninput="aplicarFiltros()" list="listaCidades">
+      <datalist id="listaCidades">
+        {% for cidade in cidades %}
+        <option value="{{ cidade }}">
+        {% endfor %}
+      </datalist>
+      <select id="filtroEntrega" onchange="aplicarFiltros()">
+        <option value="">Todos os Tipos</option>
+        <option value="Normal">Normal</option>
+        <option value="No-Show">No-Show</option>
+      </select>
+      <select id="filtroSeparacao" onchange="aplicarFiltros()">
+        <option value="">Todos</option>
+        <option value="separado">Em Separação</option>
+        <option value="nao-separado">Não Separados</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Conteúdo principal -->
+  <div class="container">
+    <div class="cards" id="cardsContainer">
+      {% for r in registros %}
+      <div class="card {% if r.em_separacao == 1 %}separado{% endif %}" 
+           ondblclick="onDblClick(this)" 
+           onclick="marcarSeparacaoOuRedirecionar(this, {{ r.id }})"
+           data-rota="{{ r.rota|lower }}" 
+           data-cidade="{{ r.cidade_entrega|lower }}" 
+           data-entrega="{{ r.tipo_entrega|lower }}">
+        <p><strong>Nome:</strong> {{ r.nome }}</p>
+        <p><strong>Matrícula:</strong> {{ r.matricula }}</p>
+        <p><strong>Rota:</strong> <em>{{ r.rota }}</em></p>
+        <p><strong>Cidade:</strong> <em>{{ r.cidade_entrega }}</em></p>
+        <p><strong>Entrega:</strong> <em>{{ r.tipo_entrega }}</em></p>
+        <p><strong>Data/Hora:</strong> {{ r.data_hora_login }}</p>
+        <div id="form-{{ r.id }}"></div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <a href="/">Voltar ao login</a>
+  </div>
+
+  <script>
+    function filtrarPorData() {
+      const data = document.getElementById('data').value;
+      window.location.href = '/registros?data=' + data;
+    }
+
+    function aplicarFiltros() {
+      const rotaFiltro = document.getElementById('filtroRota').value.toLowerCase();
+      const cidadeFiltro = document.getElementById('filtroCidade').value.toLowerCase();
+      const entregaFiltro = document.getElementById('filtroEntrega').value.toLowerCase();
+      const separacaoFiltro = document.getElementById('filtroSeparacao').value;
+
+      const cards = document.querySelectorAll('.card');
+      cards.forEach(card => {
+        const rota = card.dataset.rota || '';
+        const cidade = card.dataset.cidade || '';
+        const entrega = card.dataset.entrega || '';
+        const estaSeparado = card.classList.contains('separado');
+
+        const rotaOk = rota.includes(rotaFiltro);
+        const cidadeOk = cidade.includes(cidadeFiltro);
+        const entregaOk = entregaFiltro === '' || entrega === entregaFiltro;
+        const separacaoOk = separacaoFiltro === '' ||
+          (separacaoFiltro === 'separado' && estaSeparado) ||
+          (separacaoFiltro === 'nao-separado' && !estaSeparado);
+
+        if (rotaOk && cidadeOk && entregaOk && separacaoOk) {
+          card.style.display = '';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
+    function editar(id, gaiola, estacao) {
+      const form = ` 
+        <form method="POST" action="/editar/${id}">
+          <input type="text" name="gaiola" placeholder="Gaiola" value="${gaiola || ''}" required>
+          <input type="text" name="estacao" placeholder="Estação" value="${estacao || ''}" required>
+          <button type="submit">Gravar</button>
+        </form>`; 
+      document.getElementById('form-' + id).innerHTML = form;
+    }
+
+    function marcarSeparacao(cardElement, id) {
+      if (cardElement.classList.contains('separado')) return;
+
+      fetch(`/marcar_separacao/${id}`, {
+        method: 'POST'
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'ok') {
+          cardElement.classList.add('separado');
+        }
+      });
+    }
+
+    function redirecionarParaAssociacao(rota, tipoEntrega) {
+      const url = `/associacao?rota=${encodeURIComponent(rota)}&tipo_entrega=${encodeURIComponent(tipoEntrega)}`;
+      window.location.href = url;
+    }
+
+    function onDblClick(cardElement) {
+      cardElement.querySelectorAll('input').forEach(input => {
+        input.classList.add('error');
+      });
+    }
+
+    function marcarSeparacaoOuRedirecionar(cardElement, id) {
+      const rota = cardElement.querySelector('p:nth-child(3) em').textContent;
+      const tipoEntrega = cardElement.querySelector('p:nth-child(5) em').textContent;
+
+      marcarSeparacao(cardElement, id);
+
+      if (rota && tipoEntrega) {
+        redirecionarParaAssociacao(rota, tipoEntrega);
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Painel Final</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <img src="{{ url_for('static', filename='logo.png') }}" class="logo" alt="Logo">
+    <h2>Painel Final do Dia</h2>
+
+    {% if registros %}
+      <div class="cards">
+        {% for r in registros %}
+        <div class="card">
+          <p><strong>Nome:</strong> {{ r.nome }}</p>
+          <p><strong>Matrícula:</strong> {{ r.matricula }}</p>
+          <p><strong>Rota:</strong> {{ r.rota }}</p>
+          <p><strong>Entrega:</strong> {{ r.tipo_entrega }}</p>
+          <p><strong>Estação:</strong> {{ r.estacao }}</p>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p>Nenhum registro encontrado para o painel final.</p>
+    {% endif %}
+  </div>
+</body>
+</html>

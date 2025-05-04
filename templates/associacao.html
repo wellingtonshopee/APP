@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Associação de Gaiola e Estação</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 2rem;
+        }
+        form.filtros {
+            margin-bottom: 1.5rem;
+        }
+        .card {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .paginacao {
+            margin-top: 2rem;
+        }
+        .paginacao a {
+            margin: 0 5px;
+            text-decoration: none;
+        }
+        input[type="text"] {
+            padding: 6px;
+            width: 100px;
+        }
+        .btn-nao-associado {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            cursor: pointer;
+            margin-top: 5px;
+            border-radius: 4px;
+        }
+        .btn-nao-associado:hover {
+            background-color: #d32f2f;
+        }
+        .status-em-separacao {
+            background-color: #ffeb3b;
+        }
+        .status-normal {
+            background-color: #8bc34a;
+        }
+    </style>
+</head>
+<body>
+    <h1>Associação de Gaiola e Estação</h1>
+
+    <!-- Formulário de filtros -->
+    <form method="get" class="filtros">
+        <label>Rota:</label>
+        <input type="text" name="rota" value="{{ rota }}">
+
+        <label>Tipo de Entrega:</label>
+        <input type="text" name="tipo_entrega" value="{{ tipo_entrega }}">
+
+        <button type="submit">Filtrar</button>
+    </form>
+
+    {% for registro in registros %}
+        <div class="card" id="registro-{{ registro.id }}" class="{% if registro.status == 'em_separacao' %}status-em-separacao{% else %}status-normal{% endif %}">
+            <p><strong>Nome:</strong> {{ registro.nome }}</p>
+            <p><strong>Rota:</strong> {{ registro.rota }}</p>
+            <p><strong>Tipo de Entrega:</strong> {{ registro.tipo_entrega }}</p>
+            <p><strong>Login:</strong> {{ registro.data_hora_login }}</p>
+
+            <form method="post" action="{{ url_for('editar', id=registro.id) }}" style="margin-bottom: 0.5rem;">
+                <label for="gaiola">Gaiola:</label>
+                <input type="text" name="gaiola" value="{{ registro.gaiola or '' }}">
+
+                <label for="estacao">Estação:</label>
+                <input type="text" name="estacao" value="{{ registro.estacao or '' }}">
+
+                <button type="submit">Salvar</button>
+            </form>
+
+            <!-- Botão de Não Associado visível sempre -->
+            <form method="post" action="{{ url_for('desassociar_id', id=registro.id) }}" id="form-nao-associado-{{ registro.id }}">
+                <button type="submit" class="btn-nao-associado">Não associado</button>
+            </form>
+        </div>
+    {% endfor %}
+
+    <!-- Paginação -->
+    <div class="paginacao">
+        {% if pagina > 1 %}
+            <a href="{{ url_for('associacao', pagina=pagina-1, rota=rota, tipo_entrega=tipo_entrega) }}">Anterior</a>
+        {% endif %}
+        <span>Página {{ pagina }} de {{ total_paginas }}</span>
+        {% if pagina < total_paginas %}
+            <a href="{{ url_for('associacao', pagina=pagina+1, rota=rota, tipo_entrega=tipo_entrega) }}">Próxima</a>
+        {% endif %}
+    </div>
+
+    <script>
+        // Não é necessário o código de desassociação no JavaScript
+    </script>
+</body>
+</html>

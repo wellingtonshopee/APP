@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Bem-vindo ao Nosso HUB</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .card {
+      background: #fff;
+      padding: 40px 30px;
+      border-radius: 20px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.1);
+      text-align: center;
+      width: 100%;
+      max-width: 400px;
+      animation: fadeIn 0.6s ease-in-out;
+    }
+
+    .logo {
+      width: 120px;
+      margin-bottom: 20px;
+    }
+
+    .message h2 {
+      font-size: 24px;
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .message p {
+      font-size: 18px;
+      color: #666;
+      margin-bottom: 30px;
+    }
+
+    .btn-close {
+      background-color: #4CAF50;
+      color: white;
+      padding: 12px 25px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .btn-close:hover {
+      background-color: #45a049;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+  <script>
+    // Redireciona após 10 segundos
+    setTimeout(() => window.location.href = '/', 10000);
+
+    function fechar() {
+      window.location.href = '/';
+    }
+  </script>
+</head>
+<body>
+  <div class="card">
+    <img src="{{ url_for('static', filename='imagem/shopito.png') }}" class="shopito.png" alt="Logo">
+    <div class="message">
+      <h2>Bem-vindo(a) ao Nosso HUB!</h2>
+      <p>Em breve será chamado para carregar!</p>
+    </div>
+    <button class="btn-close" onclick="fechar()">Fechar</button>
+  </div>
+</body>
+</html>
