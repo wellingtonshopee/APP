@@ -1,30 +1,197 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Painel Final</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-  <div class="container">
-    <img src="{{ url_for('static', filename='logo.png') }}" class="logo" alt="Logo">
-    <h2>Painel Final do Dia</h2>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fila de Carregamentol</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            background-color: #111;
+        }
 
-    {% if registros %}
-      <div class="cards">
-        {% for r in registros %}
-        <div class="card">
-          <p><strong>Nome:</strong> {{ r.nome }}</p>
-          <p><strong>Matrícula:</strong> {{ r.matricula }}</p>
-          <p><strong>Rota:</strong> {{ r.rota }}</p>
-          <p><strong>Entrega:</strong> {{ r.tipo_entrega }}</p>
-          <p><strong>Estação:</strong> {{ r.estacao }}</p>
+        .breaking-news-ticker {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: #ffdb58;
+            color: #000;
+            padding: 0.75rem 0;
+            overflow: hidden;
+            white-space: nowrap;
+            box-sizing: border-box;
+            z-index: 1000;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+        }
+
+        .breaking-news-ticker .inner-text {
+            display: inline-block;
+            padding-left: 100%;
+            animation: scroll-left 35s linear infinite;
+            animation-timing-function: linear;
+        }
+
+        @keyframes scroll-left {
+            0% {
+                transform: translateX(0);
+            }
+            100% {
+                transform: translateX(-100%);
+            }
+        }
+
+        .breaking-news-ticker span {
+            font-weight: bold;
+            margin-right: 1rem;
+        }
+
+        .main-content {
+            padding-top: 3rem;
+            min-height: 100vh;
+            box-sizing: border-box;
+            margin-top: 0;
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            grid-template-rows: auto auto auto;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            background-color: #000;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: stretch;
+        }
+
+        .box {
+            background-color: #222;
+            padding: 1rem;
+            border-radius: 0.25rem;
+            shadow-md;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #eee;
+            border: 1px solid #444;
+            box-sizing: border-box;
+        }
+
+        /* Nova estrutura de mosaico */
+        .box:nth-child(1) {
+            flex: 0 0 100%;
+            grid-column: 1 / 13;
+            grid-row: 1 / 4;
+            height: 100vh;
+            overflow: auto;
+        }
+
+        /* Estilos para telas menores */
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            .box {
+                grid-column: 1 / -1;
+                flex: 0 0 100%;
+            }
+        }
+
+        .box h2{
+            color: #fff;
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+        .box p{
+            font-size: 0.8rem;
+        }
+
+        .bottom-ticker {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #f53d2d;
+            color: #fff;
+            padding: 1rem 0;
+            overflow: hidden;
+            white-space: nowrap;
+            box-sizing: border-box;
+            z-index: 1000;
+            box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+        }
+
+        .bottom-ticker .inner-text {
+            display: inline-block;
+            padding-left: 100%;
+            animation: scroll-left 30s linear infinite;
+            animation-timing-function: linear;
+            font-size: 1.2rem;
+            font-weight: bold;
+            width: 600%;
+            white-space: nowrap;
+        }
+
+        @keyframes scroll-left {
+            0% {
+                transform: translateX(0);
+            }
+            100% {
+                transform: translateX(-100%);
+            }
+        }
+
+        .bottom-ticker span {
+            margin-right: 1.5rem;
+        }
+
+        /* Correção para garantir que o container do ticker tenha a largura correta */
+        .bottom-ticker {
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .shopee-logo {
+            height: 1.5rem;
+            margin-right: 0.5rem;
+            display: inline-block;
+        }
+
+    </style>
+    <script>
+        function playAlert() {
+            const audio = new Audio('https://www.soundjay.com/buttons/sounds/beep-01a.mp3');
+            audio.play();
+        }
+    </script>
+</head>
+<body class="bg-gray-100">
+    <div class="breaking-news-ticker">
+        <div class="inner-text">
+            <span>Shopee News:</span> Shopee lança Campanha de Dia dos Namorados. | Shopee oferece frete grátis em compras acima de R$10. | Shopee anuncia novas parcerias com vendedores locais. | Shopee Live tem recorde de audiência. | ShopeePay expande opções de pagamento. | Shopee promove programa de fidelidade para usuários. | Shopee Cares realiza ação social em comunidades carentes. | Shopee App atinge novo número de downloads.
         </div>
-        {% endfor %}
-      </div>
-    {% else %}
-      <p>Nenhum registro encontrado para o painel final.</p>
-    {% endif %}
-  </div>
+    </div>
+    <div class="main-content">
+        <div class="box" style="flex: 0 0 100%; grid-column: 1 / 13; grid-row: 1 / 4;">
+            <h2 class="text-xl font-semibold text-blue-400 mb-2">Box 1</h2>
+            <p class="text-gray-300">Informações do primeiro bloco.</p>
+        </div>
+    </div>
+    <div class="bottom-ticker">
+        <div class="inner-text" onanimationiteration="playAlert()">
+            <img src="{{ url_for('static', filename='imagem/shopee32.png') }}"  alt="Shopee Express Logo" class="shopee-logo">
+            Carregamento Urgente No-Show: Rotas liberadas! Prontas para Carregar!
+            <img src="{{ url_for('static', filename='imagem/shopee32.png') }}"  alt="Shopee Express Logo" class="shopee-logo">
+            Carregamento Urgente No-Show: Rotas liberadas! Prontas para Carregar!
+            <img src="{{ url_for('static', filename='imagem/shopee32.png') }}"  alt="Shopee Express Logo" class="shopee-logo">
+        </div>
+    </div>
 </body>
 </html>
