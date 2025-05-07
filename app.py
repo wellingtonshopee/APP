@@ -150,7 +150,6 @@ def buscar_nome():
 
 
 @app.route('/', methods=['GET', 'POST'])
-@app.route('/login', methods=['GET', 'POST'])
 def login():
     erro = None
     if request.method == 'POST':
@@ -257,8 +256,8 @@ def registros():
                 conn.commit()
             # Redirecionar mantendo os filtros
             return redirect(url_for('registros', data=data_filtro, nome=nome_filtro,
-                                            matricula=matricula_filtro, rota=rota_filtro,
-                                            tipo_entrega=tipo_entrega_filtro) + f'#registro-{registro_id}')
+                                                matricula=matricula_filtro, rota=rota_filtro,
+                                                tipo_entrega=tipo_entrega_filtro) + f'#registro-{registro_id}')
 
 
     query = 'SELECT * FROM registros WHERE 1=1'
@@ -291,9 +290,9 @@ def registros():
         registros_data = conn.execute(query, parametros).fetchall()
 
     return render_template('registros.html', registros=registros_data,
-                            data_filtro=data_filtro, nome_filtro=nome_filtro,
-                            matricula_filtro=matricula_filtro, rota_filtro=rota_filtro,
-                            tipo_entrega_filtro=tipo_entrega_filtro)
+                                        data_filtro=data_filtro, nome_filtro=nome_filtro,
+                                        matricula_filtro=matricula_filtro, rota_filtro=rota_filtro,
+                                        tipo_entrega_filtro=tipo_entrega_filtro)
 
 
 @app.route('/historico')
@@ -348,8 +347,8 @@ def associacao():
             registros_data = conn.execute(base_query, params).fetchall()
 
             return render_template('associacao.html', registros=registros_data, pagina=pagina,
-                                            total_paginas=total_paginas, rota=rota_filtro,
-                                            tipo_entrega=tipo_entrega_filtro, filtro_id=None)
+                                                total_paginas=total_paginas, rota=rota_filtro,
+                                                tipo_entrega=tipo_entrega_filtro, filtro_id=None)
 
 
 @app.route('/associar/<int:id>', methods=['POST'])
@@ -449,6 +448,10 @@ def voltar_para_associacao_id(id):
         conn.commit()
     return redirect(request.referrer + f'#registro-{id}')
 
+# --- Rota para o painel final ---
+@app.route('/painel_final')
+def painel_final():
+    return render_template('painel_final.html')
 
 # --- Inicializar banco ao iniciar ---
 init_db()
