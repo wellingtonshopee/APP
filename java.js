@@ -52,3 +52,71 @@ function aplicarFiltros() {
     }
   });
 }
+function limparFiltro() {
+  // Limpa os campos de filtro
+  document.getElementById('data').value = '';
+  document.getElementById('filtroRota').value = '';
+  document.getElementById('filtroCidade').value = '';
+  document.getElementById('filtroEntrega').value = '';
+  document.getElementById('filtroSeparacao').value = '';
+
+  // Recarrega a página de registros sem filtros (sem parâmetros na URL)
+  window.location.href = '/registros';
+  
+  // Aplica os filtros (que estarão todos vazios agora)
+  aplicarFiltros();
+}
+function onDblClick(card, id) {
+  // Verifica se o card já está marcado como separado
+  if (card.classList.contains('separado')) {
+    return; // Não faz nada se já estiver separado
+  }
+
+  // Adiciona o estilo "separado" e o texto "Em Separação"
+  card.classList.add('separado');
+  const label = document.createElement('span');
+  label.textContent = "Em Separação";
+  label.classList.add('em-separacao-label');
+  card.appendChild(label);
+
+  // Envia a requisição para o servidor para atualizar o estado
+  fetch(`/atualizar_separacao/${id}`, {
+    method: 'POST',
+    body: JSON.stringify({ em_separacao: 1 }),
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      console.log("Estado de separação atualizado.");
+    }
+  });
+}
+function onDblClick(card, id) {
+  if (!card.classList.contains('separado')) {
+    card.classList.add('separado');
+
+    if (!card.querySelector('.em-separacao-label')) {
+      const label = document.createElement('span');
+      label.textContent = "Em Separação";
+      label.classList.add('em-separacao-label');
+      card.appendChild(label);
+    }
+
+    fetch(`/atualizar_separacao/${id}`, {
+      method: 'POST',
+      body: JSON.stringify({ em_separacao: 1 }),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        console.log("Estado de separação atualizado.");
+      }
+    });
+  }
+}
