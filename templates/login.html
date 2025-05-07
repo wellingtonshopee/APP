@@ -1,8 +1,9 @@
+
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Login</title>
+    <title>Fila de Carregamento</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <style>
@@ -124,7 +125,7 @@
     </div>
 
     <div class="card">
-        <h2>Login</h2>
+        <h2>Fila de Carregamento</h2>
 
         {% if erro %}
             <p class="erro">{{ erro }}</p>
@@ -144,7 +145,7 @@
             <select id="tipo_entrega" name="tipo_entrega" required>
                 <option value="" disabled selected>Selecione</option>
                 <option value="Normal">Normal</option>
-                <option value="Urgente">No-Show</option>
+                <option value="No-Show">No-Show</option>
             </select>
 
             <label for="cidade_entrega">Cidade de Entrega</label>
