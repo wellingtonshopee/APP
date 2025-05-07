@@ -42,6 +42,7 @@ body {
   width: 100%;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   text-align: left;
+  border: 2px solid transparent; /* Adicionada borda transparente padrão */
 }
 
 /* Títulos */
@@ -77,20 +78,17 @@ body {
 
 /* Botão */
 .card button {
-  width: 100%;
-  margin-top: 20px;
-  padding: 12px;
-  background-color: #ff5b00;
-  border: none;
-  color: white;
+  all: unset;
+  padding: 8px 15px; /* Diminuindo o padding */
+  border-radius: 4px;
   font-weight: bold;
-  border-radius: 8px;
+  font-size: 14px; /* Diminuindo o tamanho da fonte */
   cursor: pointer;
-  transition: background 0.3s ease;
-}
-
-.card button:hover {
-  background-color: #e04e00;
+  text-align: center;
+  display: inline-block;
+  width: auto; /* Permite que a largura se ajuste ao conteúdo */
+  min-width: 100px; /* Ajustando a largura mínima */
+  box-sizing: border-box;
 }
 
 /* Link */
@@ -119,17 +117,6 @@ body {
   justify-content: center;
   align-items: center;
   height: 100vh;
-}
-
-.card {
-  width: 100%;
-  max-width: 400px;
-  padding: 30px;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  text-align: center;
-  margin: 20px;
 }
 
 .logo {
@@ -166,19 +153,19 @@ h2 {
 }
 
 .btn {
-  background-color: #4CAF50;
-  color: white;
-  padding: 12px 20px;
+  padding: 8px 15px; /* Diminuindo o padding */
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  width: 100%;
-  font-size: 16px;
+  width: auto; /* Permite que a largura se ajuste ao conteúdo */
+  min-width: 100px; /* Ajustando a largura mínima */
+  font-size: 14px; /* Diminuindo o tamanho da fonte */
+  text-align: center;
+  font-weight: bold;
+  text-decoration: none;
+  display: inline-block;
+  box-sizing: border-box;
   margin-top: 20px;
-}
-
-.btn:hover {
-  background-color: #45a049;
 }
 
 .footer {
@@ -194,42 +181,45 @@ h2 {
 .footer a:hover {
   text-decoration: underline;
 }
+
 /* Estilo do Banner */
 .banner {
-  background-color: #4CAF50;
+  background-color: #f44336;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  position: fixed;  /* Banner fixo */
+  position: fixed;
   top: 0;
-  left: 0; /* Garantir que fique alinhado à esquerda */
+  left: 0;
   width: 100%;
   z-index: 1000;
-  padding: 15px 30px;
-}
-
-.banner-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  max-width: 1200px;
-  margin: 0 auto;
+  color: white;
+  padding: 1rem 2rem;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
-.banner .logo {
+.banner img {
   height: 60px;
-  margin-right: 20px;
+  max-width: 100%;
+  flex-shrink: 0;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
 .banner h1 {
   flex: 1;
-  text-align: right;
-  font-size: 24px;
+  font-size: 1.8rem;
   margin: 0;
-  color: white;
+  text-align: right;
+  min-width: 200px;
+  word-break: break-word;
 }
 
 /* Ajuste no Corpo */
 body {
-  padding-top: 80px;  /* Adiciona espaçamento para compensar a altura do banner */
+  padding-top: 80px; /* Compensa a altura do banner fixo */
   margin: 0;
   font-family: Arial, sans-serif;
   background-color: #f4f4f4;
@@ -240,57 +230,166 @@ body {
   max-width: 1200px;
   margin: 0 auto;
 }
-body {
-  font-family: Arial, sans-serif;
-  background-color: #f4f4f4;
-  margin: 0;
-  padding: 0;
+
+/* Ajustes específicos para a página associacao.html */
+body.pagina-associacao .container {
+  max-width: 800px;
+  margin: 3rem auto 2rem auto;
+  padding: 0 1rem;
+  text-align: left;
 }
 
-.container {
-  width: 80%;
-  margin: 0 auto;
-  padding-top: 50px;
-  text-align: center;
+body.pagina-associacao .cards-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
 }
 
-.logo {
-  width: 100px;
-  height: auto;
-  margin-bottom: 20px;
-}
-
-h2 {
-  font-size: 2rem;
-  margin-bottom: 20px;
-}
-
-.cards {
+body.pagina-associacao .form-associar {
   display: flex;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: 1rem;
+  align-items: flex-end;
+}
+
+body.pagina-associacao .form-associar div {
+  flex: 0 0 auto;
+}
+
+body.pagina-associacao input[name="gaiola"],
+body.pagina-associacao input[name="estacao"] {
+  width: 120px;
+}
+
+body.pagina-associacao .card {
+  width: 100%;
+  max-width: 500px;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  border: 2px solid transparent; /* Borda transparente padrão */
+}
+
+body.pagina-associacao .botoes-container {
+  display: flex;
   justify-content: center;
+  gap: 10px;
+  margin-top: 1rem;
 }
 
-.card {
-  background-color: #fff;
-  border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  width: 250px;
-  text-align: left;
+/* Estilo para os botões transparentes */
+.botao-estilo-transparente {
+  padding: 10px 20px;
+  border: 2px solid #333;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
   font-size: 1rem;
-  transition: transform 0.2s ease-in-out;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  box-sizing: border-box;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  outline: none;
 }
 
-.card:hover {
-  transform: translateY(-10px);
+.botao-estilo-transparente:hover {
+  color: #000;
+  border-color: #000;
 }
 
-.card p {
-  margin: 10px 0;
+body.pagina-associacao .botoes-container form {
+  margin: 0; /* Remove margens dos formulários */
 }
 
-.card p strong {
-  color: #333;
+/* Estilo base para os botões transparentes */
+.botao-estilo-transparente {
+  padding: 10px 20px;
+  border: 2px solid #333;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1rem;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  box-sizing: border-box;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  outline: none;
+}
+
+.botao-estilo-transparente:hover {
+  color: #000;
+  border-color: #000;
+}
+
+/* Estilos específicos por cor */
+.botao-voltar {
+  border-color: #007bff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1rem;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  box-sizing: border-box;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  outline: none;
+}
+
+.botao-voltar:hover {
+  border-color: #0056b3; /* Cor da borda no hover (azul mais escuro) */
+}
+
+.botao-fim {
+  border-color: #28a745;
+}
+
+.botao-nao-associado {
+  border-color: #dc3545;
+}
+
+/* Estilos para as bordas e cores dos cards de acordo com o estado */
+body.pagina-associacao .card.status-pronto {
+  border-color: #27ae60; /* Verde para Pronto */
+  background-color: #e6ffe6;
+}
+
+body.pagina-associacao .card.status-em-separacao-card {
+  border-color: #c0392b; /* Vermelho para Em Separação */
+  background-color: #ffe6e6;
+}
+
+body.pagina-associacao .card.status-finalizado-temp-card {
+  border-color: #f39c12; /* Laranja para Carregamento Concluído (Aguardando Finalização) */
+  background-color: #fff3e0;
+}
+
+body.pagina-associacao .card.finalizado-definitivo {
+  border-color: #1e8449; /* Verde escuro para Finalizado Definitivo */
+  background-color: #d4edda;
+}
+
+/* Estilos para a página de registros */
+body.pagina-registros .card.separado {
+  background-color: #ffcccc;
+  border-color: red;
+}
+
+body.pagina-registros .card.finalizado {
+  border-color: green;
+  background-color: #e6ffe6;
+}
+
+body.pagina-registros .card.aguardando-carregamento {
+  background-color: #e0e0e0;
+  border-color: #808080;
+}
+
+body.pagina-registros .card.aguardando-finalizacao {
+  background-color: #ffe0b2;
+  border-color: #f39c12;
 }
