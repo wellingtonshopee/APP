@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Registros</title>
+    <title>Registros Normal</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
         /* Estilos mantidos sem alterações */
@@ -207,10 +207,11 @@
         }
     </style>
 </head>
-<body class="pagina-registros">  <div class="banner">
+<body class="pagina-registros">
+    <div class="banner">
         <div class="banner-content">
-            <img src="{{ url_for('static', filename='imagem/logop.png') }}" class="logo" alt="Logo">
-            <h1>Fila de Carregamento - Sistema de Gerenciamento</h1>
+            <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" class="logo" alt="Logo">
+            <h1>Fila de Carregamento - Sistema de Gerenciamento Operacional</h1>
         </div>
         <div class="filters">
             <input type="date" id="data" value="{{ data }}" onchange="filtrarPorData()">
@@ -251,20 +252,20 @@
                 {% if r.em_separacao == 0 and r.finalizado == 0 %}aguardando-carregamento{% endif %}
                 {% if r.em_separacao == 2 and r.finalizado == 0 %}aguardando-finalizacao{% endif %}
                 "
-                onclick="window.location.href='/associacao?id={{ r.id }}'"
-                ondblclick="onDblClick(this, {{ r.id }})"
+                onclick="abrirRegistro({{ r.id }})"  {# Modifiquei esta linha #}
                 data-id="{{ r.id }}"
                 data-rota="{{ r.rota|lower }}"
                 data-cidade="{{ r.cidade_entrega|lower }}"
                 data-entrega="{{ r.tipo_entrega|lower }}"
-                data-separacao="{{ r.em_separacao }}">
+                data-separacao="{{ r.em_separacao }}"
+                data-finalizado="{{ r.finalizado }}" > {# Adicionado data-finalizado #}
                 <p><strong>Nome:</strong> {{ r.nome }}</p>
                 <p><strong>Matrícula:</strong> {{ r.matricula }}</p>
                 <p><strong>Rota:</strong> <em>{{ r.rota }}</em></p>
                 <p><strong>Cidade:</strong> <em>{{ r.cidade_entrega }}</em></p>
                 <p><strong>Entrega:</strong> <em>{{ r.tipo_entrega }}</em></p>
                 <p><strong>Data/Hora:</strong> {{ r.data_hora_login|formata_data_hora }}</p>
-                <p><strong>Finalizado:</strong> {{ r.finalizado }}</p>
+                <p><strong>Finalizado:</strong> {% if r.hora_finalizacao %}{{ r.hora_finalizacao|formata_data_hora }}{% else %}Não Finalizado{% endif %}</p> {# Modificado para exibir data/hora #}
                 {% if r.em_separacao == 0 %}
                     <span class="aguardando-carregamento-label">Aguardando Carregamento</span>
                 {% elif r.em_separacao == 1 %}
@@ -293,23 +294,19 @@
     </div>
 
     <script>
-        function filtrarPorData() {
-            const data = document.getElementById('data').value;
-            if (!data) return;
-
-            const partes = data.split('-');
-            if (partes.length === 3) {
-                const dataFormatada = `${partes[0]}-${partes[1]}-${partes[2]}`;
-                window.location.href = `/registros?data=${dataFormatada}`;
-            }
-        }
-
         function aplicarFiltros() {
             const rotaFiltro = document.getElementById('filtroRota').value.toLowerCase();
             const cidadeFiltro = document.getElementById('filtroCidade').value.toLowerCase();
             const entregaFiltro = document.getElementById('filtroEntrega').value.toLowerCase();
             const separacaoFiltro = document.getElementById('filtroSeparacao').value;
             const finalizadoFiltro = document.getElementById('filtroFinalizado').value;
+
+            // Salva os valores dos filtros no localStorage
+            localStorage.setItem('rotaFiltro', rotaFiltro);
+            localStorage.setItem('cidadeFiltro', cidadeFiltro);
+            localStorage.setItem('entregaFiltro', entregaFiltro);
+            localStorage.setItem('separacaoFiltro', separacaoFiltro);
+            localStorage.setItem('finalizadoFiltro', finalizadoFiltro);
 
             const cards = document.querySelectorAll('.card');
             cards.forEach(card => {
@@ -327,6 +324,7 @@
                     (finalizadoFiltro === '1' && estaFinalizado) ||
                     (finalizadoFiltro === '0' && !estaFinalizado);
 
+
                 card.style.display = (rotaOk && cidadeOk && entregaOk && separacaoOk && finalizadoOk) ? '' : 'none';
             });
         }
@@ -338,9 +336,69 @@
             document.getElementById('filtroEntrega').value = '';
             document.getElementById('filtroSeparacao').value = '';
             document.getElementById('filtroFinalizado').value = '';
+
+            // Limpa os valores dos filtros do localStorage
+            localStorage.removeItem('rotaFiltro');
+            localStorage.removeItem('cidadeFiltro');
+            localStorage.removeItem('entregaFiltro');
+            localStorage.removeItem('separacaoFiltro');
+            localStorage.removeItem('finalizadoFiltro');
+            localStorage.removeItem('dataFiltro');
+
             window.location.href = '/registros';
+            aplicarFiltros(); // Aplica os filtros vazios para mostrar todos os cards
+        }
+
+        function filtrarPorData() {
+            const data = document.getElementById('data').value;
+            localStorage.setItem('dataFiltro', data); // Salva a data
+            if (!data) {
+                window.location.href = '/registros';
+                return;
+            }
+
+            const partes = data.split('-');
+            if (partes.length === 3) {
+                const dataFormatada = `${partes[0]}-${partes[1]}-${partes[2]}`;
+                window.location.href = `/registros?data=${dataFormatada}`;
+            }
+        }
+
+        // Função para carregar os filtros salvos ao carregar a página
+        function carregarFiltrosSalvos() {
+            const rotaFiltroSalvo = localStorage.getItem('rotaFiltro');
+            const cidadeFiltroSalvo = localStorage.getItem('cidadeFiltro');
+            const entregaFiltroSalvo = localStorage.getItem('entregaFiltro');
+            const separacaoFiltroSalvo = localStorage.getItem('separacaoFiltro');
+            const finalizadoFiltroSalvo = localStorage.getItem('finalizadoFiltro');
+            const dataFiltroSalvo = localStorage.getItem('dataFiltro');
+
+            if (rotaFiltroSalvo) {
+                document.getElementById('filtroRota').value = rotaFiltroSalvo;
+            }
+            if (cidadeFiltroSalvo) {
+                document.getElementById('filtroCidade').value = cidadeFiltroSalvo;
+            }
+            if (entregaFiltroSalvo) {
+                document.getElementById('filtroEntrega').value = entregaFiltroSalvo;
+            }
+            if (separacaoFiltroSalvo) {
+                document.getElementById('filtroSeparacao').value = separacaoFiltroSalvo;
+            }
+            if (finalizadoFiltroSalvo) {
+                document.getElementById('filtroFinalizado').value = finalizadoFiltroSalvo;
+            }
+            if (dataFiltroSalvo) {
+                document.getElementById('data').value = dataFiltroSalvo;
+                // Não precisamos redirecionar aqui, pois a data já está no input
+            }
+
+            // Aplica os filtros carregados
             aplicarFiltros();
         }
+
+        // Carrega os filtros salvos quando a página é carregada
+        window.onload = carregarFiltrosSalvos;
 
         function onDblClick(card, id) {
             card.classList.add('separado');
@@ -358,14 +416,12 @@
                 checkbox.disabled = true;
                 checkbox.form.submit();
             }
-
-            window.location.href = `/associacao?id=${id}`;
+            abrirRegistro(id);
         }
 
-        // Recarrega a página a cada 5 segundos
-        setInterval(function() {
-            window.location.reload();
-        }, 5000);
+        function abrirRegistro(id) {
+             window.location.href = `/associacao?id=${id}`;
+        }
     </script>
 </body>
 </html>

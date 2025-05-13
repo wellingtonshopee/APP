@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fila de Carregamento</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            background-color: #111;
+            color: #eee;
+        }
+
+        .main-content {
+            padding: 0.5rem;
+            min-height: 100vh;
+            box-sizing: border-box;
+            display: grid;
+            grid-template-columns: 2fr 0.8fr 0.8fr; /* Box 1 ocupa mais espaço */
+            gap: 0.5rem;
+            background-color: #000;
+        }
+
+        .box {
+            background-color: #222;
+            padding: 0.75rem; /* Mantido o padding */
+            border-radius: 0.25rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #eee;
+            border: 1px solid #444;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .box h2 {
+            color: #fff;
+            font-size: 0.9rem; /* Mantido o tamanho da fonte do título */
+            margin-bottom: 0.75rem; /* Mantido o margin bottom */
+        }
+
+        .box p {
+            font-size: 0.7rem; /* Mantido o tamanho da fonte do parágrafo */
+        }
+
+        .scrollable-content {
+            overflow-y: auto;
+            max-height: 60vh; /* Mantido a altura máxima para rolagem */
+            scroll-behavior: smooth;
+            padding-bottom: 0.5rem; /* Reduzido o padding bottom para aproximar a borda */
+            position: relative;
+            transition: all 0.5s ease;
+            width: 100%;
+        }
+
+        .box-1 .scrollable-content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem; /* Mantido o gap menor */
+            flex-direction: row;
+            align-items: flex-start;
+            justify-content: flex-start;
+        }
+
+        .scrollable-content::-webkit-scrollbar {
+            width: 0.3rem; /* Mantido a largura da scrollbar */
+        }
+
+        .scrollable-content::-webkit-scrollbar-track {
+            background: #111;
+        }
+
+        .scrollable-content::-webkit-scrollbar-thumb {
+            background-color: #444;
+            border-radius: 0.15rem; /* Mantido o border radius */
+        }
+
+        .scrollable-content::-webkit-scrollbar-thumb:hover {
+            background-color: #666;
+        }
+
+        .loading-indicator,
+        .loading-indicator-box3,
+        #loading-indicator-box1 {
+            position: absolute;
+            bottom: 0.5rem; /* Mantido a distância do bottom */
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 0.3rem 0.6rem; /* Mantido o padding */
+            border-radius: 0.15rem; /* Mantido o border radius */
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            font-size: 0.7rem; /* Mantido o tamanho da fonte */
+        }
+
+        .loading-indicator.show,
+        .loading-indicator-box3.show,
+        #loading-indicator-box1.show {
+            opacity: 1;
+        }
+
+        #total-registros,
+        #total-registros-aguardando-finalizacao,
+        #total-registros-em-separacao {
+            margin-top: 0.5rem; /* Mantido o margin top */
+            font-size: 0.8rem; /* Mantido o tamanho da fonte */
+            font-weight: bold;
+            color: #ffff00;
+        }
+
+        .registro-item {
+            background-color: #2a2a2a;
+            border-radius: 0.15rem; /* Mantido o border radius */
+            padding: 0.3rem; /* Mantido o padding */
+            margin-bottom: 0.25rem; /* Mantido o margin bottom */
+            border: 0.5px solid #444; /* Mantido a espessura da borda */
+            opacity: 0;
+            transform: translateY(-5px); /* Mantido o valor do translate */
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            text-align: left;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .box-1 .registro-item {
+            width: calc(33.33% - 0.166rem); /* Ajustado para três itens por linha com gap */
+            margin-bottom: 0.25rem; /* Adicionado margem inferior para separar as linhas */
+            border: 0.1px solid #444;
+            padding: 0.5rem; /* Mantido ligeiramente o padding */
+            box-sizing: border-box;
+        }
+
+        .box-2 .registro-item,
+        .box-3 .registro-item {
+            width: calc(100% - 0.25rem); /* Ajustado para ocupar a largura total do box */
+            margin-bottom: 0.25rem; /* Reduzida a margem inferior */
+            padding: 0.25rem; /* Reduzido o padding */
+            font-size: 0.7rem; /* Opcional: reduzir ainda mais a fonte se necessário */
+        }
+
+        .registro-item.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .registro-item p {
+            margin-bottom: 0.1rem; /* Mantido o margin bottom */
+            font-size: 0.7rem; /* Mantido o tamanho da fonte */
+        }
+
+        .no-records-message {
+            text-align: center;
+            margin-top: 0.5rem; /* Mantido o margin top */
+            color: #ccc;
+            font-size: 0.8rem; /* Mantido o tamanho da fonte */
+        }
+
+        .bottom-ticker {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #f53d2d;
+            color: #fff;
+            padding: 0.5rem 0; /* Mantido o padding */
+            overflow: hidden;
+            white-space: nowrap;
+            box-sizing: border-box;
+            z-index: 1000;
+            box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            font-size: 0.9rem; /* Mantido o tamanho da fonte */
+        }
+
+        .bottom-ticker .inner-text {
+            display: inline-block;
+            padding-left: 100%;
+            animation: scroll-left 30s linear infinite;
+            animation-timing-function: linear;
+            font-weight: bold;
+            width: 600%;
+            white-space: nowrap;
+        }
+
+        .bottom-ticker span {
+            margin-right: 0.75rem; /* Mantido o margin right */
+        }
+
+        .shopee-logo {
+            height: 1rem; /* Mantido a altura do logo */
+            margin-right: 0.3rem; /* Mantido o margin right */
+            display: inline-block;
+        }
+    </style>
+    <script>
+        function playAlert() {
+            const audio = new Audio('https://www.soundjay.com/buttons/sounds/beep-01a.mp3');
+            audio.play().catch(error => console.error("Erro ao tocar o áudio:", error));
+        }
+
+        function exibirRegistrosEmSeparacaoBox1() {
+            const box1 = document.querySelector('.box-1');
+            let scrollableContent = box1.querySelector('.scrollable-content');
+            if (!scrollableContent) {
+                scrollableContent = document.createElement('div');
+                scrollableContent.className = 'scrollable-content';
+                box1.appendChild(scrollableContent);
+            }
+
+            let loadingIndicator = document.getElementById('loading-indicator-box1');
+            if (!loadingIndicator) {
+                loadingIndicator = document.createElement('div');
+                loadingIndicator.id = 'loading-indicator-box1';
+                loadingIndicator.textContent = 'Carregando...';
+                scrollableContent.appendChild(loadingIndicator);
+            }
+
+            let totalRegistrosElement = document.getElementById('total-registros-em-separacao');
+            if (!totalRegistrosElement) {
+                totalRegistrosElement = document.createElement('div');
+                totalRegistrosElement.id = 'total-registros-em-separacao';
+                box1.appendChild(totalRegistrosElement);
+            }
+
+            let totalRegistros = 0;
+            const registrosPorPagina = 9; // Aumentado para exibir potencialmente mais de 3 por "página" na visualização
+            const intervaloAtualizacao = 8000;
+            const intervaloExibicaoItem = 80; // Reduzido o intervalo de exibição
+            let data = [];
+            let paginaAtual = 0;
+            let timeoutId = null;
+
+            function buscarRegistros() {
+                console.log("[Box 1] Buscando registros 'Em Separação'...");
+                if (loadingIndicator) {
+                    loadingIndicator.classList.add('show');
+                }
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                }
+
+                fetch('/registros_em_separacao')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(dados => {
+                        data = dados;
+                        totalRegistros = data.length;
+                        paginaAtual = 0;
+                        console.log(`[Box 1] Registros 'Em Separação' encontrados: ${totalRegistros}`);
+
+                        if (totalRegistros === 0) {
+                            scrollableContent.innerHTML = '<div class="no-records-message">Não há registros em separação no momento.</div>';
+                            if (!scrollableContent.contains(loadingIndicator)) scrollableContent.appendChild(loadingIndicator);
+                            if (loadingIndicator) loadingIndicator.classList.remove('show');
+                            totalRegistrosElement.innerHTML = `<p class="text-yellow-400 text-sm font-bold">Total: 0</p>`;
+                            timeoutId = setTimeout(buscarRegistros, intervaloAtualizacao);
+                            console.log(`[Box 1] Nenhum registro, agendando próxima busca em ${intervaloAtualizacao}ms`);
+                            return;
+                        }
+                        if (!scrollableContent.contains(loadingIndicator)) scrollableContent.appendChild(loadingIndicator);
+                        exibirProximosRegistros();
+                    })
+                    .catch(error => {
+                        console.error('[Box 1] Erro ao buscar registros:', error);
+                        scrollableContent.innerHTML = `<div class="no-records-message text-red-500">Erro ao carregar: ${error.message}</div>`;
+                        if (!scrollableContent.contains(loadingIndicator)) scrollableContent.appendChild(loadingIndicator);
+                        if (loadingIndicator) loadingIndicator.classList.remove('show');
+                        timeoutId = setTimeout(buscarRegistros, intervaloAtualizacao);
+                        console.log(`[Box 1] Erro na busca, agendando próxima busca em ${intervaloAtualizacao}ms`);
+                    });
+            }
+
+            function exibirProximosRegistros() {
+                console.log(`[Box 1] exibirProximosRegistros - Pagina: ${paginaAtual}, Total: ${totalRegistros}`);
+
+                const inicioPagina = paginaAtual * registrosPorPagina;
+                const fimPagina = Math.min(inicioPagina + registrosPorPagina, totalRegistros);
+                console.log(`[Box 1] Inicio: ${inicioPagina}, Fim: ${fimPagina}`);
+
+                scrollableContent.innerHTML = '';
+                if (loadingIndicator) scrollableContent.appendChild(loadingIndicator);
+
+                if (inicioPagina >= totalRegistros && totalRegistros > 0) {
+                    console.log("[Box 1] Fim dos registros, reiniciando ciclo.");
+                    paginaAtual = 0;
+                    timeoutId = setTimeout(exibirProximosRegistros, intervaloAtualizacao);
+                    return;
+                }
+                if (totalRegistros === 0){
+                    if (loadingIndicator) loadingIndicator.classList.remove('show');
+                    timeoutId = setTimeout(buscarRegistros, intervaloAtualizacao);
+                    return;
+                }
+
+                let registrosAdicionadosNestaPagina = 0;
+                for (let i = inicioPagina; i < fimPagina; i++) {
+                    const proximoRegistro = data[i];
+                    const registroItem = document.createElement('div');
+                    registroItem.className = 'registro-item';
+                    registroItem.innerHTML = `
+                        <p class="text-white text-xs"><strong>Nome:</strong> ${proximoRegistro.nome || 'N/A'}</p>
+                        <p class="text-white text-xs"><strong>Rota:</strong> ${proximoRegistro.rota || 'N/A'}</p>
+                        <p class="text-white text-xs"><strong>Entrega:</strong> ${proximoRegistro.tipo_entrega || 'N/A'}</p>
+                        <p class="text-white text-xs"><strong>Gaiola:</strong> ${proximoRegistro.gaiola || 'N/A'} | <strong>Estação:</strong> ${proximoRegistro.estacao || 'N/A'}</p>
+                    `;
+                    if (loadingIndicator) {
+                        scrollableContent.insertBefore(registroItem, loadingIndicator);
+                    } else {
+                        scrollableContent.appendChild(registroItem);
+                    }
+
+                    setTimeout(() => {
+                        registroItem.classList.add('show');
+                    }, registrosAdicionadosNestaPagina * intervaloExibicaoItem);
+
+                    registrosAdicionadosNestaPagina++;
+                }
+
+                if (loadingIndicator) {
+                    loadingIndicator.classList.remove('show');
+                }
+                totalRegistrosElement.innerHTML = `<p class="text-yellow-400 text-sm font-bold">Total: ${totalRegistros}</p>`;
+
+                paginaAtual++;
+
+                const proximoInicioPagina = paginaAtual * registrosPorPagina;
+
+                if (proximoInicioPagina < totalRegistros) {
+                    console.log(`[Box 1] Agendando proxima pagina (${paginaAtual}) em ${intervaloAtualizacao}ms`);
+                    timeoutId = setTimeout(exibirProximosRegistros, intervaloAtualizacao);
+                } else {
+                    console.log(`[Box 1] Fim da paginação atual, agendando nova busca em ${intervaloAtualizacao}ms`);
+                    timeoutId = setTimeout(buscarRegistros, intervaloAtualizacao);
+                }
+            }
+            buscarRegistros();
+        }
+
+        function exibirRegistrosAguardandoCarregamento() {
+            const box2 = document.querySelector('.box-2');
+            let scrollableContent = box2.querySelector('.scrollable-content');
+            if (!scrollableContent) {
+                scrollableContent = document.createElement('div');
+                scrollableContent.className = 'scrollable-content';
+                box2.appendChild(scrollableContent);
+            }
+            const totalRegistrosElement = document.getElementById('total-registros');
+            const loadingIndicator = document.getElementById('loading-indicator');
+
+            let totalRegistros = 0;
+            const registrosPorPagina = 6; // Mantido o número de registros por página
+            const intervaloAtualizacao = 8000;
+            const intervaloExibicaoItem = 150; // Reduzido o intervalo de exibição
+            let data = [];
+            let paginaAtual = 0;
+            let timeoutId = null;
+
+            function buscarRegistros() {
+                console.log("[Box 2] Buscando registros...");
+                if (loadingIndicator) loadingIndicator.classList.add('show');
+                if (timeoutId) clearTimeout(timeoutId);
+
+                
+                fetch('/registros_aguardando_carregamento') // Rota para registros aguardando carregamento (Box 2)
+                    .then(response => response.json())
+                    .then(dados => {
+                        data = dados;
+                        totalRegistros = data.length;
+                        paginaAtual = 0; // Reinicia a paginação
+
+                        if (totalRegistros === 0) {
+                            scrollableContent.innerHTML = `<p class="text-gray-300">Não há registros aguardando carregamento.</p>`;
+                            if (loadingIndicator) {
+                                loadingIndicator.classList.remove('show');
+                            }
+                            totalRegistrosElement.innerHTML = `<p class="text-yellow-400 text-md font-bold">Total de Registros Aguardando Carregamento: 0</p>`;
+                             // Agenda a próxima busca se não houver registros
+                            timeoutId = setTimeout(buscarRegistros, intervaloAtualizacao);
+                            return;
+                        }
+
+                        exibirProximosRegistros(); // Inicia a exibição paginada
+                    })
+                    .catch(error => {
+                        console.error('Erro ao buscar registros:', error);
+                        scrollableContent.innerHTML = `<p class="text-red-500">Erro ao carregar registros.</p>`;
+                        if (loadingIndicator) {
+                            loadingIndicator.classList.remove('show');
+                        }
+                         // Agenda a próxima busca em caso de erro
+                        timeoutId = setTimeout(buscarRegistros, intervaloAtualizacao);
+                    });
+            }
+
+            function exibirProximosRegistros() {
+                let registrosAdicionadosNestaPagina = 0;
+                const inicioPagina = paginaAtual * registrosPorPagina;
+                const fimPagina = Math.min(inicioPagina + registrosPorPagina, totalRegistros);
+
+                 // Limpa o conteúdo apenas ao iniciar a exibição da primeira página
+                 if (paginaAtual === 0) {
+                     scrollableContent.innerHTML = '';
+                }
+
+                 if (inicioPagina >= totalRegistros) {
+                     // Se já exibiu todos os registros, reinicia da primeira página após um intervalo
+                    paginaAtual = 0;
+                    timeoutId = setTimeout(exibirProximosRegistros, intervaloAtualizacao);
+                    return;
+                }
+
+
+                for (let i = inicioPagina; i < fimPagina; i++) {
+                    const proximoRegistro = data[i];
+                    let estadoCard = '';
+                    if (proximoRegistro.em_separacao === 1) {
+                        estadoCard = 'Em Separação';
+                    } else if (proximoRegistro.finalizada === 1) {
+                        estadoCard = 'Finalizado';
+                    } else if (proximoRegistro.em_separacao === 0 && proximoRegistro.finalizada === 0) {
+                        estadoCard = 'Aguardando Carregamento';
+                    } else if (proximoRegistro.em_separacao === 2 && proximoRegistro.finalizada === 0) {
+                        estadoCard = 'Aguardando Finalização';
+                    }
+
+                    const registroItem = document.createElement('div');
+                    registroItem.className = 'registro-item';
+                    registroItem.innerHTML = `
+                        <p class="text-white text-sm"><strong>Nome:</strong> ${proximoRegistro.nome}</p>
+                        <p class="text-white text-sm"><strong>Rota:</strong> ${proximoRegistro.rota}</p>
+                        <p class="text-white text-sm"><strong>Cidade:</strong> ${proximoRegistro.cidade_entrega}</p>
+                        <p class="text-white text-sm"><strong>Estado:</strong> ${estadoCard}</p>
+                    `;
+                    scrollableContent.appendChild(registroItem);
+
+                    // Adiciona a classe 'show' com um pequeno atraso para a animação
+                    setTimeout(() => {
+                        registroItem.classList.add('show');
+                    }, registrosAdicionadosNestaPagina * intervaloExibicaoItem); // Atraso baseado na posição do item na página
+
+                    registrosAdicionadosNestaPagina++;
+                }
+
+                if (loadingIndicator) {
+                    loadingIndicator.classList.remove('show');
+                }
+                totalRegistrosElement.innerHTML = `<p class="text-yellow-400 text-md font-bold">Total de Registros Aguardando Carregamento: ${totalRegistros}</p>`;
+
+                paginaAtual++; // Avança para a próxima página
+
+                 // Calcula o índice do primeiro registro da *próxima* página
+                const proximoInicioPagina = paginaAtual * registrosPorPagina;
+
+                // Se o início da próxima página for menor que o total de registros, agenda a próxima página
+                if (proximoInicioPagina < totalRegistros) {
+                    timeoutId = setTimeout(exibirProximosRegistros, intervaloAtualizacao);
+                } else {
+                    // Se exibiu a última página do conjunto de dados atual, agenda uma nova busca
+                     timeoutId = setTimeout(buscarRegistros, intervaloAtualizacao);
+                }
+            }
+
+            // Inicia o ciclo de busca e exibição
+            buscarRegistros();
+
+            // Removido o setInterval, a lógica de agendamento está dentro das funções de busca e exibição
+        }
+
+        // Função para Box 3 (mantida com o efeito de exibição gradual)
+        function exibirRegistrosAguardandoFinalizacao() {
+            const box3 = document.querySelector('.box:nth-child(3)'); // Seleciona o Box 3
+            const scrollableContent = box3.querySelector('.scrollable-content'); // Conteúdo rolável do Box 3
+            const totalRegistrosElement = document.getElementById('total-registros-aguardando-finalizacao'); // Elemento total do Box 3
+            const loadingIndicator = box3.querySelector('.loading-indicator-box3'); // Usando a classe
+
+            let totalRegistros = 0;
+            const registrosPorPagina = 4; // Mesmo número de registros por página que o Box 2
+            const intervaloAtualizacao = 8000; // Mesmo intervalo de atualização que o Box 2
+            const intervaloExibicaoItem = 200; // Mesmo intervalo entre a exibição de cada item
+            let data = [];
+            let paginaAtual = 0;
+            let timeoutId = null; // Para controlar o timeout da exibição paginada
+
+            function buscarRegistros() {
+                if (loadingIndicator) {
+                    loadingIndicator.classList.add('show');
+                }
+                 // Limpa qualquer timeout de exibição paginada anterior
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                }
+
+                 // Chamando a rota correta no Flask para registros aguardando finalização
+                 fetch('/registros_aguardando_finalizacao')
+                    .then(response => response.json())
+                    .then(dados => { // Nome da variável alterado para clareza
+                        data = dados;
+                        totalRegistros = data.length;
+                        paginaAtual = 0; // Reinicia a paginação
+
+                        if (totalRegistros === 0) {
+                            scrollableContent.innerHTML = `<p class="text-gray-300">Não há registros aguardando finalização.</p>`;
+                            if (loadingIndicator) {
+                                loadingIndicator.classList.remove('show');
+                            }
+                             totalRegistrosElement.innerHTML = `<p class="text-yellow-400 text-md font-bold">Total de Registros Aguardando Finalização: ${totalRegistros}</p>`;
+                             // Agenda a próxima busca se não houver registros
+                            timeoutId = setTimeout(buscarRegistros, intervaloAtualizacao);
+                            return;
+                        }
+
+                        exibirProximosRegistros(); // Inicia a exibição paginada
+                    })
+                    .catch(error => {
+                        console.error('Erro ao buscar registros aguardando finalização:', error);
+                        scrollableContent.innerHTML = `<p class="text-red-500">Erro ao carregar registros aguardando finalização.</p>`;
+                        if (loadingIndicator) {
+                            loadingIndicator.classList.remove('show');
+                        }
+                         // Agenda a próxima busca em caso de erro
+                        timeoutId = setTimeout(buscarRegistros, intervaloAtualizacao);
+                    });
+            }
+
+            function exibirProximosRegistros() {
+                 let registrosAdicionadosNestaPagina = 0;
+                const inicioPagina = paginaAtual * registrosPorPagina;
+                const fimPagina = Math.min(inicioPagina + registrosPorPagina, totalRegistros);
+
+                 // Limpa o conteúdo apenas ao iniciar a exibição da primeira página
+                 if (paginaAtual === 0) {
+                     scrollableContent.innerHTML = '';
+                }
+
+
+                 if (inicioPagina >= totalRegistros) {
+                     // Se já exibiu todos os registros, reinicia da primeira página após um intervalo
+                    paginaAtual = 0;
+                    timeoutId = setTimeout(exibirProximosRegistros, intervaloAtualizacao);
+                    return;
+                }
+
+
+                for (let i = inicioPagina; i < fimPagina; i++) {
+                    const registro = data[i];
+                    const registroItem = document.createElement('div');
+                    registroItem.className = 'registro-item';
+                    registroItem.innerHTML = `
+                        <p class="text-white text-sm"><strong>Nome:</strong> ${registro.nome}</p>
+                        <p class="text-white text-sm"><strong>Rota:</strong> ${registro.rota}</p>
+                        <p class="text-white text-sm"><strong>Cidade:</strong> ${registro.cidade_entrega || 'N/A'}</p>
+                        <p class="text-white text-sm"><strong>Gaiola:</strong> ${registro.gaiola || 'N/A'}</p>
+                        <p class="text-white text-sm"><strong>Estação:</strong> ${registro.estacao || 'N/A'}</p>
+                    `; // Removida a linha do Estado
+
+                    scrollableContent.appendChild(registroItem);
+
+                    // Adiciona a classe 'show' com um pequeno atraso para a animação
+                    setTimeout(() => {
+                        registroItem.classList.add('show');
+                    }, registrosAdicionadosNestaPagina * intervaloExibicaoItem); // Atraso baseado na posição do item na página
+
+                    registrosAdicionadosNestaPagina++;
+                }
+
+                if (loadingIndicator) {
+                    loadingIndicator.classList.remove('show');
+                }
+                 totalRegistrosElement.innerHTML = `<p class="text-yellow-400 text-md font-bold">Total de Registros Aguardando Finalização: ${totalRegistros}</p>`;
+
+
+                paginaAtual++; // Avança para a próxima página
+
+                // Calcula o índice do primeiro registro da *próxima* página
+                const proximoInicioPagina = paginaAtual * registrosPorPagina;
+
+                // Se o início da próxima página for menor que o total de registros, agenda a próxima página
+                if (proximoInicioPagina < totalRegistros) {
+                    timeoutId = setTimeout(exibirProximosRegistros, intervaloAtualizacao);
+                } else {
+                    // Se exibiu a última página do conjunto de dados atual, agenda uma nova busca
+                     timeoutId = setTimeout(buscarRegistros, intervaloAtualizacao);
+                }
+            }
+            buscarRegistros();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            exibirRegistrosAguardandoCarregamento();
+            exibirRegistrosEmSeparacaoBox1();
+            exibirRegistrosAguardandoFinalizacao();
+            const tickerContainer = document.createElement('div');
+            tickerContainer.className = 'bottom-ticker';
+            const tickerText = document.createElement('div');
+            tickerText.className = 'inner-text';
+            tickerText.innerHTML = `
+                <span><img src="https://br.shopee.sg/file/e616c14e59441857b2153d2b971d7959" alt="Shopee Logo" class="shopee-logo"> Bem-vindo à Central de Monitoramento de Carregamento!</span>
+                <span><img src="https://br.shopee.sg/file/e616c14e59441857b2153d2b971d7959" alt="Shopee Logo" class="shopee-logo"> Acompanhe o status dos seus registros em tempo real.</span>
+                <span><img src="https://br.shopee.sg/file/e616c14e59441857b2153d2b971d7959" alt="Shopee Logo" class="shopee-logo"> Atualizações a cada 8 segundos para Filas de Carregamento e Separação.</span>
+                <span><img src="https://br.shopee.sg/file/e616c14e59441857b2153d2b971d7959" alt="Shopee Logo" class="shopee-logo"> Atualizações a cada 10 segundos para Filas de Finalização.</span>
+            `;
+            tickerContainer.appendChild(tickerText);
+            document.body.appendChild(tickerContainer);
+        });
+    </script>
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="main-content" style="grid-template-columns: 2fr 0.8fr 0.8fr;">
+        <div class="box box-1">
+            <h2>Entre para Carregar</h2>
+            <div class="scrollable-content">
+                <div id="loading-indicator-box1" class="loading-indicator">Carregando...</div>
+            </div>
+            <div id="total-registros-em-separacao"></div>
+        </div>
+        <div class="box box-2" style="margin-left: auto; margin-right: auto;">
+            <h2>Aguardando Carregamento</h2>
+            <div class="scrollable-content" style="padding-left: 0.2rem; padding-right: 0.2rem;">
+                <div id="loading-indicator" class="loading-indicator">Carregando...</div>
+            </div>
+            <div id="total-registros"></div>
+        </div>
+        <div class="box box-3" style="margin-left: auto; margin-right: auto;">
+            <h2>Rotas Liberadas</h2>
+            <div class="scrollable-content"></div>
+            <div id="total-registros-aguardando-finalizacao"></div>
+        </div>
+    </div>
+</body>
+</html>

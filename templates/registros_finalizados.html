@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registros Finalizados</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        .banner {
+            background-color: #f44336;
+            color: #fff;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: auto;
+            flex-wrap: wrap;
+            box-sizing: border-box;
+        }
+
+        .logo-banner {
+            display: flex;
+            align-items: center;
+            margin-right: 20px;
+            margin-bottom: 10px;
+        }
+
+        .logo-banner img {
+            max-height: 30px;
+        }
+
+        .banner-title {
+            margin: 0;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+
+        .filter-container {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .filter-container label {
+            font-size: 0.9em;
+        }
+
+        .filter-container input[type="date"],
+        .filter-container select,
+        .filter-container input[type="text"] {
+            padding: 6px;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .filter-container button {
+            padding: 6px 10px;
+            border: none;
+            border-radius: 4px;
+            background-color: #555;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-size: 0.8em;
+        }
+
+        .filter-container button:hover {
+            background-color: #777;
+        }
+
+        .card-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 20px;
+            gap: 10px;
+        }
+
+        .card {
+            background-color: #66e782;
+            border-radius: 6px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            padding: 8px;
+            transition: transform 0.3s ease;
+            font-size: 0.8em;
+            width: calc(33% - 20px);
+            min-width: 200px;
+            box-sizing: border-box;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+        }
+
+        .card-title {
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-bottom: 3px;
+            color: #333;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .card-info {
+            margin-bottom: 2px;
+            color: #555;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            font-size: 0.8em;
+        }
+
+        .card-finalizado {
+            font-weight: bold;
+            color: #28a745;
+            margin-top: 3px;
+            text-align: right;
+            font-size: 0.7em;
+        }
+
+        @media screen and (max-width: 768px) {
+            .card {
+                width: calc(50% - 20px);
+            }
+        }
+
+        @media screen and (max-width: 480px) {
+            .card {
+                width: 100%;
+            }
+            .banner {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .filter-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="banner">
+        <div class="logo-banner">
+            <img src="{{ url_for('static', filename='imagem/logop.png') }}" alt="Logo">
+        </div>
+        <h1 class="banner-title">Registros Finalizados</h1>
+        <div class="filter-container">
+            <label for="data-filter">Filtrar por Data Chegada:</label>
+            <input type="date" id="data-filter">
+
+            <label for="tipo-entrega-filter">Filtrar por Tipo de Entrega:</label>
+            <select id="tipo-entrega-filter">
+                <option value="">Todos</option>
+            </select>
+
+            <label for="rota-filter">Filtrar por Rota:</label>
+            <input type="text" id="rota-filter" placeholder="Digite a rota">
+
+            <button id="limpar-filtro">Limpar Filtros</button>
+        </div>
+    </div>
+    <div class="card-container">
+        {% for registro in registros %}
+        <div class="card"
+             data-data-hora-login="{{ registro.data_hora_login }}"
+             data-tipo-entrega="{{ registro.tipo_entrega }}"
+             data-rota="{{ registro.rota }}">
+            <p><strong>Data / Hora Chegada:</strong> {{ registro.data_hora_login|formata_data_hora }}</p>
+            <p><strong>Matrícula:</strong> {{ registro.matricula }}</p>
+            <p><strong>Nome:</strong> {{ registro.nome }}</p>
+            <p><strong>Cidade:</strong> {{ registro.cidade_entrega }}</p>
+            <p><strong>Rota:</strong> {{ registro.rota }}</p>
+            <p><strong>Tipo de Entrega:</strong> {{ registro.tipo_entrega }}</p>
+            <p><strong>Gaiola \ Rua:</strong> {{ registro.gaiola_rua }}</p>
+            <p><strong>Estação:</strong> {{ registro.estacao }}</p>
+            <p><strong>Data / Hora Finalização:</strong> {{ registro.hora_finalizacao|formata_data_hora }}</p>
+            <p><strong>Finalizado:</strong> {{ registro.finalizado }}</p>
+        </div>
+        {% endfor %}
+    </div>
+    <script>
+        const dataFilterInput = document.getElementById('data-filter');
+        const tipoEntregaFilterSelect = document.getElementById('tipo-entrega-filter');
+        const rotaFilterInput = document.getElementById('rota-filter');
+        const limparFiltroButton = document.getElementById('limpar-filtro');
+        const cards = document.querySelectorAll('.card');
+
+        // Adicionar opções dinâmicas para o filtro de tipo de entrega
+        const tiposEntrega = [...new Set(Array.from(cards).map(card => card.dataset.tipoEntrega))];
+        tiposEntrega.forEach(tipo => {
+            const option = document.createElement('option');
+            option.value = tipo;
+            option.textContent = tipo || 'Não Especificado';
+            tipoEntregaFilterSelect.appendChild(option);
+        });
+
+        function filterCards() {
+            const dataFilterValue = dataFilterInput.value;
+            const tipoEntregaFilterValue = tipoEntregaFilterSelect.value;
+            const rotaFilterValue = rotaFilterInput.value.toLowerCase();
+
+            cards.forEach(card => {
+                const dataHoraLogin = card.dataset.dataHoraLogin.split(' ')[0]; // Filtra apenas pela data
+                const tipoEntrega = card.dataset.tipoEntrega;
+                const rota = card.dataset.rota.toLowerCase();
+                let matchesData = true;
+                let matchesTipoEntrega = true;
+                let matchesRota = true;
+
+                if (dataFilterValue && dataHoraLogin !== dataFilterValue) {
+                    matchesData = false;
+                }
+
+                if (tipoEntregaFilterValue && tipoEntregaFilterValue !== tipoEntrega) {
+                    matchesTipoEntrega = false;
+                }
+
+                if (rotaFilterValue && !rota.includes(rotaFilterValue)) {
+                    matchesRota = false;
+                }
+
+                card.style.display = matchesData && matchesTipoEntrega && matchesRota ? 'block' : 'none';
+            });
+        }
+
+        dataFilterInput.addEventListener('input', filterCards);
+        tipoEntregaFilterSelect.addEventListener('change', filterCards);
+        rotaFilterInput.addEventListener('input', filterCards);
+
+        limparFiltroButton.addEventListener('click', function() {
+            dataFilterInput.value = '';
+            tipoEntregaFilterSelect.value = '';
+            rotaFilterInput.value = '';
+            filterCards();
+        });
+    </script>
+</body>
+</html>

@@ -1,110 +1,169 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Painel</title>
-  <link rel="stylesheet" href="/static/style.css">
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Final</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0; /* Remova a margem padrão do body para evitar espaçamentos extras */
+        }
+        .breaking-news-ticker {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: #ffdb58;
+            color: #000;
+            padding: 0.75rem 0; /* Aumentei um pouco o padding para melhor visualização */
+            overflow: hidden;
+            white-space: nowrap;
+            box-sizing: border-box;
+            z-index: 100; /* Garante que o letreiro fique sobre todo o conteúdo */
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.1);
+            text-align: left; /* Alinha o texto à esquerda dentro do container do letreiro */
+        }
 
-    header img {
-      width: 100%;
-      height: auto;
-    }
+        .breaking-news-ticker .inner-text {
+            display: inline-block;
+            padding-left: 100%;
+            animation: scroll-left 15s linear infinite;
+            /* Ajuste a velocidade e o timing conforme necessário */
+            animation-timing-function: linear;
+        }
 
-    #painel {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: flex-start;
-      gap: 20px; /* Espaçamento entre os cards */
-      padding: 20px;
-    }
+        @keyframes scroll-left {
+            0% {
+                transform: translateX(0);
+            }
+            100% {
+                transform: translateX(-100%);
+            }
+        }
+        .breaking-news-ticker span {
+            font-weight: bold;
+            margin-right: 1rem; /* Adiciona espaço entre "Últimas Notícias" e o conteúdo rolante */
+        }
 
-    .card {
-      width: 300px;
-      border: 2px solid #ccc;
-      border-radius: 8px;
-      padding: 15px;
-      background-color: #fff;
-      font-size: 16px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      z-index: 1;
-    }
+        .main-content {
+            padding-top: 3rem; /* Ajuste o padding-top para evitar sobreposição; aumentei para acomodar o padding do letreiro */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Garante que o conteúdo principal ocupe a altura total da tela */
+            box-sizing: border-box; /* Inclui padding no cálculo da altura */
+        }
 
-    /* Cards verdes terão maior z-index */
-    .verde {
-      background-color: #d4ffd4;
-      border-color: #2ecc71;
-      animation: piscar 1s infinite;
-      z-index: 2;
-    }
+        .bg-white {
+            background-color: white;
+        }
 
-    @keyframes piscar {
-      0%, 100% { background-color: #d4ffd4; }
-      50% { background-color: #aaffaa; }
-    }
+        .p-8 {
+            padding: 2rem;
+        }
 
-    .mensagem-carregar {
-      color: green;
-      font-weight: bold;
-      margin-top: 10px;
-      font-size: 18px;
-    }
+        .rounded-lg {
+            border-radius: 0.5rem;
+        }
 
-    .campo-titulo {
-      color: #444;
-      font-weight: bold;
-    }
+        .shadow-md {
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.1);
+        }
 
-    .data-hora {
-      margin-bottom: 5px;
-    }
+        .w-full {
+            width: 100%;
+        }
 
-    .discreto {
-      color: #999;
-      font-size: 0.9em;
-      font-weight: normal;
-    }
-  </style>
+        .max-w-md {
+            max-width: 28rem;
+        }
+
+        .text-2xl {
+            font-size: 1.5rem;
+        }
+
+        .font-semibold {
+            font-weight: 600;
+        }
+
+        .text-blue-600 {
+            color: #2563eb;
+        }
+
+        .mb-4 {
+            margin-bottom: 1rem;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-gray-700 {
+            color: #6b7280;
+        }
+
+        .mb-6 {
+            margin-bottom: 1.5rem;
+        }
+
+        .bg-green-500 {
+            background-color: #16a34a;
+        }
+
+        .hover\:bg-green-700:hover {
+            background-color: #15803d;
+        }
+
+        .text-white {
+            color: #fff;
+        }
+
+        .font-bold {
+            font-weight: 700;
+        }
+
+        .py-2 {
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+        }
+
+        .px-4 {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        .rounded {
+            border-radius: 0.375rem;
+        }
+
+        .focus\:outline-none:focus {
+            outline: none;
+        }
+
+        .focus\:shadow-outline:focus {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+        }
+    </style>
 </head>
-<body>
-
-  <header class="banner">
-    <div class="logo">
-      <img src="{{ url_for('static', filename='imagens/1.jpg') }}" alt="Logo" />
+<body class="bg-gray-100">
+    <div class="breaking-news-ticker">
+        <div class="inner-text">
+            <span>Últimas Notícias:</span> Incêndio na Amazônia se alastra.  |  Cresce o número de desempregados.  |  Inflação sobe em agosto.  |  Novo acordo de paz no Oriente Médio.  |  Vacinação contra a Covid-19 avança no país.  |  Temperatura recorde no verão europeu.  |  Bolsa de Valores tem alta histórica.  |  Astronautas realizam caminhada espacial.  |  Tensão política aumenta na América Latina.  |  Atleta brasileiro conquista medalha de ouro.
+        </div>
     </div>
-    <div class="banner-text">
-      <h1>Painel de Carreamento - Sistema de Gerenciamento</h1>
+    <div class="main-content">
+        <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+            <h1 class="text-2xl font-semibold text-blue-600 mb-4 text-center">Boas Vindas</h1>
+            <p class="text-gray-700 mb-6 text-center">Você acessou o painel final com sucesso!</p>
+            <div class="text-center">
+                <a href="/" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    Voltar para o Início
+                </a>
+            </div>
+        </div>
     </div>
-  </header>
-  <!-- Áudio para alerta -->
-  <audio id="audio" src="{{ url_for('static', filename='audio/handbell-81953.mp3') }}" preload="auto"></audio>
-
-  <div id="painel">
-    {% for r in registros %}
-      <div class="card {% if r[5] and r[6] %}verde{% endif %}">
-        <p class="data-hora"><span class="campo-titulo">Data/Hora:</span> <span class="discreto">{{ r[4] }}</span></p>
-        <p><span class="campo-titulo">Nome:</span> <b>{{ r[1] }}</b></p>
-        <p><span class="campo-titulo">Matrícula:</span> <b>{{ r[2] }}</b></p>
-        <p><span class="campo-titulo">Rota:</span> <b>{{ r[3] }}</b></p>
-
-        {% if r[5] and r[6] %}
-          <p><span class="campo-titulo">Gaiola:</span> <b>{{ r[5] }}</b></p>
-          <p><span class="campo-titulo">Posição:</span> <b>{{ r[6] }}</b></p>
-          <p class="mensagem-carregar">🚚 Entre para carregar!</p>
-          
-          <!-- Toca o áudio quando o card ficar verde -->
-          <script>
-            document.getElementById("audio").play();
-          </script>
-        {% else %}
-          <p class="mensagem-carregar" style="color: gray;">⏳ Aguardando atualização...</p>
-        {% endif %}
-      </div>
-    {% endfor %}
-  </div>
-
 </body>
 </html>

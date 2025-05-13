@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu Principal - Sistema Operacional</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Tailwind gray-100 */
+            margin: 0;
+            padding: 0;
+            display: flex; /* Usa flexbox para layout principal */
+            min-height: 100vh; /* Garante que a página ocupe pelo menos a altura total da viewport */
+        }
+
+        /* Estilo para o menu lateral */
+        .sidebar {
+            width: 250px; /* Largura fixa do menu lateral */
+            background-color: #1f2937; /* Tailwind gray-800 */
+            color: #fff;
+            padding: 1.5rem 1rem; /* Tailwind py-6 px-4 */
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease-in-out; /* Adiciona transição para o menu responsivo */
+            transform: translateX(0); /* Menu visível por padrão em telas maiores */
+            z-index: 20; /* Garante que o menu fique acima do conteúdo */
+        }
+
+        /* Esconde o menu lateral por padrão em telas pequenas */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%); /* Esconde o menu lateral */
+                position: fixed; /* Fixa a posição para que não role com o conteúdo */
+                height: 100vh; /* Altura total da viewport */
+            }
+             .sidebar.open {
+                 transform: translateX(0); /* Mostra o menu quando a classe 'open' está presente */
+             }
+        }
+
+
+        .sidebar h2 {
+            font-size: 1.25rem; /* Tailwind text-xl */
+            font-weight: 600; /* Tailwind font-semibold */
+            margin-bottom: 1.5rem; /* Tailwind mb-6 */
+            text-align: center;
+            color: #9ca3af; /* Tailwind gray-400 */
+        }
+
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar li {
+            margin-bottom: 0.75rem; /* Tailwind mb-3 */
+        }
+
+        .sidebar a {
+            display: block;
+            color: #d1d5db; /* Tailwind gray-300 */
+            text-decoration: none;
+            padding: 0.75rem 1rem; /* Tailwind py-3 px-4 */
+            border-radius: 0.375rem; /* Tailwind rounded-md */
+            transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+        }
+
+        .sidebar a:hover {
+            background-color: #374151; /* Tailwind gray-700 */
+            color: #fff;
+        }
+
+        /* Estilo para o conteúdo principal */
+        .main-content {
+            flex-grow: 1; /* Permite que o conteúdo principal ocupe o espaço restante */
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Estilo para o banner */
+        .banner {
+            background-color: #f30909; /* Tailwind red-700 */
+            padding: 1rem 1.25rem; /* Tailwind p-4 p-5 */
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap; /* Permite quebra de linha em telas menores */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Adiciona uma sombra */
+        }
+
+        .banner-content {
+            display: flex;
+            align-items: center;
+        }
+
+        .banner h1 {
+            color: #fff;
+            font-size: 1.5rem; /* Tailwind text-2xl */
+            font-weight: 700; /* Tailwind font-bold */
+            margin: 0;
+        }
+
+        .logo-banner {
+            height: 50px; /* Altura do logo no banner */
+            width: auto;
+            margin-right: 1rem; /* Tailwind mr-4 */
+        }
+
+         /* Botão para abrir/fechar o menu lateral em telas pequenas */
+        .menu-toggle {
+            display: none; /* Esconde o botão em telas maiores */
+            background-color: #fff; /* Fundo branco */
+            color: #f30909; /* Cor do texto/ícone */
+            padding: 0.5rem 0.75rem; /* Tailwind py-2 px-3 */
+            border-radius: 0.375rem; /* Tailwind rounded-md */
+            font-size: 1.25rem; /* Tailwind text-xl */
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            .menu-toggle {
+                display: block; /* Mostra o botão em telas pequenas */
+            }
+        }
+
+
+        /* Estilo para a área central com o logo */
+        .central-content {
+            flex-grow: 1; /* Permite que a área central ocupe o espaço restante */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center; /* Centraliza o conteúdo vertical e horizontalmente */
+            padding: 2rem; /* Tailwind p-8 */
+            text-align: center;
+        }
+
+        .logo-central {
+            max-width: 250px; /* Tamanho máximo do logo central */
+            height: auto;
+            margin-bottom: 1.5rem; /* Tailwind mb-6 */
+        }
+
+        .central-content h2 {
+            font-size: 2rem; /* Tailwind text-3xl */
+            font-weight: 700; /* Tailwind font-bold */
+            color: #1f2937; /* Tailwind gray-800 */
+            margin-bottom: 1rem; /* Tailwind mb-4 */
+        }
+
+        .central-content p {
+            font-size: 1.125rem; /* Tailwind text-lg */
+            color: #4b5563; /* Tailwind gray-600 */
+            max-width: 600px; /* Limita a largura do parágrafo */
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="sidebar" id="sidebar">
+        <h2>Menu de Navegação</h2>
+        <ul>
+            {# Links atualizados #}
+            <li><a href="{{ url_for('login') }}">Login</a></li>
+            <li><a href="{{ url_for('cadastro') }}">Cadastro</a></li>
+            <li><a href="{{ url_for('registros') }}">Registros</a></li> {# Link para a rota /registros #}
+            <li><a href="{{ url_for('associacao_no_show') }}">Criar Registros No Show</a></li> {# Link adicionado para a rota /associacao_no_show #}
+            <li><a href="{{ url_for('registro_no_show') }}">Registros No Show</a></li> {# Link para a rota /registro_no_show (visualização) #}
+            <li><a href="{{ url_for('painel_final') }}">Painel Final</a></li> {# Link para a rota /painel_final #}
+            {# Links removidos: Todos os Registros, Histórico, Associação, Registros Finalizados #}
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="banner">
+            <div class="banner-content">
+                 {# Certifique-se de ter uma pasta static com a imagem #}
+                 <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" class="logo-banner" alt="Logo Shopee">
+                <h1>Sistema de Gerenciamento Operacional</h1>
+            </div>
+             <button class="menu-toggle" id="menu-toggle">☰</button>
+        </div>
+
+        <div class="central-content">
+             {# Certifique-se de ter uma pasta static com a imagem #}
+             <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" class="logo-central" alt="Logo Shopee Grande">
+            <h2>Bem-vindo ao Sistema</h2>
+            <p>Utilize o menu lateral para navegar entre as diferentes funcionalidades do sistema de gerenciamento operacional.</p>
+        </div>
+    </div>
+
+    <script>
+        // Script para alternar a visibilidade do menu lateral em telas pequenas
+        const menuToggle = document.getElementById('menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+
+        menuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+        });
+
+         // Fecha o menu lateral ao clicar em um link (opcional)
+        const sidebarLinks = document.querySelectorAll('.sidebar a');
+        sidebarLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 768) { // Verifica se está em tela pequena
+                    sidebar.classList.remove('open');
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
