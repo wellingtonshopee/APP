@@ -74,6 +74,7 @@ def init_db():
                 hora_finalizacao TEXT,
                 cancelado INTEGER DEFAULT 0,
                 login_id INTEGER,
+                rua TEXT, -- Adicionado a coluna 'rua' aqui
                 FOREIGN KEY (login_id) REFERENCES login(id)
             )
         ''')
@@ -86,6 +87,11 @@ def init_db():
         if 'login_id' not in columns_registros:
             conn.execute('ALTER TABLE registros ADD COLUMN login_id INTEGER')
             print("Coluna 'login_id' adicionada à tabela 'registros'.")
+        # Adiciona a coluna 'rua' à tabela registros se ela não existir
+        if 'rua' not in columns_registros:
+            conn.execute('ALTER TABLE registros ADD COLUMN rua TEXT')
+            print("Coluna 'rua' adicionada à tabela 'registros'.")
+
         print("Tabela 'registros' verificada/criada.")
 
 
@@ -224,7 +230,7 @@ def init_db():
 #                r['estacao'].title() if r['estacao'] else None,
 #                r['id']
 #            ))
-#        conn.commit()
+#            conn.commit()
 
 @app.route('/buscar_cidades')
 def buscar_cidades():
@@ -701,8 +707,9 @@ def registros_finalizados():
             'tipo_entrega': registro['tipo_entrega'],
             'data_hora_login': registro['data_hora_login'],  # Adicionado
             'hora_finalizacao': registro['hora_finalizacao'],
-            'gaiola_rua': registro['gaiola'],
+            'gaiola_rua': registro['gaiola'], # Mantido gaiola_rua conforme seu código
             'estacao': registro['estacao'],
+            'rua': registro['rua'], # Adicionado a coluna rua na lista
             'finalizado': 'Sim' if registro['finalizada'] else 'Não'
         })
     return render_template('registros_finalizados.html', registros=registros_list)
@@ -1000,6 +1007,7 @@ def transferir_no_show_para_registro(no_show_id):
         original_registro_cpf = registro_destino['cpf'] # Captura o cpf original do registro de destino
         original_registro_tipo_veiculo = registro_destino['tipo_veiculo'] # Captura o tipo_veiculo original do registro de destino
         original_registro_login_id = registro_destino['login_id'] # Captura o login_id original do registro de destino
+        original_registro_rua = registro_destino['rua'] # Captura a rua original do registro de destino
         # Capture other fields if needed
 
         # 4. Transferir dados (atualizar o registro em 'registros')
@@ -1063,7 +1071,7 @@ def transferir_no_show_para_registro(no_show_id):
             conn.execute('''
                  INSERT INTO historico (registro_id, acao, data_hora)
                  VALUES (?, 'data_transferred_from_no_show', ?)
-             ''', (registro_destino['id'], data_hora_transferencia))
+               ''', (registro_destino['id'], data_hora_transferencia))
 
 
             conn.commit()
@@ -1136,8 +1144,9 @@ def criar_registro_no_show():
         print(f"Erro ao criar registro No Show: {e}")
         # Retorna JSON de erro
         return jsonify({'success': False, 'message': f'Ocorreu um erro ao criar o registro No Show: {e}'}), 500 # Retorna 500 Internal Server Error
-    
-    # --- Rota para exibir o menu principal ---
+
+
+# --- Rota para exibir o menu principal ---
 @app.route('/menu_principal')
 def menu_principal():
     """Renderiza a página do menu principal."""
