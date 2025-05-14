@@ -2,5 +2,4 @@ Flask==2.3.3
 gunicorn
 pytz
 Flask-SocketIO
-onesignal-sdk
 
