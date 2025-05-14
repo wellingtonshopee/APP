@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Status do Motorista</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         /* Estilos globais */
         body {
@@ -263,72 +262,6 @@
                     }
                 }
             }, 2000);
-
-            const socket = io('/motorista');
-            const matricula = "{{ motorista.matricula }}";
-            const registroId = "{{ motorista.id }}";
-
-            socket.on('connect', function() {
-                console.log('Conectado ao WebSocket');
-            });
-
-            socket.on('status_atualizado', function(data) {
-                if (data.registro_id == registroId) {
-                    if (tipoEntregaElement && tipoEntregaElement.textContent.trim() === 'No-Show') {
-                        if (noShowInfo) {
-                            noShowInfo.style.display = 'flex';
-                        }
-                        if (noShowMessage) {
-                            noShowMessage.textContent = 'Acompanhe na TV';
-                        }
-                        if (gaiolaBlock) {
-                            gaiolaBlock.style.display = 'none';
-                        }
-                        if (estacaoBlock) {
-                            estacaoBlock.style.display = 'none';
-                        }
-                        if (statusElement) {
-                            statusElement.textContent = 'Liberado';
-                            statusElement.className = 'status-liberado';
-                        }
-                    } else {
-                        // Lógica para casos normais (exibe Gaiola e Estação)
-                        if (noShowInfo) {
-                            noShowInfo.style.display = 'none';
-                        }
-                        if (gaiolaBlock) {
-                            gaiolaBlock.style.display = 'flex';
-                            gaiolaBlock.querySelector('span').textContent = data.gaiola || '-';
-                        }
-                        if (estacaoBlock) {
-                            estacaoBlock.style.display = 'flex';
-                            estacaoBlock.querySelector('span').textContent = data.estacao || '-';
-                        }
-                        if (statusElement) {
-                            if (data.finalizada == 1) {
-                                statusElement.textContent = 'Finalizado';
-                                statusElement.className = 'status-finalizado';
-                            } else if (data.gaiola && data.estacao) {
-                                statusElement.textContent = 'Liberado';
-                                statusElement.className = 'status-liberado';
-                            } else if (!data.gaiola && !data.estacao && data.finalizada != 1) {
-                                statusElement.textContent = 'Aguardando';
-                                statusElement.className = 'status-aguardando';
-                            }
-                        }
-                    }
-                    // Opcional: Vibração ao receber atualização
-                    if ((data.gaiola && data.estacao) || data.finalizada == 1) {
-                        if (navigator.vibrate) {
-                            navigator.vibrate(200); // Vibra por 200ms
-                        }
-                    }
-                }
-            });
-
-            socket.on('disconnect', function() {
-                console.log('Desconectado do WebSocket');
-            });
         });
     </script>
 </body>
