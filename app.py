@@ -1,3 +1,4 @@
+from flask_cors import CORS
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash
 import sqlite3
 from datetime import datetime
