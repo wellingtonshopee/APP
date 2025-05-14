@@ -74,6 +74,16 @@
             font-size: 0.8em;
         }
 
+         /* Estilo específico para o botão de Exportar */
+        #export-xls-button {
+            background-color: #28a745; /* Cor verde */
+        }
+
+        #export-xls-button:hover {
+            background-color: #218838; /* Verde mais escuro no hover */
+        }
+
+
         .filter-container button:hover {
             background-color: #777;
         }
@@ -84,10 +94,12 @@
             justify-content: center;
             padding: 20px;
             gap: 10px;
+            /* Adicionado espaço acima dos cards */
+            margin-top: 20px; /* Ajuste este valor conforme necessário */
         }
 
         .card {
-            background-color: #66e782;
+            background-color: #c4efcd;
             border-radius: 6px;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
             padding: 8px;
@@ -155,20 +167,24 @@
         <div class="logo-banner">
             <img src="{{ url_for('static', filename='imagem/logop.png') }}" alt="Logo">
         </div>
-        <h1 class="banner-title">Registros Finalizados</h1>
+        <h1 class="banner-title">Registros Finalizados - Sistema de Gerenciamento Operacional</h1>
         <div class="filter-container">
-            <label for="data-filter">Filtrar por Data Chegada:</label>
-            <input type="date" id="data-filter">
+            <label for="start-date-filter">Data Chegada (De):</label>
+            <input type="date" id="start-date-filter">
 
-            <label for="tipo-entrega-filter">Filtrar por Tipo de Entrega:</label>
+            <label for="end-date-filter">Data Chegada (Até):</label>
+            <input type="date" id="end-date-filter">
+
+            <label for="tipo-entrega-filter">Tipo de Entrega:</label>
             <select id="tipo-entrega-filter">
                 <option value="">Todos</option>
             </select>
 
-            <label for="rota-filter">Filtrar por Rota:</label>
+            <label for="rota-filter">Rota:</label>
             <input type="text" id="rota-filter" placeholder="Digite a rota">
 
             <button id="limpar-filtro">Limpar Filtros</button>
+            <button id="export-xls-button">Exportar XLS</button> {# Botão Exportar XLS #}
         </div>
     </div>
     <div class="card-container">
@@ -176,7 +192,14 @@
         <div class="card"
              data-data-hora-login="{{ registro.data_hora_login }}"
              data-tipo-entrega="{{ registro.tipo_entrega }}"
-             data-rota="{{ registro.rota }}">
+             data-rota="{{ registro.rota }}"
+             data-matricula="{{ registro.matricula }}"
+             data-nome="{{ registro.nome }}"
+             data-cidade-entrega="{{ registro.cidade_entrega }}"
+             data-gaiola-rua="{{ registro.gaiola_rua }}"
+             data-estacao="{{ registro.estacao }}"
+             data-hora-finalizacao="{{ registro.hora_finalizacao }}"
+             data-finalizado="{{ registro.finalizado }}">
             <p><strong>Data / Hora Chegada:</strong> {{ registro.data_hora_login|formata_data_hora }}</p>
             <p><strong>Matrícula:</strong> {{ registro.matricula }}</p>
             <p><strong>Nome:</strong> {{ registro.nome }}</p>
@@ -191,10 +214,12 @@
         {% endfor %}
     </div>
     <script>
-        const dataFilterInput = document.getElementById('data-filter');
+        const startDateFilterInput = document.getElementById('start-date-filter');
+        const endDateFilterInput = document.getElementById('end-date-filter');
         const tipoEntregaFilterSelect = document.getElementById('tipo-entrega-filter');
         const rotaFilterInput = document.getElementById('rota-filter');
         const limparFiltroButton = document.getElementById('limpar-filtro');
+        const exportXlsButton = document.getElementById('export-xls-button'); // Botão Exportar XLS
         const cards = document.querySelectorAll('.card');
 
         // Adicionar opções dinâmicas para o filtro de tipo de entrega
@@ -207,7 +232,8 @@
         });
 
         function filterCards() {
-            const dataFilterValue = dataFilterInput.value;
+            const startDateValue = startDateFilterInput.value;
+            const endDateValue = endDateFilterInput.value;
             const tipoEntregaFilterValue = tipoEntregaFilterSelect.value;
             const rotaFilterValue = rotaFilterInput.value.toLowerCase();
 
@@ -215,36 +241,91 @@
                 const dataHoraLogin = card.dataset.dataHoraLogin.split(' ')[0]; // Filtra apenas pela data
                 const tipoEntrega = card.dataset.tipoEntrega;
                 const rota = card.dataset.rota.toLowerCase();
-                let matchesData = true;
+
+                let matchesDateRange = true;
                 let matchesTipoEntrega = true;
                 let matchesRota = true;
 
-                if (dataFilterValue && dataHoraLogin !== dataFilterValue) {
-                    matchesData = false;
+                // Filtrar por intervalo de data
+                if (startDateValue && dataHoraLogin < startDateValue) {
+                    matchesDateRange = false;
+                }
+                if (endDateValue && dataHoraLogin > endDateValue) {
+                    matchesDateRange = false;
                 }
 
+                // Filtrar por tipo de entrega
                 if (tipoEntregaFilterValue && tipoEntregaFilterValue !== tipoEntrega) {
                     matchesTipoEntrega = false;
                 }
 
+                // Filtrar por rota
                 if (rotaFilterValue && !rota.includes(rotaFilterValue)) {
                     matchesRota = false;
                 }
 
-                card.style.display = matchesData && matchesTipoEntrega && matchesRota ? 'block' : 'none';
+                card.style.display = matchesDateRange && matchesTipoEntrega && matchesRota ? 'block' : 'none';
             });
         }
 
-        dataFilterInput.addEventListener('input', filterCards);
+        // Adicionar event listeners para os novos filtros de data
+        startDateFilterInput.addEventListener('input', filterCards);
+        endDateFilterInput.addEventListener('input', filterCards);
         tipoEntregaFilterSelect.addEventListener('change', filterCards);
         rotaFilterInput.addEventListener('input', filterCards);
 
         limparFiltroButton.addEventListener('click', function() {
-            dataFilterInput.value = '';
+            startDateFilterInput.value = ''; // Limpa o filtro de data inicial
+            endDateFilterInput.value = ''; // Limpa o filtro de data final
             tipoEntregaFilterSelect.value = '';
             rotaFilterInput.value = '';
             filterCards();
         });
+
+        // Função para exportar para XLS (CSV)
+        exportXlsButton.addEventListener('click', function() {
+            let csvContent = "data:text/csv;charset=utf-8,";
+
+            // Adicionar cabeçalhos (baseado nos data-attributes)
+            const headers = [
+                "Data/Hora Chegada", "Matrícula", "Nome", "Cidade", "Rota",
+                "Tipo de Entrega", "Gaiola \\ Rua", "Estação", "Data/Hora Finalização", "Finalizado"
+            ];
+            csvContent += headers.join(";") + "\r\n"; // Use ponto e vírgula como separador
+
+            // Adicionar dados dos cards visíveis
+            cards.forEach(card => {
+                // Apenas adiciona cards que estão visíveis (não display: none)
+                if (card.style.display !== 'none') {
+                    const row = [
+                        `"${card.dataset.dataHoraLogin}"`, // Aspas para garantir que a data/hora seja tratada como texto
+                        `"${card.dataset.matricula}"`,
+                        `"${card.dataset.nome}"`,
+                        `"${card.dataset.cidadeEntrega}"`,
+                        `"${card.dataset.rota}"`,
+                        `"${card.dataset.tipoEntrega}"`,
+                        `"${card.dataset.gaiolaRua}"`,
+                        `"${card.dataset.estacao}"`,
+                         // Use o valor original para exportação, o filtro formata para exibição
+                        `"${card.dataset.horaFinalizacao}"`,
+                        `"${card.dataset.finalizado}"`
+                    ];
+                    csvContent += row.join(";") + "\r\n"; // Use ponto e vírgula como separador
+                }
+            });
+
+            // Criar um link para download
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "registros_finalizados.csv");
+            document.body.appendChild(link); // Necessário para Firefox
+
+            link.click(); // Simular clique para download
+
+            document.body.removeChild(link); // Limpar
+        });
+
     </script>
 </body>
 </html>

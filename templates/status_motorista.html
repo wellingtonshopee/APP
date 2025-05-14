@@ -1,268 +1,199 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Status do Motorista</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Estilos globais */
+        /* Estilos personalizados para a página de status */
         body {
-            font-family: Arial, sans-serif;
-            background: #f0f2f5;
-            padding: 20px;
+            font-family: 'Inter', sans-serif; /* Usando fonte Inter */
+            background-color: #f3f4f6; /* Cor de fundo clara */
             display: flex;
-            flex-direction: column;
+            justify-content: center;
             align-items: center;
-            justify-content: flex-start;
             min-height: 100vh;
-            color: #333;
-            -webkit-font-smoothing: antialiased;
-            margin: 0;
+            padding: 20px;
         }
-
-        .feedback-sucesso {
+        .status-container {
+            background-color: #ffffff; /* Fundo branco para o card */
+            border-radius: 12px; /* Cantos arredondados */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Sombra suave */
+            padding: 30px;
+            width: 100%;
+            max-width: 400px; /* Largura máxima reduzida para o card */
+            text-align: left;
+        }
+        .header {
             text-align: center;
-            margin-top: 60px;
             margin-bottom: 20px;
         }
-
-        .logo-sucesso {
-            width: 120px;
-            height: auto;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-            object-fit: cover;
+        .header img {
+            max-width: 100px; /* Tamanho máximo para a logo */
             margin-bottom: 10px;
+            /* Estilos para centralizar, cantos arredondados e sombra */
+            display: block; /* Garante que a margem auto funcione */
+            margin-left: auto;
+            margin-right: auto;
+            border-radius: 8px; /* Cantos arredondados (ajuste o valor se quiser mais/menos) */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Sombra */
+            /* Mantendo a borda azul e padding se desejar, remova as duas linhas abaixo se não quiser */
+            border: 3px solid #3b82f6;
+            padding: 5px;
         }
-
-        .mensagem-sucesso {
-            font-size: 1.1em;
-            color: green;
-            margin-bottom: 15px;
+        .header h1 {
+            font-size: 1.8rem; /* Tamanho do título */
             font-weight: bold;
+            color: #1f2937; /* Cor do título escura */
         }
-
-        .card {
-            background: #fff;
-            padding: 20px 15px;
-            border-radius: 15px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            width: 90%;
-            max-width: 360px;
-            display: none; /* Esconde o card inicialmente */
-        }
-
-        h2 {
-            text-align: center;
-            margin-bottom: 10px;
-            color: #333;
-            font-size: 1.6em;
-        }
-
         .info-block {
-            background-color: #f9f9f9;
-            padding: 7px 9px;
-            border-radius: 8px;
-            margin-bottom: 5px;
-            border: 1px solid #eee;
-            font-size: 1em;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .info-block strong {
-            font-weight: bold;
-            color: #333;
-            width: auto;
-            flex-shrink: 0;
-            margin-right: 8px;
-        }
-
-        .info-block span {
-            color: #555;
-            text-align: right;
-            flex-grow: 1;
-            word-break: break-word;
-        }
-
-        .status-container {
-            background-color: #e9ecef;
-            color: #333;
-            text-align: center;
-            padding: 7px;
-            border-radius: 8px;
-            margin-top: 8px;
-            font-weight: bold;
-            font-size: 1.05em;
-        }
-
-        .status-liberado {
-            color: #148d30;
-        }
-
-        .status-aguardando {
-            color: #ff1d00; /* Cor laranja da Shopee: #f09300 */
-        }
-
-        .status-finalizado {
-            color: red;
-        }
-
-        #error-message {
-            color: red;
-            text-align: center;
-            margin-top: 6px;
-            font-size: 0.9em;
-        }
-
-        .shopee-logo-inicial {
-            text-align: center;
             margin-bottom: 15px;
-            display: none; /* Esconde a logo inicialmente */
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e5e7eb; /* Linha separadora */
         }
-
-        .shopee-logo-inicial img {
-            width: 80px; /* Ajuste o tamanho conforme necessário */
-            height: auto;
+        .info-block:last-child {
+            border-bottom: none; /* Remove a linha do último bloco */
+            padding-bottom: 0;
+            margin-bottom: 0;
         }
-
-        /* Responsividade para telas menores (smartphones) */
-        @media (max-width: 480px) {
-            .card {
-                margin: 15px;
-                padding: 15px;
-            }
-
-            h2 {
-                margin-bottom: 8px;
-                font-size: 1.4em;
-            }
-
-            .info-block {
-                font-size: 0.95em;
-                padding: 5px 7px;
-                margin-bottom: 4px;
-            }
-
-            .info-block strong {
-                margin-right: 4px;
-            }
+        .info-block strong {
+            color: #4b5563; /* Cor para os rótulos */
+            display: inline-block; /* Garante que o strong não quebre a linha antes do span */
+            min-width: 120px; /* Largura mínima para alinhar rótulos */
+        }
+        .info-block span {
+            color: #1f2937; /* Cor para os valores */
+            font-weight: normal;
+        }
+        .status-indicator {
+            font-size: 1.1rem;
+            font-weight: bold;
+            padding: 8px 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .status-aguardando {
+            background-color: #fcd34d; /* Amarelo */
+            color: #78350f; /* Texto escuro */
+        }
+         .status-separacao { /* Novo status para Em Separação (1) */
+            background-color: #60a5fa; /* Azul */
+            color: #1e40af; /* Texto escuro */
+        }
+         .status-carregando-finalizado { /* Novo status para Carregamento Finalizado (2) */
+            background-color: #34d399; /* Verde */
+            color: #065f46; /* Texto escuro */
+        }
+         .status-concluido-status3 { /* Novo status para em_separacao = 3 */
+            background-color: #a78bfa; /* Roxo (pode ajustar a cor) */
+            color: #4c1d95; /* Texto escuro */
+         }
+        .status-liberado { /* Status Liberado (pode ser o mesmo que Carregamento Finalizado ou um novo) */
+            background-color: #34d399; /* Verde */
+            color: #065f46; /* Texto escuro */
+        }
+        .status-finalizado { /* Status Finalizado (finalizada = 1) */
+            background-color: #a78bfa; /* Roxo */
+            color: #4c1d95; /* Texto escuro */
+        }
+        .status-cancelado { /* Status Cancelado (cancelado = 1) */
+            background-color: #f87171; /* Vermelho */
+            color: #991b1b; /* Texto escuro */
+        }
+         .status-transferido { /* Novo status para Transferido (em_separacao = 4) */
+            background-color: #d1d5db; /* Cinza */
+            color: #4b5563; /* Texto escuro */
+        }
+        .error-message {
+            color: #dc2626; /* Vermelho */
+            font-weight: bold;
+            text-align: center;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <div class="feedback-sucesso">
-        <img src="{{ url_for('static', filename='imagem/shopito.png') }}" alt="Logo Sucesso" class="logo-sucesso">
-        <p class="mensagem-sucesso">Login Realizado com Sucesso!</p>
-    </div>
+    <div class="status-container">
+        <div class="header">
+            <img src="{{ url_for('static', filename='imagem/shopito.png') }}" alt="Logo Shopito">
+            <h1>Status do Motorista</h1>
+        </div>
 
-    <div class="shopee-logo-inicial">
-        <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" alt="Logo Shopee">
-    </div>
-
-    <div class="card">
-        <div class="status-card-content">
-            <h2>Status do Motorista</h2>
-            {% if motorista %}
-                <div class="info-block">
-                    <strong>Matrícula:</strong> <span id="matricula">{{ motorista.matricula }}</span>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flashes mb-4">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} text-center text-sm font-semibold px-4 py-2 rounded-md mb-2
+                                    {% if category == 'success' %} bg-green-100 text-green-800 {% elif category == 'warning' %} bg-yellow-100 text-yellow-800 {% elif category == 'error' %} bg-red-100 text-red-800 {% else %} bg-blue-100 text-blue-800 {% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
                 </div>
-                <div class="info-block">
-                    <strong>Nome:</strong> <span id="nome">{{ motorista.nome }}</span>
-                </div>
-                <div class="info-block">
-                    <strong>Rota:</strong> <span id="rota">{{ motorista.rota or '-' }}</span>
-                </div>
-                <div class="info-block">
-                    <strong>Tipo de Entrega:</strong> <span id="tipo_entrega">{{ motorista.tipo_entrega or '-' }}</span>
-                </div>
-                <div class="info-block">
-                    <strong>Cidade de Entrega:</strong> <span id="cidade_entrega">{{ motorista.cidade_entrega or '-' }}</span>
-                </div>
-                <div class="info-block" id="no-show-info" style="display: none;">
-                    <strong>Informação:</strong> <span id="no-show-message"></span>
-                </div>
-                <div class="info-block" id="gaiola-block">
-                    <strong>Gaiola / Rua:</strong> <span id="gaiola">{{ motorista.gaiola or '-' }}</span>
-                </div>
-                <div class="info-block" id="estacao-block">
-                    <strong>Estação:</strong> <span id="estacao">{{ motorista.estacao or '-' }}</span>
-                </div>
-                <div class="status-container">
-                    <strong>Status:</strong>
-                    <span id="status">
-                        {% if motorista.finalizada == 1 %}
-                            <span class="status-finalizado">Finalizado</span>
-                        {% elif motorista.gaiola and motorista.estacao %}
-                            <span class="status-liberado">Liberado</span>
-                        {% else %}
-                            <span class="status-aguardando">Aguardando</span>
-                        {% endif %}
-                    </span>
-                </div>
-            {% else %}
-                <div id="error-message">{{ erro }}</div>
             {% endif %}
+        {% endwith %}
+
+        {% if motorista %}
+            <div class="info-block">
+                <strong>Matrícula:</strong> <span>{{ motorista.matricula or '-' }}</span>
+            </div>
+            <div class="info-block">
+                <strong>Nome:</strong> <span>{{ motorista.nome or '-' }}</span>
+            </div>
+            <div class="info-block">
+                <strong>Rota:</strong> <span>{{ motorista.rota or '-' }}</span>
+            </div>
+            <div class="info-block">
+                <strong>Tipo de Entrega:</strong> <span>{{ motorista.tipo_entrega or '-' }}</span>
+            </div>
+            <div class="info-block">
+                <strong>Cidade de Entrega:</strong> <span>{{ motorista.cidade_entrega or '-' }}</span>
+            </div>
+            {% if motorista.gaiola or motorista.estacao or motorista.rua %}
+                <div class="info-block" id="gaiola-estacao-rua-block">
+                    <strong>Gaiola:</strong> <span id="gaiola">{{ motorista.gaiola or '-' }}</span><br>
+                    <strong>Estação:</strong> <span id="estacao">{{ motorista.estacao or '-' }}</span><br>
+                    <strong>Rua:</strong> <span id="rua">{{ motorista.rua or '-' }}</span>
+                </div>
+            {% endif %}
+
+            <div class="info-block">
+                <strong>Login:</strong> <span>{{ motorista.data_hora_login | formata_data_hora or '-' }}</span>
+            </div>
+
+            <div id="status-indicator" class="status-indicator">
+                {% if motorista.cancelado == 1 %}
+                    <span class="status-cancelado">CANCELADO</span>
+                {% elif motorista.em_separacao == 4 %} {# Verifica Transferido (No-Show) #}
+                    <span class="status-transferido">TRANSFERIDO</span>
+                {% elif motorista.em_separacao == 1 %} {# Verifica Em Separação #}
+                    <span class="status-separacao">EM SEPARAÇÃO</span>
+                {% elif motorista.em_separacao == 2 %} {# Verifica Carregamento Finalizado #}
+                    <span class="status-carregando-finalizado">CARREGAMENTO FINALIZADO</span>
+                {% elif motorista.em_separacao == 3 %} {# Verifica em_separacao = 3 #}
+                    <span class="status-concluido-status3">CARREGAMENTO CONCLUÍDO (STATUS 3)</span> {# Novo texto de status #}
+                {% elif motorista.finalizada == 1 %} {# Verifica Finalizado (geral) #}
+                    <span class="status-finalizado">FINALIZADO</span>
+                {% else %} {# em_separacao == 0 ou outro valor #}
+                    <span class="status-aguardando">AGUARDANDO ASSOCIAÇÃO</span>
+                {% endif %}
+            </div>
+
+             {% if motorista.finalizada == 1 or motorista.cancelado == 1 %}
+                 <div class="info-block mt-4">
+                     <strong>Hora de Finalização:</strong> <span>{{ motorista.hora_finalizacao | formata_data_hora or '-' }}</span>
+                 </div>
+            {% endif %}
+
+
+        {% else %}
+            <p class="error-message">{{ erro }}</p>
+        {% endif %}
+
+        <div class="text-center mt-6">
+            <a href="{{ url_for('login') }}" class="text-blue-600 hover:underline">Voltar para o Login</a>
         </div>
     </div>
-
-    <script type="text/javascript">
-        document.addEventListener('DOMContentLoaded', function() {
-            var feedbackSucesso = document.querySelector('.feedback-sucesso');
-            var statusCard = document.querySelector('.card');
-            var shopeeLogoInicial = document.querySelector('.shopee-logo-inicial');
-            const tipoEntregaElement = document.getElementById('tipo_entrega');
-            const gaiolaBlock = document.getElementById('gaiola-block');
-            const estacaoBlock = document.getElementById('estacao-block');
-            const noShowInfo = document.getElementById('no-show-info');
-            const noShowMessage = document.getElementById('no-show-message');
-            const statusElement = document.getElementById('status');
-
-            // Esconde a mensagem de sucesso e mostra o card após 2 segundos
-            setTimeout(function() {
-                if (feedbackSucesso) {
-                    feedbackSucesso.style.display = 'none';
-                }
-                if (statusCard) {
-                    statusCard.style.display = 'block';
-                }
-                if (shopeeLogoInicial) {
-                    shopeeLogoInicial.style.display = 'block';
-                }
-
-                // Lógica para No-Show no carregamento
-                if (tipoEntregaElement && tipoEntregaElement.textContent.trim() === 'No-Show') {
-                    if (noShowInfo) {
-                        noShowInfo.style.display = 'flex';
-                    }
-                    if (noShowMessage) {
-                        noShowMessage.textContent = 'Acompanhe na TV';
-                    }
-                    if (gaiolaBlock) {
-                        gaiolaBlock.style.display = 'none';
-                    }
-                    if (estacaoBlock) {
-                        estacaoBlock.style.display = 'none';
-                    }
-                    if (statusElement) {
-                        statusElement.textContent = 'Liberado';
-                        statusElement.className = 'status-liberado';
-                    }
-                } else {
-                    // Garante que as divs de gaiola e estação estejam visíveis em outros casos
-                    if (gaiolaBlock) {
-                        gaiolaBlock.style.display = 'flex';
-                    }
-                    if (estacaoBlock) {
-                        estacaoBlock.style.display = 'flex';
-                    }
-                    if (noShowInfo) {
-                        noShowInfo.style.display = 'none';
-                    }
-                }
-            }, 2000);
-        });
-    </script>
 </body>
 </html>

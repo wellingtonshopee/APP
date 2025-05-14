@@ -175,16 +175,17 @@
             <li><a href="{{ url_for('registros') }}">Registros</a></li> {# Link para a rota /registros #}
             <li><a href="{{ url_for('associacao_no_show') }}">Criar Registros No Show</a></li> {# Link adicionado para a rota /associacao_no_show #}
             <li><a href="{{ url_for('registro_no_show') }}">Registros No Show</a></li> {# Link para a rota /registro_no_show (visualização) #}
+            <li><a href="{{ url_for('registros_finalizados') }}">Registros Finalizados</a></li> {# NOVO: Link para Registros Finalizados #}
             <li><a href="{{ url_for('painel_final') }}">Painel Final</a></li> {# Link para a rota /painel_final #}
-            {# Links removidos: Todos os Registros, Histórico, Associação, Registros Finalizados #}
+            {# Links removidos: Todos os Registros, Histórico, Associação #}
         </ul>
     </div>
 
     <div class="main-content">
         <div class="banner">
             <div class="banner-content">
-                 {# Certifique-se de ter uma pasta static com a imagem #}
-                 <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" class="logo-banner" alt="Logo Shopee">
+                {# Certifique-se de ter uma pasta static com a imagem #}
+                <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" class="logo-banner" alt="Logo Shopee">
                 <h1>Sistema de Gerenciamento Operacional</h1>
             </div>
              <button class="menu-toggle" id="menu-toggle">☰</button>

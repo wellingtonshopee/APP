@@ -1,197 +1,417 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fila de Carregamentol</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            background-color: #111;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tv Shopee</title>
+  <style>
+    body, html {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      /* Adicionado para evitar barra de rolagem horizontal desnecessária se o conteúdo do slide for maior */
+      overflow-x: hidden;
+    }
 
-        .breaking-news-ticker {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            background-color: #ffdb58;
-            color: #000;
-            padding: 0.75rem 0;
-            overflow: hidden;
-            white-space: nowrap;
-            box-sizing: border-box;
-            z-index: 1000;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            display: flex;
-            align-items: center;
-        }
+    .container {
+      display: flex;
+      height: calc(100% - 35px); /* Ajuste para não sobrepor o letreiro */
+    }
 
-        .breaking-news-ticker .inner-text {
-            display: inline-block;
-            padding-left: 100%;
-            animation: scroll-left 35s linear infinite;
-            animation-timing-function: linear;
-        }
+    .quadro {
+      flex: 0 0 auto;
+      overflow-y: auto;
+      padding: 10px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+    }
 
-        @keyframes scroll-left {
-            0% {
-                transform: translateX(0);
-            }
-            100% {
-                transform: translateX(-100%);
-            }
-        }
+    .quadro1 {
+      width: 75%;
+      background-color: #ece8e8;
+      display: flex;
+      flex-wrap: wrap;
+      align-content: flex-start;
+    }
 
-        .breaking-news-ticker span {
-            font-weight: bold;
-            margin-right: 1rem;
-        }
+    .quadro2 {
+      width: 25%;
+      background-color: #a09c9d;
+      border-left: none;
+      display: flex;
+      flex-wrap: wrap;
+      align-content: flex-start;
+    }
 
-        .main-content {
-            padding-top: 3rem;
-            min-height: 100vh;
-            box-sizing: border-box;
-            margin-top: 0;
-            display: grid;
-            grid-template-columns: repeat(12, 1fr);
-            grid-template-rows: auto auto auto;
-            gap: 0.5rem;
-            padding: 0.5rem;
-            background-color: #000;
-            display: flex;
-            flex-wrap: wrap;
-            align-items: stretch;
-        }
+    .quadro h2 {
+      width: 100%;
+      flex-shrink: 0;
+      margin-top: 0;
+      color: #004d40;
+      border-bottom: 2px solid #00796b;
+      padding-bottom: 5px;
+      margin-bottom: 15px;
+      box-sizing: border-box;
+    }
 
-        .box {
-            background-color: #222;
-            padding: 1rem;
-            border-radius: 0.25rem;
-            shadow-md;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: #eee;
-            border: 1px solid #444;
-            box-sizing: border-box;
-        }
+    .registro-item {
+      background-color: #ffffff;
+      margin: 5px;
+      padding: 10px;
+      border-radius: 8px;
+      box-sizing: border-box;
+      position: relative;
+      word-break: break-word;
+    }
 
-        /* Nova estrutura de mosaico */
-        .box:nth-child(1) {
-            flex: 0 0 100%;
-            grid-column: 1 / 13;
-            grid-row: 1 / 4;
-            height: 100vh;
-            overflow: auto;
-        }
+    .quadro1 .registro-item {
+      border: 2px solid #929393;
+      flex: 0 0 calc(33.33% - 10px);
+      max-width: calc(33.33% - 10px);
+      min-width: 200px;
+      animation: blink-green 2s infinite alternate;
+    }
 
-        /* Estilos para telas menores */
-        @media (max-width: 768px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
-            .box {
-                grid-column: 1 / -1;
-                flex: 0 0 100%;
-            }
-        }
+    .quadro2 .registro-item {
+      border: 2px solid #5e5d5c;
+      flex: 0 0 calc(100% - 10px);
+      max-width: calc(100% - 10px);
+      min-width: 150px;
+      animation: blink-orange 2s infinite alternate;
+    }
 
-        .box h2{
-            color: #fff;
-            font-size: 1.2rem;
-            margin-bottom: 0.5rem;
-        }
-        .box p{
-            font-size: 0.8rem;
-        }
+    @keyframes blink-green {
+      0% { border-color: #b2ebf2; box-shadow: none; }
+      50% { border-color: #0fac14; box-shadow: 0 0 8px #4CAF50; }
+      100% { border-color: #b2ebf2; box-shadow: none; }
+    }
 
-        .bottom-ticker {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background-color: #f53d2d;
-            color: #fff;
-            padding: 1rem 0;
-            overflow: hidden;
-            white-space: nowrap;
-            box-sizing: border-box;
-            z-index: 1000;
-            box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
-            display: flex;
-            align-items: center;
-        }
+    @keyframes blink-orange {
+      0% { border-color: #e92f0e; box-shadow: none; }
+      50% { border-color: #ff9800; box-shadow: 0 0 8px #ff9800; }
+      100% { border-color: #ffcc80; box-shadow: none; }
+    }
 
-        .bottom-ticker .inner-text {
-            display: inline-block;
-            padding-left: 100%;
-            animation: scroll-left 30s linear infinite;
-            animation-timing-function: linear;
-            font-size: 1.2rem;
-            font-weight: bold;
-            width: 600%;
-            white-space: nowrap;
-        }
+    .registro-item p {
+      margin-bottom: 3px;
+      font-size: 0.9em;
+      color: #333;
+    }
 
-        @keyframes scroll-left {
-            0% {
-                transform: translateX(0);
-            }
-            100% {
-                transform: translateX(-100%);
-            }
-        }
+    .registro-item p strong {
+      color: #01579b;
+    }
 
-        .bottom-ticker span {
-            margin-right: 1.5rem;
-        }
+    .registro-item .estado {
+      font-weight: bold;
+      margin-top: 8px;
+      padding-top: 5px;
+      border-top: 1px dashed #ccc;
+    }
 
-        /* Correção para garantir que o container do ticker tenha a largura correta */
-        .bottom-ticker {
-            width: 100%;
-            overflow: hidden;
-        }
+    .quadro1 .registro-item .estado {
+      color: #4CAF50;
+    }
 
-        .shopee-logo {
-            height: 1.5rem;
-            margin-right: 0.5rem;
-            display: inline-block;
-        }
+    .quadro2 .registro-item .estado {
+      color: #ff9800;
+    }
 
-    </style>
-    <script>
-        function playAlert() {
-            const audio = new Audio('https://www.soundjay.com/buttons/sounds/beep-01a.mp3');
-            audio.play();
-        }
-    </script>
+    @media (max-width: 992px) {
+      .quadro1 .registro-item {
+        flex: 0 0 calc(50% - 10px);
+        max-width: calc(50% - 10px);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+      }
+
+      .quadro1, .quadro2 {
+        width: 100%;
+        height: auto;
+        flex-direction: column;
+        padding: 15px;
+      }
+
+      .registro-item {
+        width: auto;
+        max-width: none;
+        margin: 0 0 10px 0;
+        animation: none;
+        box-shadow: none;
+      }
+
+      .quadro1 .registro-item {
+        border-color: #b2ebf2;
+      }
+
+      .quadro2 .registro-item {
+        border-color: #e60228;
+      }
+    }
+
+    /* === Letreiro estilo CNN === */
+    .rodape-letreiro {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      background-color: #b71c1c;
+      color: white;
+      font-weight: bold;
+      overflow: hidden;
+      height: 35px;
+      display: flex;
+      align-items: center;
+      z-index: 9999;
+      border-top: 2px solid #880e4f;
+    }
+
+    .texto-rolando {
+      white-space: nowrap;
+      display: inline-block;
+      padding-left: 100%;
+      animation: rolarLetreiro 30s linear infinite;
+      font-size: 16px;
+    }
+
+    @keyframes rolarLetreiro {
+      0% {
+        transform: translateX(0%);
+      }
+      100% {
+        transform: translateX(-100%);
+      }
+    }
+
+    .logo-letreiro {
+      height: 22px;
+      margin: 0 10px;
+      vertical-align: middle;
+    }
+
+    /* Estilos para o contêiner do slideshow (adicionado) */
+    #slideshow-container {
+      display: none; /* Começa oculto */
+      width: 100%;
+      height: calc(100% - 35px); /* Mesma altura do .container dos quadros */
+      justify-content: center;
+      align-items: center;
+      background-color: #222; /* Fundo escuro para slides, ajuste se necessário */
+      box-sizing: border-box;
+    }
+
+    #slide-image {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain; /* Garante que a imagem inteira seja visível, sem cortar */
+      box-shadow: 0 0 15px rgba(0,0,0,0.7); /* Opcional: sombra para destacar o slide */
+    }
+
+  </style>
 </head>
-<body class="bg-gray-100">
-    <div class="breaking-news-ticker">
-        <div class="inner-text">
-            <span>Shopee News:</span> Shopee lança Campanha de Dia dos Namorados. | Shopee oferece frete grátis em compras acima de R$10. | Shopee anuncia novas parcerias com vendedores locais. | Shopee Live tem recorde de audiência. | ShopeePay expande opções de pagamento. | Shopee promove programa de fidelidade para usuários. | Shopee Cares realiza ação social em comunidades carentes. | Shopee App atinge novo número de downloads.
-        </div>
+<body>
+
+  <div class="container">
+    <div class="quadro quadro1" id="quadro1-content">
+      <h2>Liberação para Carregamento</h2>
     </div>
-    <div class="main-content">
-        <div class="box" style="flex: 0 0 100%; grid-column: 1 / 13; grid-row: 1 / 4;">
-            <h2 class="text-xl font-semibold text-blue-400 mb-2">Box 1</h2>
-            <p class="text-gray-300">Informações do primeiro bloco.</p>
-        </div>
+    <div class="quadro quadro2" id="quadro2-content">
+      <h2>Rotas Liberadas</h2>
     </div>
-    <div class="bottom-ticker">
-        <div class="inner-text" onanimationiteration="playAlert()">
-            <img src="{{ url_for('static', filename='imagem/shopee32.png') }}"  alt="Shopee Express Logo" class="shopee-logo">
-            Carregamento Urgente No-Show: Rotas liberadas! Prontas para Carregar!
-            <img src="{{ url_for('static', filename='imagem/shopee32.png') }}"  alt="Shopee Express Logo" class="shopee-logo">
-            Carregamento Urgente No-Show: Rotas liberadas! Prontas para Carregar!
-            <img src="{{ url_for('static', filename='imagem/shopee32.png') }}"  alt="Shopee Express Logo" class="shopee-logo">
-        </div>
+  </div>
+
+  <div class="rodape-letreiro">
+    <div class="texto-rolando">
+      <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" class="logo-letreiro" alt="Logo">
+      HUB Muriaé MG Informa: Rotas Liberadas 🔴 Atenção: Rotas liberadas devem ser carregadas imediatamente. Verifique o painel para atualizações em tempo real.
+      <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" class="logo-letreiro" alt="Logo">
+      <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" class="logo-letreiro" alt="Logo">
+      🔴 Rotas No-Show Liberadas 🔴 Disponivel no Painel Lado Direito - Carregamento na Estação 6
+      <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" class="logo-letreiro" alt="Logo">
     </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const quadro1ContentDiv = document.getElementById('quadro1-content');
+      const quadro2ContentDiv = document.getElementById('quadro2-content');
+      const containerDiv = document.querySelector('.container'); // Contêiner principal dos quadros
+
+      // --- INÍCIO: LÓGICA DO SLIDESHOW ---
+      
+      // Criar e inserir o contêiner do slideshow dinamicamente
+      const slideshowContainerDiv = document.createElement('div');
+      slideshowContainerDiv.id = 'slideshow-container';
+      // A imagem será filha deste contêiner
+      const slideImageElement = document.createElement('img');
+      slideImageElement.id = 'slide-image';
+      slideImageElement.alt = 'Slide Promocional';
+      slideshowContainerDiv.appendChild(slideImageElement);
+
+      // Inserir o slideshowContainerDiv após o containerDiv dos quadros
+      if (containerDiv.parentNode) {
+          containerDiv.parentNode.insertBefore(slideshowContainerDiv, containerDiv.nextSibling);
+      } else {
+          document.body.insertBefore(slideshowContainerDiv, document.querySelector('.rodape-letreiro')); // Fallback
+      }
+
+
+      // IMPORTANTE:
+      // 1. Crie 5 arquivos de imagem (ou quantos desejar): slide1.png, slide2.png, etc.
+      // 2. Coloque esses arquivos na sua pasta 'static/imagem/' (a mesma onde está 'shopee32.png').
+      // 3. Se os nomes ou a quantidade de slides forem diferentes, ajuste o array 'slides' abaixo.
+      //
+      // Se você NÃO estiver usando um ambiente Python/Flask e 'url_for' não funcionar,
+      // substitua os caminhos por caminhos diretos, por exemplo: 'imagem/slide1.png'
+      const slides = [
+        "{{ url_for('static', filename='imagem/sld17.png') }}",
+        "{{ url_for('static', filename='imagem/sld1.png') }}",
+        "{{ url_for('static', filename='imagem/sld2.png') }}",
+        "{{ url_for('static', filename='imagem/sld3.png') }}",
+        "{{ url_for('static', filename='imagem/sld17.png') }}",
+        "{{ url_for('static', filename='imagem/sld4.png') }}",
+        "{{ url_for('static', filename='imagem/sld5.png') }}",
+        "{{ url_for('static', filename='imagem/sld17.png') }}",
+        "{{ url_for('static', filename='imagem/sld6.png') }}",
+        "{{ url_for('static', filename='imagem/sld7.png') }}",
+        "{{ url_for('static', filename='imagem/sld8.png') }}",
+        "{{ url_for('static', filename='imagem/sld17.png') }}",
+        "{{ url_for('static', filename='imagem/sld9.png') }}",
+        "{{ url_for('static', filename='imagem/sld10.png') }}",
+        "{{ url_for('static', filename='imagem/sld17.png') }}",
+        "{{ url_for('static', filename='imagem/sld11.png') }}",
+        "{{ url_for('static', filename='imagem/sld12.png') }}",
+        "{{ url_for('static', filename='imagem/sld13.png') }}",
+        "{{ url_for('static', filename='imagem/sld17.png') }}",
+        "{{ url_for('static', filename='imagem/sld14.png') }}",
+        "{{ url_for('static', filename='imagem/sld15.png') }}",
+        "{{ url_for('static', filename='imagem/sld16.png') }}",
+        "{{ url_for('static', filename='imagem/sld17.png') }}",
+      ];
+      let currentSlideIndex = 0;
+
+      const tempoQuadrosVisiveis = 60000; // 1 minuto em milissegundos
+      const tempoSlideVisivel = 30000;   // 30 segundos em milissegundos
+
+      function mostrarQuadrosView() {
+        console.log("Exibindo quadros...");
+        if (containerDiv) containerDiv.style.display = 'flex'; // Mostra os quadros
+        if (slideshowContainerDiv) slideshowContainerDiv.style.display = 'none'; // Esconde o slideshow
+        
+        // As funções carregarRegistrosQuadro1 e carregarRegistrosQuadro2 já estão rodando com setInterval
+        // e continuarão atualizando os dados dos quadros em segundo plano.
+        
+        setTimeout(mostrarProximoSlideView, tempoQuadrosVisiveis);
+      }
+
+      function mostrarProximoSlideView() {
+        if (!slides || slides.length === 0) {
+          console.warn("Nenhum slide configurado. Voltando para os quadros.");
+          mostrarQuadrosView(); // Volta para os quadros se não houver slides
+          return;
+        }
+        
+        console.log(`Exibindo slide: ${slides[currentSlideIndex]}`);
+        if (containerDiv) containerDiv.style.display = 'none'; // Esconde os quadros
+        if (slideshowContainerDiv) slideshowContainerDiv.style.display = 'flex'; // Mostra o slideshow
+        if (slideImageElement) slideImageElement.src = slides[currentSlideIndex];
+
+        currentSlideIndex++;
+        if (currentSlideIndex >= slides.length) {
+          currentSlideIndex = 0; // Volta para o primeiro slide após exibir o último
+        }
+        setTimeout(mostrarQuadrosView, tempoSlideVisivel);
+      }
+
+      // --- FIM: LÓGICA DO SLIDESHOW ---
+
+      function carregarRegistrosQuadro1() {
+        quadro1ContentDiv.querySelectorAll('.registro-item, p').forEach(item => {
+            // Remove apenas itens de registro e parágrafos de erro/aviso, não o H2
+            if (item.tagName.toLowerCase() === 'p' || item.classList.contains('registro-item')) {
+                item.remove();
+            }
+        });
+
+
+        fetch('/api/registros/em-separacao')
+          .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json();
+          })
+          .then(registros => {
+            if (registros && registros.length > 0) {
+              registros.forEach(registro => {
+                const div = document.createElement('div');
+                div.className = 'registro-item';
+                div.innerHTML = `
+                  <p><strong>Nome:</strong> ${registro.nome || 'Não informado'}</p>
+                  <p><strong>Rota:</strong> ${registro.rota || 'Não informada'}</p>
+                  <p><strong>Carregamento Estação:</strong> ${registro.estacao || 'Não associada'}</p>
+                  <p class="estado">Estado: Liberado Carregamento</p>`;
+                quadro1ContentDiv.appendChild(div);
+              });
+            } else {
+              quadro1ContentDiv.insertAdjacentHTML('beforeend', `<p style="width: 100%;">Nenhum registro liberado para carregamento encontrado.</p>`);
+            }
+          })
+          .catch(error => {
+            console.error('Q1: Erro ao buscar registros em separação:', error);
+            quadro1ContentDiv.insertAdjacentHTML('beforeend', `<p style="color: red; width: 100%;">Erro ao carregar os registros do Quadro 1. Verifique a conexão ou o endpoint da API.</p>`);
+          });
+      }
+
+      function carregarRegistrosQuadro2() {
+         quadro2ContentDiv.querySelectorAll('.registro-item, p').forEach(item => {
+            // Remove apenas itens de registro e parágrafos de erro/aviso, não o H2
+            if (item.tagName.toLowerCase() === 'p' || item.classList.contains('registro-item')) {
+                item.remove();
+            }
+        });
+
+        fetch('/api/noshow/aguardando-motorista')
+          .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json();
+          })
+          .then(registros => {
+            if (registros && registros.length > 0) {
+              registros.forEach(registro => {
+                const div = document.createElement('div');
+                div.className = 'registro-item';
+                div.innerHTML = `
+                  <p><strong>Estação:</strong> ${registro.estacao || 'Não associada'}</p>
+                  <p><strong>Rota:</strong> ${registro.gaiola || 'Não informada'}</p>
+                  <p><strong>Rua:</strong> ${registro.rua || 'Não informada'}</p>
+                  <p class="estado" style="color: #ff9800;">Estado: Carregamento Liberado</p>`;
+                quadro2ContentDiv.appendChild(div);
+              });
+            } else {
+              quadro2ContentDiv.insertAdjacentHTML('beforeend', `<p style="width: 100%;">Nenhum registro aguardando motorista encontrado.</p>`);
+            }
+          })
+          .catch(error => {
+            console.error('Q2: Erro ao buscar registros aguardando motorista:', error);
+            quadro2ContentDiv.insertAdjacentHTML('beforeend', `<p style="color: red; width: 100%;">Erro ao carregar os registros do Quadro 2. Verifique a conexão ou o endpoint da API.</p>`);
+          });
+      }
+
+      // Carregamento inicial dos dados dos quadros
+      carregarRegistrosQuadro1();
+      carregarRegistrosQuadro2();
+      
+      // Atualização periódica dos dados dos quadros (continua como antes)
+      setInterval(carregarRegistrosQuadro1, 10000); // Atualiza a cada 10 segundos
+      setInterval(carregarRegistrosQuadro2, 10000); // Atualiza a cada 10 segundos
+
+      // Iniciar o ciclo de exibição (quadros/slides)
+      mostrarQuadrosView(); // Começa exibindo os quadros
+
+    });
+  </script>
 </body>
 </html>
