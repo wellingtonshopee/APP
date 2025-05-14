@@ -513,7 +513,7 @@ def disconnect_motorista():
 def emit_status_update(registro_id, matricula, gaiola=None, estacao=None, finalizada=None):
     socketio.emit('status_atualizado', {'registro_id': registro_id, 'matricula': matricula, 'gaiola': gaiola, 'estacao': estacao, 'finalizada': finalizada}, namespace='/motorista')
 
-
+socketio = SocketIO(app, path='/socket.io', cors_allowed_origins="*")
 
 @app.route('/associacao')
 def associacao():
