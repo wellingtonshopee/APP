@@ -2,12 +2,12 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify, f
 import sqlite3
 from datetime import datetime
 import pytz
-from flask_socketio import SocketIO, emit
+
 
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'sua_chave_secreta_aqui' # Adicione uma chave secreta para flash messages
-socketio = SocketIO(app)
+
 
 # --- Conexão à Base de Dados ---
 def get_db_connection():
@@ -500,20 +500,7 @@ def historico():
     return render_template('historico.html', historico=historico_data)
 
 
-# Namespace para motoristas
-@socketio.on('connect', namespace='/motorista')
-def connect_motorista():
-    print('Cliente conectado ao namespace /motorista')
 
-@socketio.on('disconnect', namespace='/motorista')
-def disconnect_motorista():
-    print('Cliente desconectado do namespace /motorista')
-
-# Evento para atualizar o status do motorista
-def emit_status_update(registro_id, matricula, gaiola=None, estacao=None, finalizada=None):
-    socketio.emit('status_atualizado', {'registro_id': registro_id, 'matricula': matricula, 'gaiola': gaiola, 'estacao': estacao, 'finalizada': finalizada}, namespace='/motorista')
-
-socketio = SocketIO(app, path='/socket.io', cors_allowed_origins="*")
 
 @app.route('/associacao')
 def associacao():
@@ -596,14 +583,15 @@ def associar_id(id):
         ''', (id, gaiola, estacao, data_hora))
         conn.commit()
 
-        # --- Emitir evento WebSocket de status atualizado ---
-        registro = conn.execute('SELECT matricula FROM registros WHERE id = ?', (id,)).fetchone()
-        if registro:
-            emit_status_update(id, registro['matricula'], gaiola=gaiola, estacao=estacao)
+        # --- REMOVIDO: Emitir evento WebSocket de status atualizado ---
+        # registro = conn.execute('SELECT matricula FROM registros WHERE id = ?', (id,)).fetchone()
+        # if registro:
+        #     emit_status_update(id, registro['matricula'], gaiola=gaiola, estacao=estacao)
         # ---------------------------------------------------
 
     # Redireciona de volta para a página de origem, preservando filtros e rolando para o registro
     return redirect(request.referrer + f'#registro-{id}')
+
 
 @app.route('/desassociar/<int:id>', methods=['POST'])
 def desassociar_id(id):
@@ -666,11 +654,7 @@ def marcar_como_finalizado_id(id):
         ''', (id, data_hora))
         conn.commit()
 
-        # --- Emitir evento WebSocket de status atualizado ---
-        registro = conn.execute('SELECT matricula FROM registros WHERE id = ?', (id,)).fetchone()
-        if registro:
-            emit_status_update(id, registro['matricula'], finalizada=1)
-        # ---------------------------------------------------
+        
 
         # Opcional: Verifica a atualização (para depuração)
         registro_atualizado = conn.execute('SELECT finalizada FROM registros WHERE id = ?', (id,)).fetchone()
@@ -701,11 +685,7 @@ def cancelar_registro_id(id):
         ''', (id, data_hora))
         conn.commit()
 
-        # --- Emitir evento WebSocket de status atualizado ---
-        registro = conn.execute('SELECT matricula FROM registros WHERE id = ?', (id,)).fetchone()
-        if registro:
-            emit_status_update(id, registro['matricula'], finalizada=1)
-        # ---------------------------------------------------
+       
 
     # Redireciona de volta para a página de origem, preservando filtros.
     # O registro pode desaparecer da lista ativa, então não precisa rola
