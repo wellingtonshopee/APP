@@ -5,52 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Status do Motorista</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-    <script>
-        window.OneSignalDeferred = window.OneSignalDeferred || [];
-OneSignalDeferred.push(async function(OneSignal) {
-            await OneSignal.init({
-                appId: "560273f5-8772-4fc1-b73c-48dd75c4c69d", // Certifique-se de que este é o ID correto do seu aplicativo OneSignal
-            });
-
-            OneSignal.Notifications.requestPermission().then(function(permission) {
-                console.log("Permissão de notificação:", permission);
-            });
-
-            OneSignal.getUserId().then(function(userId) {
-                if (userId) {
-                    console.log("OneSignal User ID:", userId);
-                    fetch('/api/salvar_onesignal_id', { // Assumindo que esta API ainda é válida
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            onesignal_id: userId,
-                            user_id: "{{ motorista.id }}"
-                        })
-                    }).then(response => response.json())
-                    .then(data => {
-                        console.log('Resposta ao salvar OneSignal ID:', data);
-                    }).catch(error => {
-                        console.error('Erro ao enviar OneSignal ID:', error);
-                    });
-                } else {
-                    console.log("OneSignal User ID não obtido.");
-                }
-            });
-
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/static/OneSignalSDKWorker.js', { scope: '/' }) // Mude o scope para '/' no ambiente online
-                .then(function(registration) {
-                    console.log('OneSignal Service Worker registrado com sucesso:', registration);
-                }).catch(function(error) {
-                    console.error('Erro ao registrar o OneSignal Service Worker:', error);
-                });
-            }
-        });
-    </script>
-
     <style>
         /* Estilos globais */
         body {
