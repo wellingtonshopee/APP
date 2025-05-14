@@ -2,9 +2,12 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify, f
 import sqlite3
 from datetime import datetime
 import pytz
+from flask_socketio import SocketIO, emit
+
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'sua_chave_secreta_aqui' # Adicione uma chave secreta para flash messages
+socketio = SocketIO(app)
 
 # --- Conexão à Base de Dados ---
 def get_db_connection():
@@ -257,29 +260,28 @@ def buscar_nome():
         return jsonify({'nome': usuario['nome'].title()})
     else:
         return jsonify({'nome': None})
+        
 
-
+#---
 @app.route('/', methods=['GET', 'POST'])
 def login():
     erro = None
     if request.method == 'POST':
-        matricula = request.form['matricula']
+        matricula = request.form['matricula'].lower()
         nome = request.form['nome'].title()
         rota = request.form.get('rota', '').title()
         tipo_entrega = request.form.get('tipo_entrega', '').title()
-        cidade_entrega = request.form.get('cidade_entrega', '').title()  # Captura a cidade de entrega
-        rua = request.form.get('rua', '').title() # Captura a rua
+        cidade_entrega = request.form.get('cidade_entrega', '').title()
+        rua = request.form.get('rua', '').title()
         data_hora = get_data_hora_brasilia()
 
         with get_db_connection() as conn:
             # Verificar se a matrícula existe na tabela login
-            user_login = conn.execute('SELECT id FROM login WHERE matricula = ?', (matricula,)).fetchone()
+            user_login = conn.execute('SELECT id, nome FROM login WHERE LOWER(matricula) = ?', (matricula,)).fetchone()
 
             if user_login:
                 login_id = user_login['id']
-
-                # Remover a verificação de sessão ativa
-                # Sempre criaremos um novo registro, independentemente de sessões ativas
+                nome_motorista = user_login['nome']
 
                 # Buscar CPF e tipo_veiculo para o login_id
                 user_data = conn.execute('SELECT cpf, tipo_veiculo FROM login WHERE id = ?', (login_id,)).fetchone()
@@ -293,17 +295,17 @@ def login():
                         # Inserir os dados na tabela no_show, incluindo a rua
                         conn.execute(f'''
                             INSERT INTO {tabela_destino} (nome, matricula, rota, tipo_entrega, cidade_entrega,
-                                                          data_hora_login, cpf, tipo_veiculo, em_separacao, finalizada, login_id, rua)
+                                                        data_hora_login, cpf, tipo_veiculo, em_separacao, finalizada, login_id, rua)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?)
-                        ''', (nome, matricula, rota, tipo_entrega, cidade_entrega, data_hora, cpf, tipo_veiculo, login_id, rua))
+                        ''', (nome_motorista, matricula, rota, tipo_entrega, cidade_entrega, data_hora, cpf, tipo_veiculo, login_id, rua))
                     else:
                         tabela_destino = 'registros'
-                         # Inserir os dados na tabela registros
+                        # Inserir os dados na tabela registros
                         conn.execute(f'''
                             INSERT INTO {tabela_destino} (nome, matricula, rota, tipo_entrega, cidade_entrega,
-                                                          data_hora_login, cpf, tipo_veiculo, em_separacao, finalizada, login_id)
+                                                        data_hora_login, cpf, tipo_veiculo, em_separacao, finalizada, login_id)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)
-                        ''', (nome, matricula, rota, tipo_entrega, cidade_entrega, data_hora, cpf, tipo_veiculo, login_id))
+                        ''', (nome_motorista, matricula, rota, tipo_entrega, cidade_entrega, data_hora, cpf, tipo_veiculo, login_id))
 
                     conn.commit()
 
@@ -311,8 +313,8 @@ def login():
                     new_session_id = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
                     print(f"Nova sessão criada para o número de registro {matricula} (login_id: {login_id}) com ID: {new_session_id} na tabela {tabela_destino}.")
 
-                    # Redireciona para a tela de boas-vindas
-                    return redirect(url_for('boas_vindas', id=new_session_id))
+                    # Redireciona para a tela de status do motorista
+                    return redirect(url_for('status_motorista', registro_id=new_session_id, nome_motorista=nome_motorista))
                 else:
                     erro = 'Erro ao buscar dados do usuário. Por favor, tente novamente.'
                     print(f"Erro ao buscar dados para login_id {login_id}.")
@@ -324,6 +326,21 @@ def login():
                 return render_template('login.html', erro=erro)
 
     return render_template('login.html', erro=erro)
+
+# --- Rota Status_motorista ---
+@app.route('/status_motorista/<int:registro_id>/<string:nome_motorista>')
+def status_motorista(registro_id, nome_motorista):
+    """Exibe o status do motorista."""
+    with get_db_connection() as conn:
+        conn.row_factory = sqlite3.Row  # Para acessar as colunas por nome
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM registros WHERE id = ? AND nome = ?', (registro_id, nome_motorista))
+        motorista = cursor.fetchone()
+
+        if motorista:
+            return render_template('status_motorista.html', motorista=motorista)
+        else:
+            return render_template('status_motorista.html', erro="Registro não encontrado.")
 
 
 
@@ -483,6 +500,21 @@ def historico():
     return render_template('historico.html', historico=historico_data)
 
 
+# Namespace para motoristas
+@socketio.on('connect', namespace='/motorista')
+def connect_motorista():
+    print('Cliente conectado ao namespace /motorista')
+
+@socketio.on('disconnect', namespace='/motorista')
+def disconnect_motorista():
+    print('Cliente desconectado do namespace /motorista')
+
+# Evento para atualizar o status do motorista
+def emit_status_update(registro_id, matricula, gaiola=None, estacao=None, finalizada=None):
+    socketio.emit('status_atualizado', {'registro_id': registro_id, 'matricula': matricula, 'gaiola': gaiola, 'estacao': estacao, 'finalizada': finalizada}, namespace='/motorista')
+
+
+
 @app.route('/associacao')
 def associacao():
     """
@@ -564,6 +596,12 @@ def associar_id(id):
         ''', (id, gaiola, estacao, data_hora))
         conn.commit()
 
+        # --- Emitir evento WebSocket de status atualizado ---
+        registro = conn.execute('SELECT matricula FROM registros WHERE id = ?', (id,)).fetchone()
+        if registro:
+            emit_status_update(id, registro['matricula'], gaiola=gaiola, estacao=estacao)
+        # ---------------------------------------------------
+
     # Redireciona de volta para a página de origem, preservando filtros e rolando para o registro
     return redirect(request.referrer + f'#registro-{id}')
 
@@ -628,6 +666,12 @@ def marcar_como_finalizado_id(id):
         ''', (id, data_hora))
         conn.commit()
 
+        # --- Emitir evento WebSocket de status atualizado ---
+        registro = conn.execute('SELECT matricula FROM registros WHERE id = ?', (id,)).fetchone()
+        if registro:
+            emit_status_update(id, registro['matricula'], finalizada=1)
+        # ---------------------------------------------------
+
         # Opcional: Verifica a atualização (para depuração)
         registro_atualizado = conn.execute('SELECT finalizada FROM registros WHERE id = ?', (id,)).fetchone()
         if registro_atualizado and registro_atualizado['finalizada'] == 1:
@@ -656,6 +700,13 @@ def cancelar_registro_id(id):
             VALUES (?, 'cancelled', ?)
         ''', (id, data_hora))
         conn.commit()
+
+        # --- Emitir evento WebSocket de status atualizado ---
+        registro = conn.execute('SELECT matricula FROM registros WHERE id = ?', (id,)).fetchone()
+        if registro:
+            emit_status_update(id, registro['matricula'], finalizada=1)
+        # ---------------------------------------------------
+
     # Redireciona de volta para a página de origem, preservando filtros.
     # O registro pode desaparecer da lista ativa, então não precisa rola
     return redirect(request.referrer)
