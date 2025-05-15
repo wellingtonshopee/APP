@@ -1,4 +1,5 @@
 Flask==2.3.3
 gunicorn
 pytz
-feedparser 
+requests
+feedparser
