@@ -1,72 +1,650 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registros - Vistas</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Fila de Carregamento</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        /* Basic reset and body styles - Ajustado PARA TER letreiros fixos */
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Background padrão */
+            overflow: hidden; /* Prevê scroll indesejado na página principal */
+            height: 100vh; /* Full viewport height */
+            display: flex; /* Flex container para layout de coluna */
+            flex-direction: column; /* Stack children vertically */
+            box-sizing: border-box; /* Include padding in height */
+            /* Adiciona padding top/bottom para o espaço dos letreiros fixos NESTA página */
+            padding-top: 30px; /* Altura do letreiro superior */
+            padding-bottom: 30px; /* Altura do letreiro inferior */
+        }
+
+        /* >>> Estilos para os letreiros (topo e rodapé) <<< */
+        .ticker-container {
+            position: fixed; /* Fixa o container na tela */
+            left: 0;
+            right: 0;
+            height: 30px; /* Altura do letreiro */
+            overflow: hidden;
+            z-index: 1000; /* Garante que fique acima de outros elementos */
+            display: flex; /* Usa flexbox para alinhar itens horizontalmente */
+            align-items: center; /* Centraliza itens verticalmente */
+            padding: 0 10px;
+            box-sizing: border-box;
+            font-size: 1em;
+            font-weight: bold;
+            color: #fff; /* Texto branco para os letreiros */
+        }
+
+        /* Top Ticker (Azul) */
+        #top-ticker {
+            top: 0; /* Posiciona na parte superior */
+            background-color: #3434eb; /* Azul */
+        }
+
+        /* Bottom Ticker (Vermelho) */
+        #bottom-ticker {
+            bottom: 0; /* Posiciona na parte inferior */
+            background-color: #ff0000; /* Vermelho */
+             /* Ajustes específicos para o letreiro inferior, se necessário */
+        }
+
+        .ticker-text {
+            white-space: nowrap; /* Prevents text from wrapping */
+            animation: scroll-left linear infinite; /* Scrolling animation */
+            /* Animation duration should be set via JS or inline */
+             /* Permite que o texto cresça horizontalmente dentro do flex container */
+            flex-shrink: 0;
+            flex-grow: 1; /* Ocupa espaço flexível */
+             /* Adiciona margem para separar o texto das logos */
+             margin: 0 10px; /* 10px de margem na esquerda e direita */
+        }
+
+         /* >>> NOVO ESTILO PARA AS LOGOS NOS LETREIROS <<< */
+         .ticker-logo {
+             height: 100%; /* Ocupa a altura total do ticker container */
+             object-fit: contain; /* Garante que a imagem não seja distorcida */
+             display: block; /* Remove espaço extra abaixo da imagem */
+             flex-shrink: 0; /* Impede que a logo diminua */
+         }
+
+
+        /* Define the scrolling animation */
+        @keyframes scroll-left {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+
+
+        /* Main content area - Occupies space BETWEEN THE TICKERS */
+        #main-content-area {
+            flex-grow: 1; /* Occupies all available space vertically between tickers */
+            position: relative; /* Parent for absolutely positioned children */
+            /* Removed overflow: hidden; */
+        }
+
+        /* Container for Painel content (Quadro 1 and Quadro 2) */
+        #painel-content {
+            position: absolute; /* Layered over Midia content */
+            top: 0;
+            left: 0;
+            width: 100%; /* Fill parent width */
+            height: 100%; /* Fill parent height */
+            display: flex; /* Use flex to lay out Quadro 1 and 2 */
+            /* O display será controlado via JavaScript (flex/none) */
+        }
+
+        /* Container for Midia iframe */
+        #midia-content {
+            position: absolute; /* Layered, initially hidden */
+            top: 0;
+            left: 0;
+            width: 100%; /* Fill parent width */
+            height: 100%; /* Fill parent height */
+            display: none; /* Inicialmente oculto */
+            /* O display será controlado via JavaScript (block/none) */
+        }
+
+        #midia-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+
+        /* Original .container styles - NOW INSIDE #painel-content */
+        .container {
+            display: flex;
+            height: 100%; /* Fills #painel-content */
+            transition: all 0.3s ease;
+            width: 100%; /* Ensure it fills its parent */
+        }
+
+        /* Existing Quadro 1 & 2 styles (mantidos) */
+        .quadro1 {
+            background-color: #f2f2f2;
+            padding: 20px;
+            box-sizing: border-box;
+            flex-grow: 0;
+            transition: width 0.3s ease, flex-grow 0.3s ease;
+            overflow-y: auto;
+            width: calc(100% - 45%);
+             /* >>> ESTILO DA MOLDURA PARA O QUADRO 1 <<< */
+             border: 3px solid #48484a; /* Borda sólida azul, 3px de espessura */
+             border-radius: 10px; /* Cantos levemente arredondados */
+        }
+
+        .quadro2 {
+            background-color: #dcdcdc;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            transition: width 0.3s ease, padding 0.3s ease;
+            overflow-y: hidden;
+            width: 45%;
+        }
+
+        /* Style for both Quadro titles */
+        .quadro-titulo {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .colunas {
+            display: flex;
+            gap: 10px;
+            justify-content: space-between;
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 10px;
+        }
+
+        .coluna {
+            flex: 1;
+            min-width: 150px;
+            background-color: #ffffff;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+        }
+
+        .coluna h3 {
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #eee;
+        }
+
+        /* ESTILO PARA OS REGISTROS DENTRO DAS COLUNAS R (Quadro 2) */
+        .registro {
+            margin-bottom: 6px;
+            padding: 8px;
+            font-size: 0.9em;
+            color: red;
+            border: 1px solid red;
+            border-radius: 4px;
+            animation: blink 1s linear infinite;
+            box-sizing: border-box;
+            background-color: #fff0f0;
+        }
+
+         .registro:last-child {
+             margin-bottom: 6px;
+             padding-bottom: 8px;
+             border-bottom: 1px solid red;
+         }
+
+        /* DEFINIÇÃO DA ANIMAÇÃO DE PISCAR (reutilizada para verde) */
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.2; }
+            100% { opacity: 1; }
+        }
+
+        /* ESTILO PARA O CONTAINER DE REGISTROS NO QUADRO 1 (Layout 3 colunas) */
+        #registrosEmSeparacaoContainer {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        /* ESTILO PARA OS REGISTROS NO QUADRO 1 (Visual e Tamanho para 3 colunas) */
+        .registro-quadro1 {
+            width: calc(33.33% - 10px);
+            box-sizing: border-box;
+
+            /* Visual style - Verde Piscando */
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 0.95em;
+
+            color: green;
+            border: 1px solid green;
+            background-color: #e0ffe0;
+            animation: blink 1s linear infinite;
+
+            margin: 0;
+        }
+
+        /* Mantém estilos internos do registro */
+        .registro-quadro1 p {
+            margin: 0 0 5px 0;
+        }
+
+        .registro-quadro1 p:last-child {
+            margin-bottom: 0;
+        }
+
+        .registro-quadro1 strong {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+
+
+        .rotulo {
+            margin-bottom: 3px;
+        }
+
+        .hidden { /* Esta classe agora é usada apenas para esconder #quadro2 internamente se não houver dados relevantes */
+            display: none;
+            width: 0;
+            padding: 0;
+        }
+
+        .error-message {
+            color: red;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+    </style>
 </head>
-<body class="bg-light">
-    <div class="container mt-5">
-        <h1 class="mb-4 text-center">Registros - Vistas</h1>
+<body>
 
-        <form method="GET" class="row g-3 mb-4">
-            <div class="col-md-4">
-                <input type="text" name="rota" class="form-control" placeholder="Filtrar por rota" value="{{ rota }}">
-            </div>
-            <div class="col-md-4">
-                <input type="text" name="tipo_entrega" class="form-control" placeholder="Filtrar por tipo de entrega" value="{{ tipo_entrega }}">
-            </div>
-            <div class="col-md-4">
-                <button type="submit" class="btn btn-primary w-100">Filtrar</button>
-            </div>
-        </form>
-
-        {% if registros %}
-            <div class="table-responsive">
-                <table class="table table-bordered table-striped align-middle">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>ID</th>
-                            <th>Nome</th>
-                            <th>Matrícula</th>
-                            <th>Rota</th>
-                            <th>Tipo de Entrega</th>
-                            <th>Data/Hora Login</th>
-                            <th>Gaiola</th>
-                            <th>Estação</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for r in registros %}
-                        <tr>
-                            <td>{{ r[0] }}</td>
-                            <td>{{ r[1] }}</td>
-                            <td>{{ r[2] }}</td>
-                            <td>{{ r[3] or '-' }}</td>
-                            <td>{{ r[4] or '-' }}</td>
-                            <td>{{ r[5] or '-' }}</td>
-                            <td>{{ r[6] or '-' }}</td>
-                            <td>{{ r[7] or '-' }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Paginação -->
-            <nav>
-                <ul class="pagination justify-content-center">
-                    {% for p in range(1, total_paginas + 1) %}
-                        <li class="page-item {% if p == pagina %}active{% endif %}">
-                            <a class="page-link" href="?pagina={{ p }}&rota={{ rota }}&tipo_entrega={{ tipo_entrega }}">{{ p }}</a>
-                        </li>
-                    {% endfor %}
-                </ul>
-            </nav>
-        {% else %}
-            <p class="text-center">Nenhum registro encontrado.</p>
-        {% endif %}
+    {# Top Ticker #}
+    <div id="top-ticker" class="ticker-container">
+        {# O texto inicial será substituído pelo JS #}
+        <div class="ticker-text" style="animation-duration: 180s;">{# AJUSTADO AQUI PARA 180 SEGUNDOS (3 MINUTOS) #}
+            Carregando notícias...
+        </div>
     </div>
+
+    {# Main Content Area - This div holds the Painel OR Midia content #}
+    {# It occupies the space BETWEEN THE TICKERS #}
+    <div id="main-content-area">
+
+        {# Container do Conteúdo do Painel (Quadros 1 e 2) - Inicialmente visível #}
+        {# O display flex/none é controlado pelo JavaScript #}
+        <div id="painel-content">
+            {# Mantemos a div class="container" original com seus quadros dentro #}
+            {# O display flex e height 100% aqui garantem que os quadros se comportem dentro de #painel-content #}
+            <div class="container">
+                <div class="quadro1" id="quadro1">
+                    <div class="quadro-titulo">Carregamento Liberado - Mercadão</div>
+                    <div id="registrosEmSeparacaoContainer">
+                        <p style="text-align: center;">Carregando registros em separação...</p>
+                    </div>
+                </div>
+
+                <div class="quadro2 hidden" id="quadro2">
+                    <div class="quadro-titulo">Rotas No-Show - Aguardando Motorista</div>
+                    <div class="colunas" id="colunasContainer">
+                        <p style="text-align: center; width: 100%;">Carregando dados...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Container do Conteúdo de Mídia (Iframe) - Inicialmente oculto #}
+        {# O display block/none é controlado pelo JavaScript #}
+        <div id="midia-content">
+             <iframe id="midia-iframe" src="" style="width: 100%; height: 100%; border: none;"></iframe>
+        </div>
+
+    </div> {# Fim main-content-area #}
+
+
+    {# Bottom Ticker - COM LOGO #}
+    <div id="bottom-ticker" class="ticker-container">
+         {# >>> Adicionando a Logo Antes do Texto <<< #}
+         <img src="/static/imagem/sua_logo.png" alt="Logo Empresa" class="ticker-logo"> {# <-- SUBSTITUA O CAMINHO E ALT PELA SUA LOGO #}
+
+         {# O texto rolante #}
+         <div class="ticker-text" style="animation-duration: 25s;">{# Mantido em 25s para o inferior #}
+            Carregando informações...
+        </div>
+
+        {# >>> Adicionando a Logo Depois do Texto <<< #}
+        <img src="/static/imagem/sua_logo.png" alt="Logo Empresa" class="ticker-logo"> {# <-- SUBSTITUA O CAMINHO E ALT PELA SUA LOGO #}
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // --- Variáveis de Estado Global e Timers ---
+            let isShowingPainel = true; // Começa mostrando o Painel
+            let painelTimer = null; // Timer para a duração do Painel
+            let midiaTimer = null; // Timer para a duração da Mídia
+            let lastEmSeparacaoRecordIds = null; // Para detectar novos registros no Quadro 1 "Em Separação"
+
+            const PAINEL_DURATION = 60000; // 1 minuto em ms
+            const MIDIA_DURATION = 30000; // 30 segundos em ms
+
+            // --- Obtém referências aos elementos ---
+            const topTickerText = document.querySelector('#top-ticker .ticker-text'); // Elemento do texto do letreiro superior
+            const bottomTickerText = document.querySelector('#bottom-ticker .ticker-text'); // Elemento do texto do letreiro inferior
+
+            const painelContentDiv = document.getElementById('painel-content'); // Container que tem os Quadros 1 e 2
+            const midiaContentDiv = document.getElementById('midia-content');   // Container que tem o iframe
+            const midiaIframe = document.getElementById('midia-iframe');         // O iframe para carregar midia.html
+
+            // Obtém referências aos containers dos Quadros 1 e 2 (necessário para as funções de fetch/display)
+            const quadro1 = document.getElementById('quadro1');
+            const quadro2 = document.getElementById('quadro2');
+            const colunasContainer = document.getElementById('colunasContainer'); // Container Quadro 2
+            const registrosEmSeparacaoContainer = document.getElementById('registrosEmSeparacaoContainer'); // Container Quadro 1
+
+
+            // --- Função para enviar mensagem para o iframe da Mídia ---
+            function sendMidiaMessage(command, data = null) {
+                // Verifica se o iframe foi carregado e se o contentWindow está acessível
+                if (midiaIframe && midiaIframe.contentWindow) {
+                    const targetOrigin = '*'; // OU window.location.origin;
+                    midiaIframe.contentWindow.postMessage(command, targetOrigin);
+                    console.log(`DEBUG: Mensagem '${command}' enviada para o iframe.`);
+                } else {
+                    console.warn(`DEBUG: Não foi possível enviar mensagem '${command}'. iframe não pronto ou inacessível.`);
+                }
+            }
+
+
+            // --- Função para alternar para a view do Painel ---
+            function switchToPainel() {
+                console.log("DEBUG: Alternando para o Painel.");
+                if (painelTimer) clearTimeout(painelTimer);
+                if (midiaTimer) clearTimeout(midiaTimer);
+
+                // --- Envia mensagem 'pause' para o iframe ANTES de escondê-lo ---
+                try {
+                    if (midiaIframe && midiaIframe.contentWindow) {
+                         midiaIframe.contentWindow.postMessage('pause', '*');
+                         console.log("DEBUG: Enviado comando 'pause' para o iframe.");
+                     }
+                } catch (e) {
+                    console.warn("DEBUG: Não foi possível enviar comando 'pause' para o iframe (pode ser normal se iframe não carregou totalmente ou já foi limpado).", e);
+                }
+
+                painelContentDiv.style.display = 'flex';
+                midiaContentDiv.style.display = 'none';
+
+                isShowingPainel = true;
+
+                painelTimer = setTimeout(switchToMidia, PAINEL_DURATION);
+                console.log(`DEBUG: Timer do Painel iniciado (${PAINEL_DURATION / 1000}s). Próxima troca para Mídia em ${PAINEL_DURATION / 1000} segundos.`);
+            }
+
+            // --- Função para alternar para a view da Mídia ---
+            function switchToMidia() {
+                console.log("DEBUG: Alternando para a Mídia.");
+                if (painelTimer) clearTimeout(painelTimer);
+                if (midiaTimer) clearTimeout(midiaTimer);
+
+                painelContentDiv.style.display = 'none';
+                midiaContentDiv.style.display = 'block';
+
+                 try {
+                    if (midiaIframe && midiaIframe.contentWindow) {
+                         const tempLoadListener = () => {
+                             console.log("DEBUG: iframe midia.html carregado (tempLoadListener). Enviando 'resume'.");
+                             sendMidiaMessage('resume');
+                             midiaIframe.removeEventListener('load', tempLoadListener);
+                         };
+
+                         if (midiaIframe.contentWindow && midiaIframe.contentWindow.document && (midiaIframe.contentWindow.document.readyState === 'complete' || midiaIframe.contentWindow.document.readyState === 'interactive')) {
+                              console.log("DEBUG: iframe midia.html já estava pronto (readyState). Enviando 'resume' imediatamente.");
+                              sendMidiaMessage('resume');
+                         } else {
+                             midiaIframe.addEventListener('load', tempLoadListener);
+                             console.log("DEBUG: iframe midia.html ainda não pronto. Adicionado tempLoadListener para enviar 'resume'.");
+                         }
+
+                     } else {
+                          console.warn("DEBUG: Não foi possível enviar comando 'resume' para o iframe (iframe ou contentWindow não acessível).");
+                          if (midiaIframe) {
+                               console.warn("DEBUG: Fallback: Recarregando iframe devido a falha ao enviar 'resume'.");
+                               midiaIframe.src = '/midia';
+                           }
+                     }
+                 } catch (e) {
+                     console.warn("DEBUG: Erro ao tentar enviar comando 'resume' para o iframe.", e);
+                      if (midiaIframe) {
+                           console.warn("DEBUG: Fallback: Recarregando iframe devido a exceção.", e);
+                           midiaIframe.src = '/midia';
+                       }
+                 }
+
+
+                isShowingPainel = false;
+
+                midiaTimer = setTimeout(switchToPainel, MIDIA_DURATION);
+                 console.log(`DEBUG: Timer da Mídia iniciado (${MIDIA_DURATION / 1000}s). Próxima troca para Painel em ${MIDIA_DURATION / 1000} segundos.`);
+            }
+
+
+            // --- Função para buscar e exibir dados No-Show (Quadro 2) ---
+            async function fetchAndDisplayNoShow() {
+                try {
+                    const response = await fetch('/api/no_show_aguardando_motorista'); // Chamada para a API do Quadro 2
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
+                    }
+                    const allAguardandoMotoristaRecords = await response.json();
+                    const ruaDataValueToColumnTitle = { '1': 'Rua 1', '2': 'Rua 2', '3': 'Rua 3' };
+                    const validRuaDataValues = Object.keys(ruaDataValueToColumnTitle);
+                    const filteredRecordsForColumns = allAguardandoMotoristaRecords.filter(record => {
+                        const ruaDataValue = record.rua ? String(record.rua).trim() : '';
+                        return validRuaDataValues.includes(ruaDataValue);
+                    });
+                    const groupedByRuaDataValue = {};
+                    validRuaDataValues.forEach(value => { groupedByRuaDataValue[value] = []; });
+                    filteredRecordsForColumns.forEach(record => {
+                         const ruaDataValue = String(record.rua).trim();
+                         if (groupedByRuaDataValue[ruaDataValue]) {
+                             groupedByRuaDataValue[ruaDataValue].push(record);
+                         }
+                    });
+                    const totalRegistrosParaExibir = filteredRecordsForColumns.length;
+                    if (totalRegistrosParaExibir > 0) {
+                         quadro1.style.width = 'calc(100% - 45%)';
+                         quadro1.style.flexGrow = '0';
+                         quadro2.style.width = '45%';
+                         quadro2.style.flexShrink = '0';
+                         quadro2.style.display = 'flex';
+                        colunasContainer.innerHTML = '';
+                        const displayLimit = 12;
+                        validRuaDataValues.forEach(ruaDataValue => {
+                            const colunaTitle = ruaDataValueToColumnTitle[ruaDataValue];
+                            const recordsForThisRua = groupedByRuaDataValue[ruaDataValue];
+                            const col = document.createElement('div');
+                            col.className = 'coluna';
+                            col.innerHTML = `<h3>${colunaTitle} (${recordsForThisRua.length} Rotas)</h3>`;
+                            const recordsToDisplayInitially = recordsForThisRua.slice(0, displayLimit);
+                            if (recordsToDisplayInitially && recordsToDisplayInitially.length > 0) {
+                                recordsToDisplayInitially.forEach(record => {
+                                    col.innerHTML += `<div class="registro"><div class="rotulo"><span>Rota</span> ${record.rota || 'N/A'} - Entre</div></div>`;
+                                });
+                                if (recordsForThisRua.length > displayLimit) {
+                                    col.innerHTML += `<p style="text-align:center; font-size:0.8em; margin-top:10px;">+${recordsForThisRua.length - displayLimit} registros aguardando... (total ${recordsForThisRua.length})</p>`;
+                                }
+                            } else {
+                                col.innerHTML += `<p>Nenhum registro para ${colunaTitle}.</p>`;
+                            }
+                            colunasContainer.appendChild(col);
+                        });
+                    } else {
+                         colunasContainer.innerHTML = '';
+                         quadro1.style.width = '100%';
+                         quadro1.style.flexGrow = '1';
+                         quadro2.style.width = '0%';
+                         quadro2.style.flexShrink = '1';
+                         quadro2.style.display = 'none';
+                    }
+                } catch (error) {
+                    console.error('Erro ao buscar dados No-Show:', error);
+                    colunasContainer.innerHTML = '<p class="error-message">Erro ao carregar dados No-Show.</p>';
+                    quadro1.style.width = '60%';
+                    quadro1.style.flexGrow = '0';
+                    quadro2.style.width = '40%';
+                    quadro2.style.flexShrink = '0';
+                    quadro2.style.display = 'flex';
+                }
+            }
+
+
+            // --- Função para buscar e exibir registros 'Em Separação' (Quadro 1) ---
+            async function fetchAndDisplayRegistrosEmSeparacao() {
+                try {
+                    const response = await fetch('/api/registros/em-separacao');
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
+                    }
+                    const registros = await response.json();
+                    const currentEmSeparacaoRecordIds = registros.map(registro => registro.id);
+                    if (lastEmSeparacaoRecordIds !== null) {
+                        const newRecordsAppeared = currentEmSeparacaoRecordIds.some(id => !lastEmSeparacaoRecordIds.includes(id));
+                        if (newRecordsAppeared && !isShowingPainel) {
+                            console.log("DEBUG: NOVO registro 'Em Separação' detectado! Interrompendo Mídia.");
+                            switchToPainel();
+                            lastEmSeparacaoRecordIds = currentEmSeparacaoRecordIds;
+                            return;
+                        }
+                    }
+                    lastEmSeparacaoRecordIds = currentEmSeparacaoRecordIds;
+                    registrosEmSeparacaoContainer.innerHTML = '';
+                    if (registros && registros.length > 0) {
+                         registros.forEach(registro => {
+                             registrosEmSeparacaoContainer.innerHTML += `
+                                 <div class="registro-quadro1">
+                                     <p><strong>Nome:</strong> ${registro.nome || 'N/A'}</p>
+                                     <p><strong>Rota:</strong> ${registro.rota || 'N/A'}</p>
+                                     <p><strong>Gaiola:</strong> ${registro.gaiola || 'N/A'} <strong>Estação:</strong> ${registro.estacao || 'N/A'}</p>
+                                 </div>
+                             `;
+                         });
+                     } else {
+                         registrosEmSeparacaoContainer.innerHTML = '<p style="text-align: center;">Nenhum registro "Em Separação".</p>';
+                     }
+                } catch (error) {
+                    console.error('Erro ao buscar registros "Em Separação":', error);
+                    registrosEmSeparacaoContainer.innerHTML = '<p class="error-message">Erro ao carregar registros "Em Separação".</p>';
+                }
+            }
+
+            // --- Função para buscar e atualizar o letreiro superior com notícias (CNN Brasil) ---
+            async function fetchNewsHeadlines() {
+                console.log("DEBUG: Fetching news headlines (CNN Brasil)...");
+                try {
+                    const response = await fetch('/api/get_news_headlines'); // Rota no Flask
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
+                    }
+                    const data = await response.json();
+                    console.log("DEBUG: News headlines received:", data.headlines);
+
+                    if (data.headlines && data.headlines.length > 0) {
+                        const combinedText = data.headlines.join(' | ');
+                        topTickerText.textContent = combinedText;
+                    } else {
+                        topTickerText.textContent = "Nenhuma notícia disponível no momento.";
+                    }
+                } catch (error) {
+                    console.error('Erro ao buscar notícias:', error);
+                    topTickerText.textContent = "Erro ao carregar notícias.";
+                }
+            }
+             // --- FIM: Função para buscar notícias ---
+
+
+             // --- Função para buscar e atualizar o letreiro inferior com informações operacionais ---
+             // ATENÇÃO: A rota /api/operational_info causou erro 404 nos logs anteriores.
+             // Você precisa implementar essa rota no seu Flask ou remover a chamada se não for usá-la.
+             async function fetchOperationalInfo() {
+                  console.log("DEBUG: Fetching operational info...");
+                  try {
+                       // Substitua pela SUA rota API no Flask para informações operacionais
+                       // OU remova este fetch e defina o texto manualmente ou com outra lógica
+                       const response = await fetch('/api/operational_info'); // <<-- VERIFIQUE ESTA ROTA NO FLASK
+
+                       if (!response.ok) {
+                           const errorText = await response.text();
+                           throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
+                       }
+
+                       const data = await response.json();
+                       console.log("DEBUG: Operational info received:", data.info);
+
+                       if (data.info) {
+                            bottomTickerText.textContent = data.info;
+                       } else {
+                           bottomTickerText.textContent = "Nenhuma informação operacional disponível.";
+                       }
+
+                   } catch (error) {
+                       console.error('Erro ao buscar informações operacionais:', error);
+                       bottomTickerText.textContent = "HUB Muriaé Informa: Rotas No-Show já estão liberadas para carregamento imediato! Procure o Analista de Transporte para mais orientações.";
+                   }
+             }
+             // --- FIM: Função para buscar informações operacionais ---
+
+
+            // --- Configuração Inicial e Timers ---
+
+            // --- Carrega o iframe da Mídia uma vez no início, mas o mantém oculto ---
+            if (midiaIframe) {
+                 midiaIframe.src = '/midia';
+                 midiaContentDiv.style.display = 'none'; // Garante que começa oculto
+
+                 // O listener onload para a primeira carga do iframe foi movido para switchToMidia
+                 // para garantir que o comando 'resume' seja enviado após a primeira carga COMPLETA
+                 // e a Mídia esteja pronta para recebê-lo.
+            } else {
+                 console.error("DEBUG: Iframe com id 'midia-iframe' não encontrado!");
+            }
+
+            // Inicia os fetches de background para os dados dos Quadros 1 e 2 (a cada 1s)
+            setInterval(fetchAndDisplayNoShow, 1000);
+            setInterval(fetchAndDisplayRegistrosEmSeparacao, 1000);
+
+             // Frequência de atualização das notícias (busca no Flask) - 3 minutos
+             fetchNewsHeadlines(); // Busca inicial ao carregar a página
+             setInterval(fetchNewsHeadlines, 180000); // <-- Atualiza notícias a cada 3 minutos (180000 ms)
+
+
+             fetchOperationalInfo(); // Busca inicial ao carregar a página
+             setInterval(fetchOperationalInfo, 30000); // Exemplo: Atualiza info operacional a cada 30 segundos. VERIFIQUE SE ESSA ROTA EXISTE.
+
+
+            // Inicia o ciclo de alternância mostrando o Painel primeiro
+            switchToPainel();
+
+        }); // Fim DOMContentLoaded
+    </script>
+
 </body>
 </html>
