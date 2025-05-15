@@ -2,6 +2,11 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify, f
 import sqlite3
 from datetime import datetime
 import pytz
+# Importe as bibliotecas necessárias
+from flask import Flask, jsonify, render_template, request # Certifique-se que jsonify, render_template, request estão importados
+import requests # Para fazer requisições HTTP (útil se não usar feedparser ou para outras APIs)
+import feedparser # Para parsear feeds RSS
+from datetime import datetime # Útil se precisar de timestamps, embora não essencial para este ticker
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'sua_chave_secreta_aqui' # Adicione uma chave secreta para flash messages
@@ -1338,6 +1343,12 @@ def menu_principal():
     """Renderiza a página do menu principal."""
     print("DEBUG: /menu_principal - Rota acessada.")
     return render_template('menu_principal.html')
+# Sua rota para servir a página midia.html
+@app.route('/midia')
+def exibir_midia():
+    """Renderiza a página HTML com a exibição de mídia (vídeos e slides)."""
+    print("DEBUG: Rota /midia acessada. Renderizando midia.html")
+    return render_template('midia.html')
 
 # --- Rota API para retornar registros 'no_show' aguardando motorista ---
 @app.route('/api/noshow/aguardando-motorista', methods=['GET'])
@@ -1363,6 +1374,7 @@ def api_noshow_aguardando_motorista():
         print(f"DEBUG: /api/noshow/aguardando-motorista - Registros encontrados: {len(no_show_list)}")
 
     return jsonify(no_show_list)
+    
 
 # --- Rota API para registros 'em separacao' ---
 @app.route('/api/registros/em-separacao', methods=['GET'])
@@ -1385,6 +1397,7 @@ def api_registros_em_separacao():
         print(f"DEBUG: /api/registros/em-separacao - Registros encontrados: {len(registros_list)}")
 
     return jsonify(registros_list)
+
 
 # --- Rota API para registros 'no_show' aguardando associação (original) ---
 @app.route('/api/noshow/aguardando-associacao', methods=['GET'])
@@ -1463,6 +1476,107 @@ def api_noshow_pendentes():
 
     return jsonify(no_show_list)
 
+# ... (seu código Flask existente da parte 1 e parte 2 antes desta rota)
+
+# ... (seu código Flask existente da parte 1 e parte 2)
+
+# ... (seu código Flask existente antes desta rota)
+
+@app.route('/api/no_show_aguardando_motorista', methods=['GET'])
+def get_no_show_aguardando_motorista_api():
+    """
+    Retorna registros da tabela no_show com status que resultaria no rótulo
+    'Aguardando Motorista' na página de listagem (o caso 'else'),
+    no formato JSON. Inclui apenas ID, Rota e Rua.
+    """
+    print("DEBUG: /api/no_show_aguardando_motorista - Rota API acessada.")
+    records = [] # Inicializa records como lista vazia antes do try
+    try:
+        with get_db_connection() as conn:
+            print("DEBUG: Conexão com banco de dados estabelecida.")
+            # Query ajustada para corresponder APENAS à lógica do rótulo 'Aguardando Motorista'
+            # na página de listagem (o bloco '{% else %}') - REMOVE O FILTRO DE RUA AQUI
+            cursor = conn.execute('''
+                SELECT id, rota, rua
+                FROM no_show
+                WHERE finalizada = 0
+                  AND cancelado = 0
+                  AND em_separacao != 1
+                  AND em_separacao != 2
+                  AND em_separacao != 4
+                -- O filtro de rua será feito no JavaScript
+            ''')
+            records = cursor.fetchall()
+            print(f"DEBUG: Resultado fetchall() tipo: {type(records)}") # Log tipo do resultado da query
+            print(f"DEBUG: Resultado fetchall() conteúdo: {records}") # Log conteúdo do resultado da query
+
+        # Converter os resultados (sqlite3.Row) para uma lista de dicionários serializáveis
+        # Esta linha só será executada se fetchall() não lançar exceção e records não for None
+        records_list = [dict(row) for row in records]
+        print(f"DEBUG: /api/no_show_aguardando_motorista - Registros encontrados (status Aguardando Motorista, qualquer rua): {len(records_list)}")
+        print(f"DEBUG: Lista para jsonify: {records_list}") # Log a lista ANTES de converter para JSON
+
+        return jsonify(records_list)
+
+    except Exception as e:
+        print(f"DEBUG: Erro na rota /api/no_show_aguardando_motorista: {e}")
+        # Retorna um erro no formato JSON
+        return jsonify({'error': 'Erro ao buscar dados no-show', 'message': str(e)}), 500
+
+# ... (o restante do seu código Flask após esta rota)
+
+# --- ROTA AJUSTADA PARA BUSCAR NOTÍCIAS DA CNN BRASIL ---
+@app.route('/api/get_news_headlines', methods=['GET'])
+def get_news_headlines():
+    # URL do feed RSS da CNN Brasil
+    # Verificado em 2025-05-15, mas URLs de feed podem mudar.
+    # Se parar de funcionar, pode ser necessário buscar a nova URL do feed RSS da CNN Brasil.
+    cnn_brasil_feed_url = 'https://www.cnnbrasil.com.br/feed/'
+
+    all_headlines = []
+
+    # --- Buscar notícias da CNN Brasil (usando RSS) ---
+    try:
+        print(f"DEBUG Flask: Buscando feed da CNN Brasil em: {cnn_brasil_feed_url}")
+        feed = feedparser.parse(cnn_brasil_feed_url)
+
+        if feed.entries:
+            print(f"DEBUG Flask: Feed da CNN Brasil encontrado com {len(feed.entries)} entradas.")
+            # Limita o número de manchetes da CNN Brasil (ex: as 5 mais recentes)
+            for entry in feed.entries[:5]: # Pega as 5 primeiras manchetes
+                # Pode adicionar formatação ou limpar o título se necessário
+                headline = entry.title
+                # Exemplo: remover HTML básico se houver (feedparser geralmente limpa)
+                # from bs4 import BeautifulSoup
+                # headline = BeautifulSoup(headline, 'html.parser').get_text()
+
+                all_headlines.append(f"CNN Brasil: {headline}") # Adiciona prefixo
+
+        else:
+            all_headlines.append("CNN Brasil: Não foi possível carregar manchetes do feed.")
+            print("DEBUG Flask: Feed da CNN Brasil não retornou entradas.")
+
+    except Exception as e:
+        print(f"DEBUG Flask: Erro ao buscar feed da CNN Brasil: {e}")
+        all_headlines.append("CNN Brasil: Erro ao carregar notícias.")
+
+    # --- Seção para outras fontes (como Shopee) ---
+    # Mantenha ou remova esta seção dependendo se você quer incluir outras fontes aqui.
+    # Se você remover, o letreiro superior só mostrará a CNN Brasil.
+    # Se você quiser adicionar outras fontes, implemente a busca aqui e adicione
+    # as manchetes à lista `all_headlines`.
+    # ... (Seu código para buscar outras fontes, se houver) ...
+
+
+    # Adiciona uma mensagem padrão caso nenhuma manchete tenha sido carregada com sucesso
+    if not all_headlines or all(msg.startswith("CNN Brasil: Erro") for msg in all_headlines):
+         all_headlines = ["Erro ao carregar notícias da CNN Brasil ou fontes indisponíveis."]
+         print("DEBUG Flask: Nenhuma manchete válida da CNN Brasil coletada, retornando mensagem de erro/fallback.")
+
+
+    # Retorna as manchetes em formato JSON
+    return jsonify({"headlines": all_headlines})
+# --- FIM DA ROTA AJUSTADA ---
 
 if __name__ == '__main__':
     # Inicializa o banco de dados ao iniciar o aplicativo
