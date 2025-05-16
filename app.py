@@ -741,61 +741,174 @@ def registros_finalizados():
     return render_template('registros_finalizados.html', registros=registros)
 
 # --- Nova Rota para Status do Motorista ---
-# --- Rota para Status do Motorista ---
-@app.route('/status_motorista/<int:id>')
-def status_motorista(id):
+# --- Rota para exibir o status do motorista (agora por matrícula) ---
+@app.route('/status_motorista/<string:matricula>', methods=['GET'])
+def status_motorista(matricula):
     """
-    Exibe o status de um registro específico (motorista) usando o template status_motorista.html.
-    Busca tanto na tabela 'registros' quanto em 'no_show' para encontrar o registro.
-    Inclui prints de depuração para verificar o estado do registro.
+    Renderiza a página de status do motorista, passando a matrícula.
     """
-    print(f"DEBUG: /status_motorista/{id} - Rota acessada com ID: {id}")
-    registro = None
-    erro = None
-    tabela_origem = None # Inicializa com None
+    print(f"DEBUG: /status_motorista/{matricula} - Rota acessada.")
+    # Passa a matrícula para o template
+    return render_template('status_motorista.html', matricula=matricula)
+
+
+# --- Nova rota API para buscar o status do registro mais recente não finalizado pela matrícula ---
+# --- Rota API para buscar o status do motorista pela matrícula ---
+@app.route('/api/status_registro_by_matricula/<string:matricula>', methods=['GET'])
+def api_status_registro_by_matricula(matricula):
+    """
+    Busca o status do registro ativo mais relevante para uma dada matrícula,
+    priorizando 'registros' e verificando 'no_show' sob condições específicas,
+    incluindo correspondência de rota para no_show.
+    Retorna o registro encontrado, juntamente com seu status determinado.
+    """
+    print(f"DEBUG: /api/status_registro_by_matricula/{matricula} - Rota API acessada.")
+    registro_registros = None
+    registro_noshow_candidato = None
+    registro_relevante = None
+    tabela_origem = None
 
     with get_db_connection() as conn:
-        # Tenta buscar na tabela 'registros'
-        registro = conn.execute('SELECT * FROM registros WHERE id = ?', (id,)).fetchone()
-        if registro:
-            tabela_origem = 'registros'
-            print(f"DEBUG: /status_motorista/{id} - Registro encontrado em 'registros'. ID: {registro['id']}, Nome: {registro['nome']}")
-            # --- Prints de depuração para o estado do registro ---
-            print(f"DEBUG: Estado do registro (registros):")
-            print(f"DEBUG:   em_separacao: {registro['em_separacao']}")
-            print(f"DEBUG:   finalizada: {registro['finalizada']}")
-            print(f"DEBUG:   cancelado: {registro['cancelado']}")
-            # Note: 'transferred_to_registro_id' não existe na tabela 'registros', não imprima.
-            # -----------------------------------------------------
+        # 1. Tentar buscar o registro ativo mais recente na tabela 'registros' para a matrícula fornecida
+        registro_registros_data = conn.execute('''
+            SELECT *
+            FROM registros
+            WHERE matricula = ? AND finalizada = 0 AND cancelado = 0
+            ORDER BY data_hora_login DESC
+            LIMIT 1
+        ''', (matricula,)).fetchone()
 
-        if registro is None:
-            # Se não encontrar em 'registros', tenta buscar em 'no_show'
-            print(f"DEBUG: /status_motorista/{id} - Registro não encontrado em 'registros', buscando em 'no_show'.")
-            registro = conn.execute('SELECT * FROM no_show WHERE id = ?', (id,)).fetchone()
-            if registro:
+        if registro_registros_data:
+            registro_registros = dict(registro_registros_data)
+            print(f"DEBUG: Encontrado registro ativo em 'registros' para matrícula {matricula} (ID: {registro_registros.get('id')}).")
+
+            # Se um registro em 'registros' foi encontrado, AGORA buscamos um candidato em 'no_show'
+            # com matrícula '0001', status 3 E A MESMA ROTA do registro de 'registros'.
+            registro_noshow_candidato_data = conn.execute('''
+                SELECT *
+                FROM no_show
+                WHERE matricula = '0001'
+                  AND finalizada = 0
+                  AND cancelado = 0
+                  AND em_separacao = 3 -- Busca especificamente por 'Aguardando Motorista'
+                  AND transferred_to_registro_id IS NULL
+                  AND rota = ? -- Adicionada a condição de correspondência de rota
+                ORDER BY data_hora_login DESC
+                LIMIT 1
+            ''', (registro_registros.get('rota'),)).fetchone() # Passa a rota do registro de 'registros' como parâmetro
+
+            if registro_noshow_candidato_data:
+                registro_noshow_candidato = dict(registro_noshow_candidato_data)
+                print(f"DEBUG: Encontrado registro candidato em 'no_show' (ID: {registro_noshow_candidato.get('id')}) com status 'Aguardando Motorista' e rota correspondente.")
+
+            # Agora, comparamos os dois (se houver um candidato no_show) para determinar o mais recente
+            data_registros_str = registro_registros.get('data_hora_login')
+            data_noshow_str = registro_noshow_candidato.get('data_hora_login') if registro_noshow_candidato else None
+
+            data_registros = None
+            data_noshow = None
+
+            try:
+                if data_registros_str:
+                    data_registros = datetime.strptime(data_registros_str, '%Y-%m-%d - %H:%M:%S')
+            except (ValueError, TypeError):
+                pass # Ignora erro de parsing
+
+            try:
+                if data_noshow_str:
+                    data_noshow = datetime.strptime(data_noshow_str, '%Y-%m-%d - %H:%M:%S')
+            except (ValueError, TypeError):
+                pass # Ignora erro de parsing
+
+
+            # Se houver um candidato no_show E ele for mais recente (ou igual) que o registro de registros
+            if registro_noshow_candidato and (not data_registros or (data_noshow and data_noshow >= data_registros)):
+                registro_relevante = registro_noshow_candidato
                 tabela_origem = 'no_show'
-                print(f"DEBUG: /status_motorista/{id} - Registro encontrado em 'no_show'. ID: {registro['id']}, Nome: {registro['nome']}")
-                # --- Prints de depuração para o estado do registro (no_show) ---
-                print(f"DEBUG: Estado do registro (no_show):")
-                print(f"DEBUG:   em_separacao: {registro['em_separacao']}")
-                print(f"DEBUG:   finalizada: {registro['finalizada']}")
-                print(f"DEBUG:   cancelado: {registro['cancelado']}")
-                print(f"DEBUG:   transferred_to_registro_id: {registro['transferred_to_registro_id']}")
-                # -------------------------------------------------------------
+                print(f"DEBUG: Registro No-Show ({registro_noshow_candidato.get('id')}) é o mais recente/relevante.")
             else:
-                 print(f"DEBUG: /status_motorista/{id} - Registro com ID {id} não encontrado em nenhuma tabela.")
+                # Caso contrário, o registro de registros é o mais relevante
+                registro_relevante = registro_registros
+                tabela_origem = 'registros'
+                print(f"DEBUG: Registro de Registros ({registro_registros.get('id')}) é o mais recente/relevante.")
 
 
-    if registro:
-        # Passa o objeto registro encontrado para o template como 'motorista'
-        return render_template('status_motorista.html', motorista=registro)
+        # 2.1. Se nenhum registro foi encontrado em 'registros' PARA ESTA MATRÍCULA,
+        # verificar a tabela 'no_show' APENAS se a matrícula pesquisada for '0001'.
+        # Esta busca em no_show NÃO precisa comparar rota aqui, pois não há registro de registros para comparar.
+        # Mas ainda busca por matrícula '0001' e status 3.
+        elif not registro_registros and matricula == '0001':
+             registro_noshow_data = conn.execute('''
+                 SELECT *
+                 FROM no_show
+                 WHERE matricula = '0001'
+                   AND finalizada = 0
+                   AND cancelado = 0
+                   AND em_separacao = 3 -- Busca especificamente por 'Aguardando Motorista'
+                   AND transferred_to_registro_id IS NULL
+                 ORDER BY data_hora_login DESC
+                 LIMIT 1
+             ''',).fetchone() # Não precisa passar '0001' como parâmetro se estiver fixo na query
+
+             if registro_noshow_data:
+                 registro_relevante = dict(registro_noshow_data)
+                 tabela_origem = 'no_show'
+                 print(f"DEBUG: Nenhum registro em 'registros' encontrado para matrícula {matricula}. Encontrado registro relevante em 'no_show' (ID: {registro_relevante.get('id')}).")
+
+
+    # 3. Determinar o status do registro relevante encontrado (se houver)
+    if registro_relevante:
+        status_text = 'Status Desconhecido'
+        status_class = 'bg-gray-500' # Cor padrão
+
+        # Lógica de status baseada no registro_relevante e sua tabela de origem
+        if registro_relevante.get('finalizada') == 1:
+            status_text = 'Registro Finalizado'
+            status_class = 'status-finalizado'
+        elif registro_relevante.get('cancelado') == 1:
+            status_text = 'Registro Cancelado'
+            status_class = 'status-cancelado'
+        # Verificar status específicos de no_show APENAS se a origem for 'no_show'
+        elif tabela_origem == 'no_show' and registro_relevante.get('transferred_to_registro_id') is not None and registro_relevante.get('em_separacao') == 4:
+             status_text = 'Registro No-Show Transferido para Carregamento'
+             status_class = 'status-transferido'
+        elif registro_relevante.get('em_separacao') == 2:
+            status_text = 'Liberado para Carregamento'
+            status_class = 'status-carregamento-finalizado'
+        elif registro_relevante.get('em_separacao') == 1:
+            status_text = 'Em Separação (Aguardando Carregamento)'
+            status_class = 'status-em-separacao'
+        elif registro_relevante.get('em_separacao') == 3 and tabela_origem == 'no_show':
+             status_text = 'Aguardando Motorista (No-Show)' # Mantido conforme sua escolha
+             status_class = 'status-aguardando' # Pode usar a mesma cor de aguardando associação ou outra
+        elif registro_relevante.get('em_separacao') == 0: # Este caso seria para registros normais em status 0
+            status_text = 'Aguardando Associação/Carregamento'
+            status_class = 'status-aguardando'
+
+        # Adiciona as informações de status e a tabela de origem ao dicionário do registro
+        registro_relevante['status_text'] = status_text
+        registro_relevante['status_class'] = status_class
+        registro_relevante['tabela_origem'] = tabela_origem
+
+        # Garantir que campos como 'rua', 'gaiola', 'estacao' estejam sempre presentes no dicionário retornado,
+        # mesmo que sejam None no banco de dados, para evitar erros no frontend.
+        # O frontend já usa || 'N/A', mas garantir a chave ajuda.
+        registro_relevante['rua'] = registro_relevante.get('rua')
+        registro_relevante['gaiola'] = registro_relevante.get('gaiola')
+        registro_relevante['estacao'] = registro_relevante.get('estacao')
+        # Adicionar outros campos essenciais que podem estar faltando em um dos tipos de registro
+        registro_relevante['nome'] = registro_relevante.get('nome')
+        registro_relevante['matricula'] = registro_relevante.get('matricula')
+        registro_relevante['rota'] = registro_relevante.get('rota')
+        registro_relevante['tipo_entrega'] = registro_relevante.get('tipo_entrega')
+        registro_relevante['cidade_entrega'] = registro_relevante.get('cidade_entrega')
+        registro_relevante['data_hora_login'] = registro_relevante.get('data_hora_login')
+
+
+        return jsonify(registro_relevante)
     else:
-        erro = f'Registro com ID {id} não encontrado.'
-        # Renderiza o template mesmo sem o registro para exibir a mensagem de erro
-        flash(erro, 'error') # Adiciona mensagem flash
-        return render_template('status_motorista.html', motorista=None, erro=erro)
-
-
+        print(f"DEBUG: /api/status_registro_by_matricula/{matricula} - Nenhum registro ativo relevante encontrado para a matrícula.")
+        return jsonify({'message': 'Nenhum registro ativo encontrado para esta matrícula.'}), 404 # Retorna 404 Not Found
 
 #Fim status Motorista
 
