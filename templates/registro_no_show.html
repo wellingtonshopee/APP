@@ -481,9 +481,9 @@
                         {% if not registro.gaiola or not registro.estacao %}
                             {# Form to Associate #}
                             <form action="{{ url_for('associar_no_show_id', id=registro.id) }}" method="POST">
-                                <input type="text" name="gaiola" placeholder="Rota" required> {# Alterado: Placeholder para Rota #}
-                                <input type="text" name="estacao" placeholder="Estação" required>
-                                <input type="text" name="rua" placeholder="Rua" value="{{ registro.rua | default('') }}"> {# Adicionado campo para Rua #}
+                                <input type="text" name="gaiola" placeholder="Rota:" required> {# Alterado: Placeholder para Rota #}
+                                <input type="text" name="estacao" placeholder="Estação:" required>
+                                <input type="text" name="rua" placeholder="Rua:" value="{{ registro.rua | default('') }}"> {# Adicionado campo para Rua #}
                                 <button type="submit" class="btn-associar">Associar</button>
                             </form>
                         {% else %}

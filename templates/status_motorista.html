@@ -6,194 +6,301 @@
     <title>Status do Motorista</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Estilos personalizados para a página de status */
+        /* Adicione estilos personalizados aqui, se necessário */
         body {
-            font-family: 'Inter', sans-serif; /* Usando fonte Inter */
-            background-color: #f3f4f6; /* Cor de fundo clara */
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f4f4;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            padding: 20px;
         }
-        .status-container {
-            background-color: #ffffff; /* Fundo branco para o card */
-            border-radius: 12px; /* Cantos arredondados */
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Sombra suave */
-            padding: 30px;
-            width: 100%;
-            max-width: 400px; /* Largura máxima reduzida para o card */
-            text-align: left;
-        }
-        .header {
+        .container {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 600px; /* Ajuste a largura máxima se necessário */
             text-align: center;
-            margin-bottom: 20px;
+            display: flex; /* Usa flexbox para alinhar itens verticalmente */
+            flex-direction: column; /* Empilha os itens verticalmente */
+            align-items: center; /* Centraliza os itens horizontalmente */
         }
-        .header img {
-            max-width: 100px; /* Tamanho máximo para a logo */
-            margin-bottom: 10px;
-            /* Estilos para centralizar, cantos arredondados e sombra */
-            display: block; /* Garante que a margem auto funcione */
-            margin-left: auto;
-            margin-right: auto;
-            border-radius: 8px; /* Cantos arredondados (ajuste o valor se quiser mais/menos) */
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Sombra */
-            /* Mantendo a borda azul e padding se desejar, remova as duas linhas abaixo se não quiser */
-            border: 3px solid #3b82f6;
-            padding: 5px;
-        }
-        .header h1 {
-            font-size: 1.8rem; /* Tamanho do título */
+        .status-card {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            border-radius: 8px;
+            color: white;
             font-weight: bold;
-            color: #1f2937; /* Cor do título escura */
+            font-size: 1.2rem;
+            width: 100%; /* Garante que o card de status ocupe a largura total do container */
         }
-        .info-block {
-            margin-bottom: 15px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #e5e7eb; /* Linha separadora */
+        /* Cores de status */
+        .status-aguardando {
+            background-color: #ffc107; /* Amarelo */
         }
-        .info-block:last-child {
-            border-bottom: none; /* Remove a linha do último bloco */
-            padding-bottom: 0;
+        .status-em-separacao {
+            background-color: #17a2b8; /* Azul Ciano */
+        }
+         .status-carregamento-finalizado {
+            background-color: #28a745; /* Verde */
+        }
+        .status-finalizado {
+             background-color: #6c757d; /* Cinza */
+        }
+        .status-cancelado {
+             background-color: #dc3545; /* Vermelho */
+        }
+         .status-transferido {
+             background-color: #6f42c1; /* Roxo */
+          }
+         .status-nao-encontrado {
+             background-color: #6c757d; /* Cinza */
+          }
+
+        /* Estilo para os cards de informação */
+        .info-card {
+            background-color: #e9ecef; /* Cor de fundo clara para os cards de informação */
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem; /* Espaço entre os cards de informação */
+            text-align: left; /* Alinha o texto à esquerda dentro do card */
+            width: 100%; /* Garante que o card ocupe a largura total do container */
+        }
+
+        .info-card p {
+            margin-bottom: 0.5rem; /* Espaço entre as linhas dentro do card */
+            color: #333; /* Cor do texto */
+        }
+
+        .info-card p span.font-semibold {
+            color: #000; /* Cor mais escura para os rótulos */
+        }
+
+        /* Remove a margem inferior do último parágrafo no card */
+        .info-card p:last-child {
             margin-bottom: 0;
         }
-        .info-block strong {
-            color: #4b5563; /* Cor para os rótulos */
-            display: inline-block; /* Garante que o strong não quebre a linha antes do span */
-            min-width: 120px; /* Largura mínima para alinhar rótulos */
+
+        /* Estilo para a logo */
+        .logo {
+            max-width: 150px; /* Ajuste o tamanho máximo da logo */
+            height: auto;
+            margin-bottom: 1.5rem; /* Espaço abaixo da logo */
+            /* Adicionado: bordas leves arredondadas */
+            border: 1px solid #d1d5db; /* Borda leve cinza */
+            border-radius: 8px; /* Bordas levemente arredondadas */
         }
-        .info-block span {
-            color: #1f2937; /* Cor para os valores */
-            font-weight: normal;
+
+        /* Classe para esconder o elemento */
+        .hidden {
+            display: none;
         }
-        .status-indicator {
-            font-size: 1.1rem;
-            font-weight: bold;
-            padding: 8px 15px;
-            border-radius: 8px;
-            text-align: center;
-            margin-top: 20px;
-        }
-        .status-aguardando {
-            background-color: #fcd34d; /* Amarelo */
-            color: #78350f; /* Texto escuro */
-        }
-         .status-separacao { /* Novo status para Em Separação (1) */
-            background-color: #60a5fa; /* Azul */
-            color: #1e40af; /* Texto escuro */
-        }
-         .status-carregando-finalizado { /* Novo status para Carregamento Finalizado (2) */
-            background-color: #34d399; /* Verde */
-            color: #065f46; /* Texto escuro */
-        }
-         .status-concluido-status3 { /* Novo status para em_separacao = 3 */
-            background-color: #a78bfa; /* Roxo (pode ajustar a cor) */
-            color: #4c1d95; /* Texto escuro */
-         }
-        .status-liberado { /* Status Liberado (pode ser o mesmo que Carregamento Finalizado ou um novo) */
-            background-color: #34d399; /* Verde */
-            color: #065f46; /* Texto escuro */
-        }
-        .status-finalizado { /* Status Finalizado (finalizada = 1) */
-            background-color: #a78bfa; /* Roxo */
-            color: #4c1d95; /* Texto escuro */
-        }
-        .status-cancelado { /* Status Cancelado (cancelado = 1) */
-            background-color: #f87171; /* Vermelho */
-            color: #991b1b; /* Texto escuro */
-        }
-         .status-transferido { /* Novo status para Transferido (em_separacao = 4) */
-            background-color: #d1d5db; /* Cinza */
-            color: #4b5563; /* Texto escuro */
-        }
-        .error-message {
-            color: #dc2626; /* Vermelho */
-            font-weight: bold;
-            text-align: center;
-            margin-top: 20px;
-        }
+
     </style>
 </head>
-<body>
-    <div class="status-container">
-        <div class="header">
-            <img src="{{ url_for('static', filename='imagem/shopito.png') }}" alt="Logo Shopito">
-            <h1>Status do Motorista</h1>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="container">
+        <div class="mb-6 text-center">
+            <img src="{{ url_for('static', filename='imagem/shopee32.png') }}"alt="SPX" class="logo mx-auto">
+            <h1 class="text-2xl font-bold text-gray-800 mt-4">Status do Carregamento</h1>
         </div>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="flashes mb-4">
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }} text-center text-sm font-semibold px-4 py-2 rounded-md mb-2
-                                    {% if category == 'success' %} bg-green-100 text-green-800 {% elif category == 'warning' %} bg-yellow-100 text-yellow-800 {% elif category == 'error' %} bg-red-100 text-red-800 {% else %} bg-blue-100 text-blue-800 {% endif %}">
-                            {{ message }}
-                        </div>
-                    {% endfor %}
+        <div id="loading" class="text-gray-600">Carregando status...</div>
+
+        <div id="status-info" class="hidden w-full">
+            <div class="info-card">
+                <p><span class="font-semibold">Nome:</span> <span id="nome"></span></p>
+                <p><span class="font-semibold">Matrícula:</span> <span id="matricula"></span></p>
+                <p><span class="font-semibold">Rota:</span> <span id="rota"></span></p>
+                <p><span class="font-semibold">Tipo de Entrega:</span> <span id="tipo_entrega"></span></p>
+                <p><span class="font-semibold">Cidade de Entrega:</span> <span id="cidade_entrega"></span></p>
+                <p id="rua-paragraph"><span class="font-semibold">Rua:</span> <span id="rua"></span></p>
+                <p><span class="font-semibold">Gaiola:</span> <span id="gaiola"></span></p>
+                <p><span class="font-semibold">Estação:</span> <span id="estacao"></span></p>
+                <p><span class="font-semibold">Login:</span> <span id="data_hora_login"></span></p>
+            </div>
+
+            <div id="status-display" class="status-card">
                 </div>
-            {% endif %}
-        {% endwith %}
+        </div>
 
-        {% if motorista %}
-            <div class="info-block">
-                <strong>Matrícula:</strong> <span>{{ motorista.matricula or '-' }}</span>
-            </div>
-            <div class="info-block">
-                <strong>Nome:</strong> <span>{{ motorista.nome or '-' }}</span>
-            </div>
-            <div class="info-block">
-                <strong>Rota:</strong> <span>{{ motorista.rota or '-' }}</span>
-            </div>
-            <div class="info-block">
-                <strong>Tipo de Entrega:</strong> <span>{{ motorista.tipo_entrega or '-' }}</span>
-            </div>
-            <div class="info-block">
-                <strong>Cidade de Entrega:</strong> <span>{{ motorista.cidade_entrega or '-' }}</span>
-            </div>
-            {% if motorista.gaiola or motorista.estacao or motorista.rua %}
-                <div class="info-block" id="gaiola-estacao-rua-block">
-                    <strong>Gaiola:</strong> <span id="gaiola">{{ motorista.gaiola or '-' }}</span><br>
-                    <strong>Estação:</strong> <span id="estacao">{{ motorista.estacao or '-' }}</span><br>
-                    <strong>Rua:</strong> <span id="rua">{{ motorista.rua or '-' }}</span>
-                </div>
-            {% endif %}
+        <div id="error-message" class="hidden text-red-500 mt-4">
+             </div>
 
-            <div class="info-block">
-                <strong>Login:</strong> <span>{{ motorista.data_hora_login | formata_data_hora or '-' }}</span>
-            </div>
-
-            <div id="status-indicator" class="status-indicator">
-                {% if motorista.cancelado == 1 %}
-                    <span class="status-cancelado">CANCELADO</span>
-                {% elif motorista.em_separacao == 4 %} {# Verifica Transferido (No-Show) #}
-                    <span class="status-transferido">TRANSFERIDO</span>
-                {% elif motorista.em_separacao == 1 %} {# Verifica Em Separação #}
-                    <span class="status-separacao">EM SEPARAÇÃO</span>
-                {% elif motorista.em_separacao == 2 %} {# Verifica Carregamento Finalizado #}
-                    <span class="status-carregando-finalizado">CARREGAMENTO FINALIZADO</span>
-                {% elif motorista.em_separacao == 3 %} {# Verifica em_separacao = 3 #}
-                    <span class="status-concluido-status3">CARREGAMENTO CONCLUÍDO (STATUS 3)</span> {# Novo texto de status #}
-                {% elif motorista.finalizada == 1 %} {# Verifica Finalizado (geral) #}
-                    <span class="status-finalizado">FINALIZADO</span>
-                {% else %} {# em_separacao == 0 ou outro valor #}
-                    <span class="status-aguardando">AGUARDANDO ASSOCIAÇÃO</span>
-                {% endif %}
-            </div>
-
-             {% if motorista.finalizada == 1 or motorista.cancelado == 1 %}
-                 <div class="info-block mt-4">
-                     <strong>Hora de Finalização:</strong> <span>{{ motorista.hora_finalizacao | formata_data_hora or '-' }}</span>
-                 </div>
-            {% endif %}
+         <div id="no-active-record" class="hidden text-gray-600 mt-4">
+             Nenhum registro ativo encontrado para esta matrícula.
+             <div id="no-record-status-display" class="status-card status-nao-encontrado mt-4">
+                 Nenhum registro ativo
+             </div>
+           </div>
 
 
-        {% else %}
-            <p class="error-message">{{ erro }}</p>
-        {% endif %}
-
-        <div class="text-center mt-6">
-            <a href="{{ url_for('login') }}" class="text-blue-600 hover:underline">Voltar para o Login</a>
+        <div class="mt-6">
+            <a href="{{ url_for('login') }}" class="text-blue-500 hover:underline">Voltar para o Login</a>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Obtém a matrícula da URL
+            const matricula = window.location.pathname.split('/').pop();
+
+            const loadingDiv = document.getElementById('loading');
+            const statusInfoDiv = document.getElementById('status-info');
+            const errorDiv = document.getElementById('error-message');
+            const statusDisplayDiv = document.getElementById('status-display');
+            const noActiveRecordDiv = document.getElementById('no-active-record');
+            const noRecordStatusDisplayDiv = document.getElementById('no-record-status-display');
+
+
+            const nomeSpan = document.getElementById('nome');
+            const matriculaSpan = document.getElementById('matricula');
+            const rotaSpan = document.getElementById('rota');
+            const tipoEntregaSpan = document.getElementById('tipo_entrega');
+            const cidadeEntregaSpan = document.getElementById('cidade_entrega');
+            const ruaParagraph = document.getElementById('rua-paragraph'); // O parágrafo completo da Rua
+            const ruaSpan = document.getElementById('rua'); // O span dentro do parágrafo da Rua
+            const gaiolaSpan = document.getElementById('gaiola');
+            const estacaoSpan = document.getElementById('estacao');
+            const dataHoraLoginSpan = document.getElementById('data_hora_login');
+
+            // Função helper para formatar campos, substituindo N/A ou vazios por 'Aguarde'
+            function formatField(value) {
+                if (value === 'N/A' || value === null || value === undefined || value.toString().trim() === '') {
+                    return 'Aguarde';
+                }
+                return value;
+            }
+
+            // Função para formatar a data e hora
+             function formatarDataHora(isoString) {
+                if (!isoString || isoString === 'N/A' || isoString.toString().trim() === '') { // Verifica também se é 'N/A'
+                    return 'Aguarde'; // Retorna 'Aguarde' se a string for nula, vazia ou 'N/A'
+                }
+                try {
+                    // Assume o formato AAAA-MM-DD - HH:MM:SS ou AAAA-MM-DD HH:MM:SS
+                    const parts = isoString.split(' - ');
+                    const datePart = parts[0];
+                    const timePart = parts.length > 1 ? parts[1] : isoString.split(' ')[1];
+
+                    const [year, month, day] = datePart.split('-').map(Number);
+                    const [hours, minutes, seconds] = timePart.split(':').map(Number);
+
+                    // Cria um objeto Date (mês é 0-indexado)
+                    const date = new Date(year, month - 1, day, hours, minutes, seconds);
+
+                    // Verifica se a data é válida
+                    if (isNaN(date.getTime())) {
+                        throw new Error('Data inválida');
+                    }
+
+                    const formattedDay = String(date.getDate()).padStart(2, '0');
+                    const formattedMonth = String(date.getMonth() + 1).padStart(2, '0'); // Mês é 0-indexado
+                    const formattedYear = date.getFullYear();
+                    const formattedHours = String(date.getHours()).padStart(2, '0');
+                    const formattedMinutes = String(date.getMinutes()).padStart(2, '0');
+
+                    return `${formattedDay}-${formattedMonth}-${formattedYear} ${formattedHours}:${formattedMinutes}`;
+                } catch (e) {
+                    console.error("Erro ao formatar data:", isoString, e);
+                    return 'Aguarde'; // Retorna 'Aguarde' em caso de erro na formatação
+                }
+            }
+
+
+            // Função para buscar e exibir o status
+            async function fetchStatus() {
+                try {
+                    // Chama a API que busca o registro ativo mais relevante pela matrícula
+                    const response = await fetch(`/api/status_registro_by_matricula/${matricula}`);
+                    const data = await response.json();
+
+                    loadingDiv.classList.add('hidden'); // Esconde a mensagem de carregamento
+
+                    if (response.ok) {
+                        // A API agora retorna diretamente o objeto do registro mais relevante
+                        const registro = data;
+
+                        // Adicionado log para inspecionar os dados recebidos
+                        console.log("Dados recebidos da API:", registro);
+
+                        // Adicionado bloco try...catch para depurar o processamento dos dados
+                        try {
+                            statusInfoDiv.classList.remove('hidden'); // Mostra o container de informações e status
+                            noActiveRecordDiv.classList.add('hidden'); // Garante que a mensagem de "nenhum registro" esteja escondida
+                            errorDiv.classList.add('hidden'); // Garante que a mensagem de erro esteja escondida
+
+                            // Preenche os spans com os dados do registro, usando formatField
+                            nomeSpan.textContent = formatField(registro.nome);
+                            matriculaSpan.textContent = formatField(registro.matricula);
+                            rotaSpan.textContent = formatField(registro.rota);
+                            tipoEntregaSpan.textContent = formatField(registro.tipo_entrega);
+                            cidadeEntregaSpan.textContent = formatField(registro.cidade_entrega);
+
+                            // Lógica para exibir a Rua apenas se o tipo_entrega for 'No-Show'
+                            if (registro.tipo_entrega === 'No-Show') {
+                                ruaParagraph.classList.remove('hidden'); // Mostra o parágrafo da Rua
+                                ruaSpan.textContent = formatField(registro.rua); // Formata o campo Rua também
+                            } else {
+                                ruaParagraph.classList.add('hidden'); // Esconde o parágrafo da Rua
+                                ruaSpan.textContent = ''; // Limpa o conteúdo do span caso esteja visível
+                            }
+
+                            // Preenche os spans de Gaiola e Estação, usando formatField
+                            gaiolaSpan.textContent = formatField(registro.gaiola);
+                            estacaoSpan.textContent = formatField(registro.estacao);
+                            dataHoraLoginSpan.textContent = formatarDataHora(registro.data_hora_login); // Usa a função de formatação de data/hora
+
+                            // Define o texto e a classe de cor do status usando os dados da API
+                            statusDisplayDiv.textContent = registro.status_text || 'Status Desconhecido';
+                            // Remove todas as classes de cor existentes antes de adicionar a nova
+                            statusDisplayDiv.className = 'status-card ' + (registro.status_class || 'bg-gray-500');
+
+                        } catch (processingError) {
+                            // Captura erros que ocorrem durante o processamento dos dados recebidos
+                            console.error("Erro ao processar dados da API:", processingError);
+                            statusInfoDiv.classList.add('hidden'); // Esconde as informações do registro
+                            noActiveRecordDiv.classList.add('hidden'); // Garante que a mensagem de "nenhum registro" esteja escondida
+                            errorDiv.classList.remove('hidden');
+                            errorDiv.textContent = 'Ocorreu um erro ao exibir os dados do registro.';
+                        }
+
+
+                    } else {
+                        // Se a API retornar 404 (Not Found) ou outro erro
+                        statusInfoDiv.classList.add('hidden'); // Esconde as informações do registro
+                        errorDiv.classList.add('hidden'); // Garante que a mensagem de erro padrão esteja escondida
+
+                        if (response.status === 404) {
+                             noActiveRecordDiv.classList.remove('hidden'); // Exibe a mensagem de nenhum registro ativo
+                             // O texto e a classe do card de status "Nenhum registro ativo" já estão definidos no HTML
+                           } else {
+                            // Exibe a mensagem de erro genérica ou a mensagem da API
+                            errorDiv.classList.remove('hidden');
+                            errorDiv.textContent = data.message || 'Não foi possível carregar o status do registro.';
+                            console.error('Erro ao buscar status:', data.message);
+                         }
+                    }
+
+                } catch (fetchError) {
+                    // Captura erros que ocorrem durante a requisição fetch
+                    console.error('Erro na requisição fetch:', fetchError);
+                    loadingDiv.classList.add('hidden');
+                    statusInfoDiv.classList.add('hidden'); // Esconde as informações do registro
+                    noActiveRecordDiv.classList.add('hidden'); // Garante que a mensagem de "nenhum registro" esteja escondida
+                    errorDiv.classList.remove('hidden');
+                    errorDiv.textContent = 'Ocorreu um erro ao comunicar com o servidor.';
+                }
+            }
+
+            // Busca o status quando a página carrega
+            fetchStatus();
+
+            // Opcional: Atualizar o status periodicamente (a cada 30 segundos)
+            // setInterval(fetchStatus, 30000);
+        });
+    </script>
 </body>
 </html>
