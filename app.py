@@ -751,22 +751,25 @@ def status_motorista(matricula):
     # Passa a matrícula para o template
     return render_template('status_motorista.html', matricula=matricula)
 
+# ... (seu código Flask existente da parte 1, 2 e 3 antes desta rota)
 
 # --- Nova rota API para buscar o status do registro mais recente não finalizado pela matrícula ---
 # --- Rota API para buscar o status do motorista pela matrícula ---
 @app.route('/api/status_registro_by_matricula/<string:matricula>', methods=['GET'])
 def api_status_registro_by_matricula(matricula):
     """
-    Busca o status do registro ativo mais relevante para uma dada matrícula,
-    priorizando 'registros' e verificando 'no_show' sob condições específicas,
-    incluindo correspondência de rota para no_show.
-    Retorna o registro encontrado, juntamente com seu status determinado.
+    Busca o status do registro ativo mais relevante para uma dada matrícula.
+    Prioriza o registro ativo em 'registros'. Se encontrado, verifica se há um
+    registro 'no_show' correspondente (matrícula '0001', status 3, mesma rota)
+    para combinar as informações de carregamento.
+    Retorna os dados combinados ou do registro de 'registros', ou o registro
+    'no_show' se a matrícula for '0001' e não houver registro em 'registros'.
     """
     print(f"DEBUG: /api/status_registro_by_matricula/{matricula} - Rota API acessada.")
     registro_registros = None
-    registro_noshow_candidato = None
-    registro_relevante = None
-    tabela_origem = None
+    registro_noshow_correspondente = None
+    response_data = None
+    tabela_origem = None # Para logs e depuração
 
     with get_db_connection() as conn:
         # 1. Tentar buscar o registro ativo mais recente na tabela 'registros' para a matrícula fornecida
@@ -780,11 +783,13 @@ def api_status_registro_by_matricula(matricula):
 
         if registro_registros_data:
             registro_registros = dict(registro_registros_data)
-            print(f"DEBUG: Encontrado registro ativo em 'registros' para matrícula {matricula} (ID: {registro_registros.get('id')}).")
+            print(f"DEBUG: Encontrado registro ativo em 'registros' para matrícula {matricula} (ID: {registro_registros.get('id')}, Rota: {registro_registros.get('rota')}, Status em_separacao: {registro_registros.get('em_separacao')}).")
 
-            # Se um registro em 'registros' foi encontrado, AGORA buscamos um candidato em 'no_show'
+            tabela_origem = 'registros' # Assume registros como origem inicial
+
+            # 2. Se um registro em 'registros' foi encontrado, buscar um candidato em 'no_show'
             # com matrícula '0001', status 3 E A MESMA ROTA do registro de 'registros'.
-            registro_noshow_candidato_data = conn.execute('''
+            registro_noshow_correspondente_data = conn.execute('''
                 SELECT *
                 FROM no_show
                 WHERE matricula = '0001'
@@ -797,118 +802,193 @@ def api_status_registro_by_matricula(matricula):
                 LIMIT 1
             ''', (registro_registros.get('rota'),)).fetchone() # Passa a rota do registro de 'registros' como parâmetro
 
-            if registro_noshow_candidato_data:
-                registro_noshow_candidato = dict(registro_noshow_candidato_data)
-                print(f"DEBUG: Encontrado registro candidato em 'no_show' (ID: {registro_noshow_candidato.get('id')}) com status 'Aguardando Motorista' e rota correspondente.")
-
-            # Agora, comparamos os dois (se houver um candidato no_show) para determinar o mais recente
-            data_registros_str = registro_registros.get('data_hora_login')
-            data_noshow_str = registro_noshow_candidato.get('data_hora_login') if registro_noshow_candidato else None
-
-            data_registros = None
-            data_noshow = None
-
-            try:
-                if data_registros_str:
-                    data_registros = datetime.strptime(data_registros_str, '%Y-%m-%d - %H:%M:%S')
-            except (ValueError, TypeError):
-                pass # Ignora erro de parsing
-
-            try:
-                if data_noshow_str:
-                    data_noshow = datetime.strptime(data_noshow_str, '%Y-%m-%d - %H:%M:%S')
-            except (ValueError, TypeError):
-                pass # Ignora erro de parsing
-
-
-            # Se houver um candidato no_show E ele for mais recente (ou igual) que o registro de registros
-            if registro_noshow_candidato and (not data_registros or (data_noshow and data_noshow >= data_registros)):
-                registro_relevante = registro_noshow_candidato
-                tabela_origem = 'no_show'
-                print(f"DEBUG: Registro No-Show ({registro_noshow_candidato.get('id')}) é o mais recente/relevante.")
+            if registro_noshow_correspondente_data:
+                registro_noshow_correspondente = dict(registro_noshow_correspondente_data)
+                print(f"DEBUG: Encontrado registro correspondente em 'no_show' (ID: {registro_noshow_correspondente.get('id')}, Rota: {registro_noshow_correspondente.get('rota')}, Status em_separacao: {registro_noshow_correspondente.get('em_separacao')}) com status 'Aguardando Motorista' e rota correspondente.")
+                # Neste cenário, a origem primária dos dados de exibição será o No-Show,
+                # mas combinando com dados do registro de registros.
+                tabela_origem = 'no_show_combinado'
             else:
-                # Caso contrário, o registro de registros é o mais relevante
-                registro_relevante = registro_registros
-                tabela_origem = 'registros'
-                print(f"DEBUG: Registro de Registros ({registro_registros.get('id')}) é o mais recente/relevante.")
+                 print(f"DEBUG: Nenhum registro correspondente em 'no_show' encontrado para a rota {registro_registros.get('rota')} com status 3 e matrícula '0001'.")
 
 
-        # 2.1. Se nenhum registro foi encontrado em 'registros' PARA ESTA MATRÍCULA,
-        # verificar a tabela 'no_show' APENAS se a matrícula pesquisada for '0001'.
-        # Esta busca em no_show NÃO precisa comparar rota aqui, pois não há registro de registros para comparar.
-        # Mas ainda busca por matrícula '0001' e status 3.
-        elif not registro_registros and matricula == '0001':
-             registro_noshow_data = conn.execute('''
-                 SELECT *
-                 FROM no_show
-                 WHERE matricula = '0001'
-                   AND finalizada = 0
-                   AND cancelado = 0
-                   AND em_separacao = 3 -- Busca especificamente por 'Aguardando Motorista'
-                   AND transferred_to_registro_id IS NULL
-                 ORDER BY data_hora_login DESC
-                 LIMIT 1
-             ''',).fetchone() # Não precisa passar '0001' como parâmetro se estiver fixo na query
+            # --- Preparar os dados de resposta ---
+            response_data = {}
 
-             if registro_noshow_data:
-                 registro_relevante = dict(registro_noshow_data)
-                 tabela_origem = 'no_show'
-                 print(f"DEBUG: Nenhum registro em 'registros' encontrado para matrícula {matricula}. Encontrado registro relevante em 'no_show' (ID: {registro_relevante.get('id')}).")
+            # Se um registro No-Show correspondente foi encontrado, combinar dados
+            if registro_noshow_correspondente:
+                print("DEBUG: Combinando dados de No-Show correspondente e Registros.")
+                # Dados do No-Show (rota, tipo_entrega, rua, gaiola, estacao, status, etc.)
+                response_data['id'] = registro_noshow_correspondente.get('id') # ID do registro No-Show
+                response_data['rota'] = registro_noshow_correspondente.get('rota')
+                response_data['tipo_entrega'] = registro_noshow_correspondente.get('tipo_entrega')
+                response_data['cidade_entrega'] = registro_noshow_correspondente.get('cidade_entrega') # Manter cidade do No-Show? Ou do registro? Mantendo do No-Show.
+                response_data['rua'] = registro_noshow_correspondente.get('rua')
+                response_data['gaiola'] = registro_noshow_correspondente.get('gaiola')
+                response_data['estacao'] = registro_noshow_correspondente.get('estacao')
+                response_data['em_separacao'] = registro_noshow_correspondente.get('em_separacao')
+                response_data['finalizada'] = registro_noshow_correspondente.get('finalizada')
+                response_data['cancelado'] = registro_noshow_correspondente.get('cancelado')
+                response_data['transferred_to_registro_id'] = registro_noshow_correspondente.get('transferred_to_registro_id')
+                response_data['hora_finalizacao'] = registro_noshow_correspondente.get('hora_finalizacao')
+                response_data['tabela_origem'] = tabela_origem # 'no_show_combinado'
 
+                # Dados do Registro de Registros (nome, matricula, data_hora_login, cpf, tipo_veiculo, login_id)
+                response_data['nome'] = registro_registros.get('nome')
+                response_data['matricula'] = registro_registros.get('matricula')
+                response_data['data_hora_login'] = registro_registros.get('data_hora_login') # Usar a data do registro de registros para a data/hora de chegada.
+                response_data['cpf'] = registro_registros.get('cpf')
+                response_data['tipo_veiculo'] = registro_registros.get('tipo_veiculo')
+                response_data['login_id'] = registro_registros.get('login_id')
 
-    # 3. Determinar o status do registro relevante encontrado (se houver)
-    if registro_relevante:
-        status_text = 'Status Desconhecido'
-        status_class = 'bg-gray-500' # Cor padrão
+                # Determinar status baseado no registro No-Show correspondente
+                if registro_noshow_correspondente.get('finalizada') == 1:
+                    status_text = 'Registro Finalizado'
+                    status_class = 'status-finalizado'
+                elif registro_noshow_correspondente.get('cancelado') == 1:
+                    status_text = 'Registro Cancelado'
+                    status_class = 'status-cancelado'
+                elif registro_noshow_correspondente.get('transferred_to_registro_id') is not None and registro_noshow_correspondente.get('em_separacao') == 4:
+                     status_text = 'Registro No-Show Transferido para Carregamento'
+                     status_class = 'status-transferido'
+                elif registro_noshow_correspondente.get('em_separacao') == 2:
+                    status_text = 'Liberado para Carregamento'
+                    status_class = 'status-carregamento-finalizado'
+                elif registro_noshow_correspondente.get('em_separacao') == 1:
+                    status_text = 'Em Separação (Aguardando Carregamento)'
+                    status_class = 'status-em-separacao'
+                elif registro_noshow_correspondente.get('em_separacao') == 3: # Status 3 no No-Show é "Aguardando Motorista"
+                     status_text = 'Aguardando Motorista (No-Show)'
+                     status_class = 'status-aguardando'
+                elif registro_noshow_correspondente.get('em_separacao') == 0:
+                    status_text = 'Aguardando Associação (No-Show)'
+                    status_class = 'status-aguardando'
+                else:
+                    status_text = 'Status Desconhecido (No-Show)'
+                    status_class = 'bg-gray-500'
 
-        # Lógica de status baseada no registro_relevante e sua tabela de origem
-        if registro_relevante.get('finalizada') == 1:
-            status_text = 'Registro Finalizado'
-            status_class = 'status-finalizado'
-        elif registro_relevante.get('cancelado') == 1:
-            status_text = 'Registro Cancelado'
-            status_class = 'status-cancelado'
-        # Verificar status específicos de no_show APENAS se a origem for 'no_show'
-        elif tabela_origem == 'no_show' and registro_relevante.get('transferred_to_registro_id') is not None and registro_relevante.get('em_separacao') == 4:
-             status_text = 'Registro No-Show Transferido para Carregamento'
-             status_class = 'status-transferido'
-        elif registro_relevante.get('em_separacao') == 2:
-            status_text = 'Liberado para Carregamento'
-            status_class = 'status-carregamento-finalizado'
-        elif registro_relevante.get('em_separacao') == 1:
-            status_text = 'Em Separação (Aguardando Carregamento)'
-            status_class = 'status-em-separacao'
-        elif registro_relevante.get('em_separacao') == 3 and tabela_origem == 'no_show':
-             status_text = 'Aguardando Motorista (No-Show)' # Mantido conforme sua escolha
-             status_class = 'status-aguardando' # Pode usar a mesma cor de aguardando associação ou outra
-        elif registro_relevante.get('em_separacao') == 0: # Este caso seria para registros normais em status 0
-            status_text = 'Aguardando Associação/Carregamento'
-            status_class = 'status-aguardando'
-
-        # Adiciona as informações de status e a tabela de origem ao dicionário do registro
-        registro_relevante['status_text'] = status_text
-        registro_relevante['status_class'] = status_class
-        registro_relevante['tabela_origem'] = tabela_origem
-
-        # Garantir que campos como 'rua', 'gaiola', 'estacao' estejam sempre presentes no dicionário retornado,
-        # mesmo que sejam None no banco de dados, para evitar erros no frontend.
-        # O frontend já usa || 'N/A', mas garantir a chave ajuda.
-        registro_relevante['rua'] = registro_relevante.get('rua')
-        registro_relevante['gaiola'] = registro_relevante.get('gaiola')
-        registro_relevante['estacao'] = registro_relevante.get('estacao')
-        # Adicionar outros campos essenciais que podem estar faltando em um dos tipos de registro
-        registro_relevante['nome'] = registro_relevante.get('nome')
-        registro_relevante['matricula'] = registro_relevante.get('matricula')
-        registro_relevante['rota'] = registro_relevante.get('rota')
-        registro_relevante['tipo_entrega'] = registro_relevante.get('tipo_entrega')
-        registro_relevante['cidade_entrega'] = registro_relevante.get('cidade_entrega')
-        registro_relevante['data_hora_login'] = registro_relevante.get('data_hora_login')
+                response_data['status_text'] = status_text
+                response_data['status_class'] = status_class
 
 
-        return jsonify(registro_relevante)
+            else:
+                # Se nenhum registro No-Show correspondente foi encontrado, usar dados do registro de registros
+                print("DEBUG: Usando dados do registro de Registros diretamente.")
+                response_data = dict(registro_registros)
+                response_data['tabela_origem'] = tabela_origem # 'registros'
+
+                # Determinar status baseado no registro de Registros
+                if registro_registros.get('finalizada') == 1:
+                    status_text = 'Registro Finalizado'
+                    status_class = 'status-finalizado'
+                elif registro_registros.get('cancelado') == 1:
+                    status_text = 'Registro Cancelado'
+                    status_class = 'status-cancelado'
+                elif registro_registros.get('em_separacao') == 2:
+                    status_text = 'Liberado para Carregamento'
+                    status_class = 'status-carregamento-finalizado'
+                elif registro_registros.get('em_separacao') == 1:
+                    status_text = 'Em Separação (Aguardando Carregamento)'
+                    status_class = 'status-em-separacao'
+                elif registro_registros.get('em_separacao') == 0:
+                    status_text = 'Aguardando Associação/Carregamento'
+                    status_class = 'status-aguardando'
+                else:
+                    status_text = 'Status Desconhecido (Registros)'
+                    status_class = 'bg-gray-500'
+
+                response_data['status_text'] = status_text
+                response_data['status_class'] = status_class
+
+                # Garantir que campos como 'rua', 'gaiola', 'estacao' estejam sempre presentes,
+                # mesmo que sejam None no banco de dados do registro de registros.
+                response_data['rua'] = response_data.get('rua')
+                response_data['gaiola'] = response_data.get('gaiola')
+                response_data['estacao'] = response_data.get('estacao')
+
+
+        else:
+            # 3. Se nenhum registro foi encontrado em 'registros' PARA ESTA MATRÍCULA,
+            # verificar a tabela 'no_show' APENAS se a matrícula pesquisada for '0001'.
+            # Busca o registro No-Show com status 3 (Aguardando Motorista).
+            if matricula == '0001':
+                 registro_noshow_data = conn.execute('''
+                     SELECT *
+                     FROM no_show
+                     WHERE matricula = '0001'
+                       AND finalizada = 0
+                       AND cancelado = 0
+                       AND em_separacao = 3 -- Busca especificamente por 'Aguardando Motorista'
+                       AND transferred_to_registro_id IS NULL
+                     ORDER BY data_hora_login DESC
+                     LIMIT 1
+                 ''',).fetchone()
+
+                 if registro_noshow_data:
+                     response_data = dict(registro_noshow_data)
+                     tabela_origem = 'no_show_direto' # Indica que veio direto do no_show sem registro em registros
+                     print(f"DEBUG: Nenhum registro em 'registros' encontrado para matrícula {matricula}. Encontrado registro relevante em 'no_show' (ID: {response_data.get('id')}) diretamente.")
+
+                     # Determinar status baseado no registro No-Show
+                     if response_data.get('finalizada') == 1:
+                         status_text = 'Registro Finalizado'
+                         status_class = 'status-finalizado'
+                     elif response_data.get('cancelado') == 1:
+                         status_text = 'Registro Cancelado'
+                         status_class = 'status-cancelado'
+                     elif response_data.get('transferred_to_registro_id') is not None and response_data.get('em_separacao') == 4:
+                          status_text = 'Registro No-Show Transferido para Carregamento'
+                          status_class = 'status-transferido'
+                     elif response_data.get('em_separacao') == 2:
+                         status_text = 'Liberado para Carregamento'
+                         status_class = 'status-carregamento-finalizado'
+                     elif response_data.get('em_separacao') == 1:
+                         status_text = 'Em Separação (Aguardando Carregamento)'
+                         status_class = 'status-em-separacao'
+                     elif response_data.get('em_separacao') == 3: # Status 3 no No-Show é "Aguardando Motorista"
+                          status_text = 'Aguardando Motorista (No-Show)'
+                          status_class = 'status-aguardando'
+                     elif response_data.get('em_separacao') == 0:
+                         status_text = 'Aguardando Associação (No-Show)'
+                         status_class = 'status-aguardando'
+                     else:
+                         status_text = 'Status Desconhecido (No-Show Direto)'
+                         status_class = 'bg-gray-500'
+
+                     response_data['status_text'] = status_text
+                     response_data['status_class'] = status_class
+
+                     # Garantir que campos essenciais estejam presentes
+                     response_data['nome'] = response_data.get('nome')
+                     response_data['matricula'] = response_data.get('matricula')
+                     response_data['rota'] = response_data.get('rota')
+                     response_data['tipo_entrega'] = response_data.get('tipo_entrega')
+                     response_data['cidade_entrega'] = response_data.get('cidade_entrega')
+                     response_data['data_hora_login'] = response_data.get('data_hora_login')
+                     response_data['rua'] = response_data.get('rua')
+                     response_data['gaiola'] = response_data.get('gaiola')
+                     response_data['estacao'] = response_data.get('estacao')
+
+
+                 else:
+                     print(f"DEBUG: Nenhum registro em 'registros' encontrado para matrícula {matricula} E nenhum registro relevante em 'no_show' (matrícula '0001', status 3) encontrado.")
+                     # response_data permanece None
+            else:
+                 print(f"DEBUG: Matrícula {matricula} não é '0001' e nenhum registro em 'registros' encontrado.")
+                 # response_data permanece None
+
+
+    # --- Retornar resposta ---
+    if response_data:
+        print(f"DEBUG: Dados de resposta preparados (Origem: {tabela_origem}): {response_data}")
+        return jsonify(response_data)
     else:
         print(f"DEBUG: /api/status_registro_by_matricula/{matricula} - Nenhum registro ativo relevante encontrado para a matrícula.")
-        return jsonify({'message': 'Nenhum registro ativo encontrado para esta matrícula.'}), 404 # Retorna 404 Not Found
+        # Retorna 404 Not Found com uma mensagem JSON
+        return jsonify({'message': 'Nenhum registro ativo encontrado para esta matrícula.'}), 404
+
+# ... (o restante do seu código Flask existente após esta rota)
+
 
 #Fim status Motorista
 
@@ -1466,7 +1546,8 @@ def exibir_midia():
 # --- Rota API para retornar registros 'no_show' aguardando motorista ---
 @app.route('/api/noshow/aguardando-motorista', methods=['GET'])
 def api_noshow_aguardando_motorista():
-    """Retorna registros da tabela 'no_show' com status 'Aguardando Motorista' (em_separacao = 3) em JSON."""
+    """Retorna registros da tabela 'no_show' com status 'Aguardando Motorista'
+     (em_separacao = 3) em JSON."""
     print("DEBUG: /api/noshow/aguardando-motorista - Rota acessada.")
     with get_db_connection() as conn:
         # Busca registros na tabela 'no_show' que estão 'Aguardando Motorista' (em_separacao = 3)
