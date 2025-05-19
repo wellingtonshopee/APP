@@ -3,18 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <title>Registros Normal</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Estilos mantidos sem alterações */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Tailwind gray-100 */
+            margin: 0;
+            /* Ajuste o padding-top para acomodar o banner com os filtros */
+            padding-top: 120px; /* Altura do banner + filtros */
+            transition: margin-left 0.3s ease; /* Adiciona transição para o conteúdo principal */
+        }
+
+        /* Estilo para o overlay quando o menu está aberto */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999; /* Abaixo do sidebar, mas acima do conteúdo */
+            display: none; /* Inicialmente oculto */
+        }
+
+        /* Estilos para o menu lateral */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -250px; /* Começa fora da tela */
+            width: 250px;
+            height: 100%;
+            background-color: #1f2937; /* Tailwind gray-800 */
+            color: white;
+            transition: left 0.3s ease;
+            z-index: 1000; /* Acima de tudo */
+            padding-top: 60px; /* Espaço para o banner ou topo */
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
+            overflow-y: auto; /* Permite scroll se o conteúdo for longo */
+        }
+
+        .sidebar.open {
+            left: 0; /* Entra na tela */
+        }
+
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar ul li {
+            padding: 15px 20px;
+            border-bottom: 1px solid #374151; /* Tailwind gray-700 */
+        }
+
+        .sidebar ul li:last-child {
+            border-bottom: none;
+        }
+
+        .sidebar ul li a {
+            color: white;
+            text-decoration: none;
+            font-size: 0.95em; /* Fonte diminuída conforme solicitado */
+            display: block; /* Torna o link clicável em toda a área do li */
+            transition: color 0.2s ease;
+        }
+
+        .sidebar ul li a:hover {
+            color: #9ca3af; /* Tailwind gray-400 */
+        }
+
+        /* Estilo para o botão de toggle do menu */
+        .sidebar-toggle {
+            position: fixed;
+            top: 15px; /* Ajuste conforme a altura do seu banner */
+            left: 15px;
+            z-index: 1001; /* Acima do sidebar */
+            background-color: #10b981; /* Tailwind emerald-500 */
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1.2em;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.2s ease;
+        }
+
+        .sidebar-toggle:hover {
+            background-color: #059669; /* Tailwind emerald-600 */
+        }
+
+
         .banner {
             background-color: #f30909;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
+            right: 0;
+            /* Altura ajustada para acomodar o conteúdo e os filtros */
+            height: 120px;
             z-index: 1000;
-            padding: 15px 0;
+            padding: 0;
+            display: flex; /* Usa flexbox para organizar conteúdo e filtros */
+            flex-direction: column; /* Empilha conteúdo e filtros verticalmente */
+            justify-content: center; /* Centraliza conteúdo verticalmente */
+            align-items: center; /* Centraliza conteúdo horizontalmente */
         }
 
         .banner-content {
@@ -24,12 +123,17 @@
             max-width: 1200px;
             margin: 0 auto;
             width: 100%;
+            padding: 0 20px; /* Adiciona padding horizontal */
+            box-sizing: border-box; /* Inclui padding no cálculo da largura */
+            height: 80px; /* Altura para o logo e título */
         }
 
         .banner .logo {
             height: 50px;
             width: auto;
             margin-right: 20px;
+            border-radius: 8px; /* Adiciona borda arredondada */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Adiciona sombra */
         }
 
         .banner h1 {
@@ -38,31 +142,59 @@
             font-size: 24px;
             margin: 0;
             color: white;
+            font-weight: 700; /* Tailwind font-bold */
         }
 
+        /* Estilos para o novo botão "Menu" no banner - REMOVIDO */
+
+
         .filters {
-            margin-top: 10px;
+            /* Removido margin-top, padding e max-width */
             display: flex;
             flex-wrap: wrap;
             align-items: center;
             gap: 10px;
-            max-width: 1200px;
-            margin: 15px auto;
+            justify-content: center; /* Centraliza os filtros */
+            width: 100%; /* Ocupa a largura total do banner */
+            padding: 0 20px 10px 20px; /* Padding horizontal e inferior */
+            box-sizing: border-box;
         }
 
-        .filters input,
-        .filters select {
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+        .filters label {
+            color: white; /* Cor branca para os labels de data */
+            font-size: 14px;
         }
 
-        body {
-            padding-top: 180px;
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
+        .filters input[type="date"],
+        .filters input[type="text"],
+        .filters select,
+        .filters button {
+            padding: 6px 8px; /* Diminuído padding */
+            border: 1px solid #d1d5db; /* Tailwind gray-300 */
+            border-radius: 4px; /* Tailwind rounded-md */
+            font-size: 13px; /* Diminuído tamanho da fonte */
+            background-color: #fff; /* Fundo branco para inputs */
+            color: #374151; /* Cor do texto */
+            /* Ajuste a largura dos campos de texto e select se necessário */
+            width: auto; /* Largura automática baseada no conteúdo/padding */
+            min-width: 100px; /* Largura mínima */
         }
+
+        .filters button {
+            background-color: #10b981; /* Tailwind emerald-500 */
+            color: white;
+            font-weight: 600; /* Tailwind font-semibold */
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* Tailwind shadow-md */
+        }
+
+        .filters button:hover {
+            background-color: #059669; /* Tailwind emerald-600 */
+        }
+
+        /* Estilo específico para o botão de Exportar - REMOVIDO */
+
 
         .container {
             padding: 20px;
@@ -73,355 +205,560 @@
         .cards {
             display: flex;
             flex-wrap: wrap;
-            justify-content: space-around;
+            justify-content: center; /* Centraliza os cards */
+            gap: 20px; /* Espaço entre os cards */
             margin-top: 30px;
         }
 
         .card {
-            width: 300px;
+            /* Ajuste o tamanho dos cards */
+            width: 250px; /* Reduzido de 300px para 250px */
             background-color: #f9f9f9;
-            margin: 15px;
-            padding: 20px;
+            margin: 0; /* Remove margin individual, usa gap do flexbox */
+            padding: 15px; /* Reduzido padding */
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            cursor: pointer;
-            transition: transform 0.3s;
+            cursor: pointer; /* Mantido cursor pointer, mas a função JS impede a ação para finalizados */
+            transition: transform 0.3s ease, border-color 0.3s ease, background-color 0.3s ease; /* Adiciona transição para cores */
             position: relative;
             border: 2px solid transparent;
+            box-sizing: border-box; /* Inclui padding e border no cálculo da largura */
         }
+
+        /* Adiciona um estilo visual para cards finalizados para indicar que não são clicáveis */
+        .card.finalizado {
+             cursor: default; /* Altera o cursor para indicar que não é clicável */
+             opacity: 0.7; /* Opcional: Diminui a opacidade */
+        }
+
 
         .card:hover {
-            transform: scale(1.05);
+            transform: translateY(-5px); /* Efeito de levantar */
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15); /* Sombra mais pronunciada */
         }
+
+        /* Remove o efeito hover para cards finalizados */
+        .card.finalizado:hover {
+            transform: none;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Retorna a sombra padrão */
+        }
+
 
         .card p {
-            margin: 5px 0;
-            font-size: 14px;
+            margin: 4px 0; /* Reduzido margin vertical */
+            font-size: 13px; /* Reduzido tamanho da fonte */
+            color: #333; /* Cor do texto padrão */
         }
 
+        .card p strong {
+            font-weight: 600; /* Tailwind font-semibold */
+            color: #1f2937; /* Tailwind gray-800 */
+        }
+
+
+        /* Estilos para as classes de status (fundo e borda) */
+        /* Mantendo estas classes para compatibilidade, mas a lógica do label usa as novas */
         .card.separado {
-            background-color: #ffcccc;
-            border-color: red;
-        }
-
-        .card.separado::after {
-            content: "Em Separação";
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background-color: red;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: bold;
+            background-color: #fee2e2; /* Tailwind red-100 */
+            border-color: #ef4444; /* Tailwind red-500 */
         }
 
         .card.finalizado {
-            border-color: green;
-            background-color: #e6ffe6;
+            background-color: #d1fae5; /* Tailwind green-100 */
+            border-color: #34d399; /* Tailwind green-400 */
         }
 
-        .card.finalizado::before {
-            content: "Finalizado";
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background-color: green;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: bold;
-        }
-
-        .finalizado-label {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background-color: green;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 12px;
-        }
-
-        .aguardando-label {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background-color: #f39c12;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 12px;
-        }
-
-        .aguardando-carregamento-label {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background-color: #808080;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 12px;
-        }
-
-        a {
-            display: inline-block;
-            margin-top: 20px;
-            padding: 10px 20px;
-            background-color: #4CAF50;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-        }
-
-        a:hover {
-            background-color: #f12704;
-        }
-
-        .em-separacao-label {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background-color: red;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 12px;
-        }
-
-        /* Novas classes para as cores de fundo e borda */
         .card.aguardando-carregamento {
-            background-color: #e0e0e0;
-            border-color: #808080;
+            background-color: #e5e7eb; /* Tailwind gray-200 */
+            border-color: #6b7280; /* Tailwind gray-500 */
         }
 
         .card.aguardando-finalizacao {
-            background-color: #ffe0b2;
-            border-color: #f39c12;
+            background-color: #fffbeb; /* Tailwind yellow-100 */
+            border-color: #f59e0b; /* Tailwind amber-500 */
+        }
+
+        /* Estilos para os labels de status */
+        .status-label {
+            position: absolute;
+            top: 8px; /* Ajustado posição */
+            right: 8px; /* Ajustado posição */
+            /* Ajustes para tornar o rótulo mais visível */
+            padding: 3px 6px; /* Aumentado padding */
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 13px; /* Aumentado tamanho da fonte */
+            color: white;
+            z-index: 10;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); /* Adicionado sombra para destaque */
+        }
+
+        /* NOVAS CLASSES DE STATUS LABEL PARA CONSISTÊNCIA */
+        /* ATENÇÃO: em-fila-label agora representa 'Aguardando Carregar' */
+        .em-fila-label { background-color: #dc2626; } /* Vermelho (similar a status-em-fila) */
+        .em-separacao-label { background-color: #c0392b; } /* Vermelho escuro (mantido) */
+        .carregamento-concluido-label { background-color: #f59e0b; } /* Laranja (similar a status-carregamento-concluido) */
+        .finalizado-label { background-color: #6c757d; } /* Cinza (similar a status-finalizado) */
+        .cancelado-label { background-color: #dc2626; } /* Vermelho (mantido) */
+
+
+        /* Estilos para a paginação (se ainda for usada, mas a atualização automática pode reduzir a necessidade) */
+        .paginacao {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .paginacao a, .paginacao strong {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 0 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #333;
+        }
+        .paginacao strong {
+            background-color: #ddd;
+        }
+
+
+        /* Media Queries para responsividade */
+        @media (max-width: 768px) {
+            body {
+                padding-top: 180px; /* Ajusta padding do body para o banner maior em telas pequenas */
+            }
+            .banner {
+                height: auto; /* Altura automática para acomodar filtros empilhados */
+            }
+            .banner-content {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                height: auto; /* Altura automática */
+                padding-bottom: 10px; /* Espaço entre banner-content e filters */
+            }
+            .banner h1 {
+                text-align: center;
+                margin-left: 0;
+                margin-top: 10px;
+            }
+            .banner .logo {
+                margin-right: 0;
+            }
+            .filters {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 5px; /* Espaço menor entre filtros empilhados */
+            }
+            .filters input,
+            .filters select,
+            .filters button {
+                width: 100%;
+                box-sizing: border-box;
+                min-width: auto; /* Remove largura mínima em telas pequenas */
+            }
+            .card {
+                width: 95%; /* Cards ocupam quase toda a largura em telas pequenas */
+            }
+            .sidebar {
+                width: 200px; /* Ajusta largura do sidebar em telas menores */
+                left: -200px;
+            }
+            .sidebar.open {
+                left: 0;
+            }
+            .sidebar-toggle {
+                top: 10px; /* Ajusta posição do botão em telas menores */
+                left: 10px;
+            }
+            /* banner-menu-button styles REMOVIDOS */
         }
     </style>
 </head>
 <body class="pagina-registros">
+
+    {# Botão para abrir/fechar o menu lateral #}
+    <button class="sidebar-toggle" id="sidebarToggle">☰</button>
+
+    {# Menu Lateral #}
+    <aside class="sidebar" id="sidebar">
+        <ul>
+            {# NOVO BOTÃO ADICIONADO AQUI #}
+            <li><a href="{{ url_for('menu_principal') }}">Página Inicial</a></li>
+            <li><a href="{{ url_for('menu_principal') }}">Página Inicial</a></li>
+            <li><a href="{{ url_for('associacao_no_show') }}">Criar Registro No-Show</a></li>
+            <li><a href="{{ url_for('registro_no_show') }}">Listar Registros No-Show</a></li>
+            <li><a href="{{ url_for('registros_finalizados') }}">Listar Registros Finalizados</a></li>
+            <li><a href="{{ url_for('painel_final') }}">Painel Final</a></li>
+        </ul>
+    </aside>
+
+    {# Overlay para fechar o menu ao clicar fora #}
+    <div class="overlay" id="overlay"></div>
+
     <div class="banner">
         <div class="banner-content">
             <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" class="logo" alt="Logo">
             <h1>Fila de Carregamento - Sistema de Gerenciamento Operacional</h1>
+            {# Botão "Menu" no banner - REMOVIDO #}
         </div>
+        {# Filtros movidos para dentro do banner #}
         <div class="filters">
-            <input type="date" id="data" value="{{ data }}" onchange="filtrarPorData()">
-            <input type="text" id="filtroRota" placeholder="Filtrar por Rota" oninput="aplicarFiltros()">
-            <input type="text" id="filtroCidade" placeholder="Filtrar por Cidade" oninput="aplicarFiltros()" list="listaCidades">
+            {# Filtro de Data Range #}
+            <div>
+                <label for="dataInicio">De:</label>
+                <input type="date" id="dataInicio" value="{{ data_inicio }}" onchange="aplicarFiltros()"> {# Usa data_inicio passada pelo Flask #}
+            </div>
+            <div>
+                <label for="dataFim">Até:</label>
+                <input type="date" id="dataFim" value="{{ data_fim }}" onchange="aplicarFiltros()"> {# Usa data_fim passada pelo Flask #}
+            </div>
+
+            <input type="text" id="filtroRota" placeholder="Filtrar por Rota" oninput="aplicarFiltros()" value="{{ rota }}">
+            <input type="text" id="filtroCidade" placeholder="Filtrar por Cidade" oninput="aplicarFiltros()" list="listaCidades" value="{{ cidade }}">
             <datalist id="listaCidades">
                 {% for cidade in cidades %}
                 <option value="{{ cidade }}">
                 {% endfor %}
             </datalist>
             <select id="filtroEntrega" onchange="aplicarFiltros()">
-                <option value="">Todos os Tipos</option>
-                <option value="Normal">Normal</option>
-                <option value="No-Show">No-Show</option>
+                <option value="" {% if tipo_entrega == '' %}selected{% endif %}>Todos os Tipos</option>
+                <option value="Normal" {% if tipo_entrega == 'Normal' %}selected{% endif %}>Normal</option>
+                <option value="No-Show" {% if tipo_entrega == 'No-Show' %}selected{% endif %}>No-Show</option>
             </select>
             <select id="filtroSeparacao" onchange="aplicarFiltros()">
-                <option value="">Todos</option>
-                <option value="0">Aguardando Carregamento</option>
-                <option value="1">Em Separação</option>
-                <option value="2">Aguardando Finalização</option>
-                <option value="3">Finalizado</option>
+                <option value="" {% if em_separacao == '' %}selected{% endif %}>Todos</option>
+                <option value="0" {% if em_separacao == '0' %}selected{% endif %}>Aguardando Carregar</option>
+                <option value="1" {% if em_separacao == '1' %}selected{% endif %}>Em Separação</option>
+                <option value="3" {% if em_separacao == '3' %}selected{% endif %}>Finalizado</option>
+                {# O status 3 (Finalizado) é tratado pelo filtro de Finalizado (REMOVIDO) #}
             </select>
-            <select id="filtroFinalizado" onchange="aplicarFiltros()">
-                <option value="">Todos</option>
-                <option value="1">Finalizados</option>
-                <option value="0">Não Finalizados</option>
-            </select>
+            {# Filtro Finalizado - REMOVIDO #}
+
             <button onclick="limparFiltro()">Limpar Filtro</button>
+            {# Botão Exportar - REMOVIDO #}
         </div>
     </div>
 
     <div class="container">
         <div class="cards" id="cardsContainer">
-            {% for r in registros %}
-            <div class="card
-                {% if r.em_separacao == 1 %}separado{% endif %}
-                {% if r.finalizado == 1 %}finalizado{% endif %}
-                {% if r.em_separacao == 0 and r.finalizado == 0 %}aguardando-carregamento{% endif %}
-                {% if r.em_separacao == 2 and r.finalizado == 0 %}aguardando-finalizacao{% endif %}
-                "
-                onclick="abrirRegistro({{ r.id }})"  {# Modifiquei esta linha #}
-                data-id="{{ r.id }}"
-                data-rota="{{ r.rota|lower }}"
-                data-cidade="{{ r.cidade_entrega|lower }}"
-                data-entrega="{{ r.tipo_entrega|lower }}"
-                data-separacao="{{ r.em_separacao }}"
-                data-finalizado="{{ r.finalizado }}" > {# Adicionado data-finalizado #}
-                <p><strong>Nome:</strong> {{ r.nome }}</p>
-                <p><strong>Matrícula:</strong> {{ r.matricula }}</p>
-                <p><strong>Rota:</strong> <em>{{ r.rota }}</em></p>
-                <p><strong>Cidade:</strong> <em>{{ r.cidade_entrega }}</em></p>
-                <p><strong>Entrega:</strong> <em>{{ r.tipo_entrega }}</em></p>
-                <p><strong>Data/Hora:</strong> {{ r.data_hora_login|formata_data_hora }}</p>
-                <p><strong>Finalizado:</strong> {% if r.hora_finalizacao %}{{ r.hora_finalizacao|formata_data_hora }}{% else %}Não Finalizado{% endif %}</p> {# Modificado para exibir data/hora #}
-                {% if r.em_separacao == 0 %}
-                    <span class="aguardando-carregamento-label">Aguardando Carregamento</span>
-                {% elif r.em_separacao == 1 %}
-                    <span class="em-separacao-label">Em Separação</span>
-                {% elif r.em_separacao == 2 %}
-                    <span class="aguardando-label">Aguardando Finalização</span>
-                {% elif r.em_separacao == 3 %}
-                    <span class="finalizado-label">Finalizado</span>
-                {% endif %}
+            {# Loop Jinja2 para renderizar os registros passados pela rota Flask #}
+            {% if registros %}
+                {% for r in registros %}
+                <div class="card
+                    {# As classes de fundo do card podem ser mantidas ou ajustadas para as novas classes de label #}
+                    {% if r.em_separacao == 1 %}separado{% endif %} {# Mantido, cor de fundo vermelha clara #}
+                    {% if r.finalizada == 1 %}finalizado{% endif %} {# CORRIGIDO: use r.finalizada aqui #}
+                    {% if r.em_separacao == 0 and r.finalizada == 0 and r.cancelado == 0 %}aguardando-carregamento{% endif %} {# CORRIGIDO: use r.finalizada aqui #}
+                    {% if r.em_separacao == 2 and r.finalizada == 0 %}aguardando-finalizacao{% endif %} {# CORRIGIDO: use r.finalizada aqui #}
+                    {# Adiciona classe para No-Show para possível estilo visual diferente do card #}
+                    {% if r.tipo_entrega == 'No-Show' %}noshow-card{% endif %}
+                    "
+                    {# CORRIGIDO: use r.finalizada aqui para passar o valor correto #}
+                    onclick="abrirRegistro({{ r.id }}, {{ r.finalizada | int }})"
+                    data-id="{{ r.id }}"
+                    data-rota="{{ r.rota|lower }}"
+                    data-cidade="{{ r.cidade_entrega|lower }}"
+                    data-entrega="{{ r.tipo_entrega|lower }}"
+                    data-separacao="{{ r.em_separacao }}"
+                    data-finalizado="{{ r.finalizada }}" > {# CORRIGIDO: use r.finalizada aqui #}
+                    <p><strong>Data\Hora:</strong> {{ r.data_hora_login|formata_data_hora }}</p>
+                    <p><strong>Nome:</strong> {{ r.nome }}</p>
+                    <p><strong>Matrícula:</strong> {{ r.matricula }}</p>
+                    <p><strong>Rota:</strong> <em>{{ r.rota }}</em></p>
+                    <p><strong>Tipo de Entrega:</strong> <em>{{ r.tipo_entrega }}</em></p>
+                    <p><strong>Cidade:</strong> <em>{{ r.cidade_entrega }}</em></p>
+                    {# Use o filtro formata_data_hora se ele estiver registrado no seu app Flask #}
+                    {# CORRIGIDO: use r.finalizada aqui na condição #}
+                    <p><strong>Data\Hora:</strong> {% if r.hora_finalizacao %}{{ r.hora_finalizacao|formata_data_hora }}{% else %}Não Finalizado{% endif %}</p> {# Modificado para exibir data/hora #}
 
-                <form method="POST" action="{{ url_for('registros', data=request.args.get('data')) }}" style="display:none;">
-                    <input type="hidden" name="registro_id" value="{{ r.id }}">
-                    <label>
-                        <input type="checkbox"
-                               name="em_separacao"
-                               {% if r.em_separacao %}checked disabled{% endif %}
-                               onclick="if (this.checked) return true; else return false;"
-                               onchange="if (this.checked) { this.form.submit(); this.disabled = true; }">
-                        Em Separação
-                    </label>
-                </form>
-            </div>
-            {% endfor %}
+                    {# --- Lógica de Status Labels AJUSTADA para consistência e clareza --- #}
+                    {% set status_text = '' %}
+                    {% set status_class = '' %}
+
+                    {# Prioriza Finalizado e Cancelado #}
+                    {% if r.finalizada == 1 %} {# CORRIGIDO: use r.finalizada aqui #}
+                        {% set status_text = 'Finalizado' %}
+                        {% set status_class = 'finalizado-label' %} {# Cinza #}
+                    {% elif r.cancelado == 1 %}
+                        {% set status_text = 'Cancelado' %}
+                        {% set status_class = 'cancelado-label' %} {# Vermelho #}
+                    {% else %}
+                        {# Se não finalizado/cancelado, verifica em_separacao #}
+                        {% if r.em_separacao == 0 %}
+                            {% set status_text = 'Aguardando Carregar' %}
+                            {% set status_class = 'em-fila-label' %} {# NOVA CLASSE: Vermelho #}
+                        {% elif r.em_separacao == 1 %}
+                            {% set status_text = 'Em Separação' %} {# Mantendo "Em Separação" para status 1 na tabela 'registros' #}
+                            {% set status_class = 'em-separacao-label' %} {# Vermelho escuro #}
+                        {% elif r.em_separacao == 2 %}
+                            {% set status_text = 'Carregamento Concluído' %}
+                            {% set status_class = 'carregamento-concluido-label' %} {# NOVA CLASSE: Laranja #}
+                        {% elif r.em_separacao == 3 %} {# Status 3 na tabela 'registros' é setado APÓS finalização (transferência) #}
+                             {% set status_text = 'Finalizado (Transferido)' %} {# Texto para clareza se em_separacao=3 é atingido #}
+                             {% set status_class = 'finalizado-label' %} {# Cinza #}
+                        {% else %}
+                            {% set status_text = 'Status Desconhecido' %}
+                            {% set status_class = 'aguardando-carregamento-label' %} {# Fallback class (cinza) #}
+                        {% endif %}
+                    {% endif %}
+
+                    {# Adiciona "(No-Show)" ao texto do status se for tipo No-Show #}
+                    {% if r.tipo_entrega == 'No-Show' %}
+                        {% set status_text = status_text  %}
+                    {% endif %}
+
+                    {# Exibe o label se o texto do status não estiver vazio #}
+                    {% if status_text %}
+                        <span class="status-label {{ status_class }}">{{ status_text }}</span>
+                    {% endif %}
+                    {# --- FIM Lógica de Status Labels AJUSTADA --- #}
+
+                    {# Removido o formulário de checkbox que não era usado #}
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-center text-gray-600 mt-8">Nenhum registro encontrado.</p>
+            {% endif %}
         </div>
 
+        {# Bloco de paginação usando as variáveis passadas pela rota Flask #}
+        <div class="paginacao">
+            {% if total_paginas > 1 %}
+                <span>Página {{ pagina }} de {{ total_paginas }}</span>
+                <br>
+                {% if pagina > 1 %}
+                    <a href="{{ url_for('registros', pagina=pagina-1, rota=request.args.get('rota'), tipo_entrega=request.args.get('tipo_entrega'), cidade=request.args.get('cidade'), em_separacao=request.args.get('em_separacao'), data_inicio=request.args.get('data_inicio'), data_fim=request.args.get('data_fim')) }}">Anterior</a> {# Atualizado URL com data_inicio e data_fim #}
+                {% endif %}
+                {% for p in range(1, total_paginas + 1) %}
+                    {% if p == pagina %}
+                        <strong>{{ p }}</strong>
+                    {% elif p >= pagina - 2 and p <= pagina + 2 %} {# Limita a exibição de números de página #}
+                        <a href="{{ url_for('registros', pagina=p, rota=request.args.get('rota'), tipo_entrega=request.args.get('tipo_entrega'), cidade=request.args.get('cidade'), em_separacao=request.args.get('em_separacao'), data_inicio=request.args.get('data_inicio'), data_fim=request.args.get('data_fim')) }}">{{ p }}</a> {# Atualizado URL com data_inicio e data_fim #}
+                    {% elif p == 1 or p == total_paginas or (p == pagina - 3 and pagina > 4) or (p == pagina + 3 and pagina < total_paginas - 3) %}
+                        ... {# Adiciona reticências para saltos maiores #}
+                    {% endif %}
+                {% endfor %}
+                {% if pagina < total_paginas %}
+                    <a href="{{ url_for('registros', pagina=pagina+1, rota=request.args.get('rota'), tipo_entrega=request.args.get('tipo_entrega'), cidade=request.args.get('cidade'), em_separacao=request.args.get('em_separacao'), data_inicio=request.args.get('data_inicio'), data_fim=request.args.get('data_fim')) }}">Próxima</a> {# CORRIGIDO: Texto do link para "Próxima" #}
+                {% endif %}
+            {% elif registros and total_paginas == 1 %}
+                 {# Exibe "Página 1 de 1" mesmo se houver apenas 1 página e registros #}
+                 <span>Página 1 de 1</span>
+            {% endif %}
+        </div>
     </div>
 
     <script>
+        // Função para formatar data e hora (Mantida, embora o filtro Jinja2 seja usado na renderização inicial)
+        function formatarDataHora(isoString) {
+            if (!isoString || isoString === 'N/A' || isoString.toString().trim() === '') {
+                return 'Não Finalizado';
+            }
+            try {
+                let date = new Date(isoString);
+
+                if (isNaN(date.getTime())) {
+                    const parts = isoString.split(' ');
+                    if (parts.length === 2) {
+                        const dateParts = parts[0].split('-');
+                        const timeParts = parts[1].split(':');
+                        if (dateParts.length === 3 && timeParts.length >= 2) {
+                             const year = parseInt(dateParts[0]);
+                             const month = parseInt(dateParts[1]) - 1; // Mês é 0-indexado
+                             const day = parseInt(dateParts[2]);
+                             const hours = parseInt(timeParts[0]);
+                             const minutes = parseInt(timeParts[1]);
+                             const seconds = timeParts.length > 2 ? parseInt(timeParts[2]) : 0;
+                             date = new Date(year, month, day, hours, minutes, seconds);
+                        }
+                    }
+                    if (isNaN(date.getTime())) {
+                         // Tenta parsear o formato "DD-MM-YYYY HH:MM"
+                         const parts = isoString.split(' ');
+                         if (parts.length === 2) {
+                             const dateParts = parts[0].split('-');
+                             const timeParts = parts[1].split(':');
+                             if (dateParts.length === 3 && timeParts.length >= 2) {
+                                 const day = parseInt(dateParts[0]);
+                                 const month = parseInt(dateParts[1]) - 1; // Mês é 0-indexado
+                                 const year = parseInt(dateParts[2]);
+                                 const hours = parseInt(timeParts[0]);
+                                 const minutes = parseInt(timeParts[1]);
+                                 date = new Date(year, month, day, hours, minutes);
+                             }
+                         }
+                         if (isNaN(date.getTime())) {
+                             throw new Error('Data inválida');
+                         }
+                    }
+                }
+
+
+                const formattedDay = String(date.getDate()).padStart(2, '0');
+                const formattedMonth = String(date.getMonth() + 1).padStart(2, '0');
+                const formattedYear = date.getFullYear();
+                const formattedHours = String(date.getHours()).padStart(2, '0');
+                const formattedMinutes = String(date.getMinutes()).padStart(2, '0');
+
+                return `${formattedDay}-${formattedMonth}-${formattedYear} ${formattedHours}:${formattedMinutes}`;
+            } catch (e) {
+                console.error("Erro ao formatar data/hora:", e);
+                return 'Formato Inválido';
+            }
+        }
+
+        // Função para aplicar filtros. Agora, para filtros que precisam de backend (como data),
+        // ela redireciona. Para outros, filtra no frontend (embora a rota Flask já filtre).
         function aplicarFiltros() {
+            const dataInicio = document.getElementById('dataInicio').value;
+            const dataFim = document.getElementById('dataFim').value;
             const rotaFiltro = document.getElementById('filtroRota').value.toLowerCase();
             const cidadeFiltro = document.getElementById('filtroCidade').value.toLowerCase();
             const entregaFiltro = document.getElementById('filtroEntrega').value.toLowerCase();
             const separacaoFiltro = document.getElementById('filtroSeparacao').value;
-            const finalizadoFiltro = document.getElementById('filtroFinalizado').value;
 
             // Salva os valores dos filtros no localStorage
+            localStorage.setItem('dataInicioFiltro', dataInicio);
+            localStorage.setItem('dataFimFiltro', dataFim);
             localStorage.setItem('rotaFiltro', rotaFiltro);
             localStorage.setItem('cidadeFiltro', cidadeFiltro);
             localStorage.setItem('entregaFiltro', entregaFiltro);
             localStorage.setItem('separacaoFiltro', separacaoFiltro);
-            localStorage.setItem('finalizadoFiltro', finalizadoFiltro);
 
+            // Monta os parâmetros da URL para redirecionamento
+            const params = new URLSearchParams();
+            if (dataInicio) params.append('data_inicio', dataInicio);
+            if (dataFim) params.append('data_fim', dataFim);
+            if (rotaFiltro) params.append('rota', rotaFiltro);
+            if (cidadeFiltro) params.append('cidade', cidadeFiltro);
+            if (entregaFiltro) params.append('tipo_entrega', entregaFiltro);
+            if (separacaoFiltro) params.append('em_separacao', separacaoFiltro);
+
+            // Redireciona para a página com os novos parâmetros
+            window.location.href = `/registros?${params.toString()}`;
+
+            // A filtragem no frontend (hide/show) não é mais a principal forma de filtrar
+            // quando filtros que exigem backend (como data) são usados.
+            // O código abaixo é mantido caso você queira aplicar filtros NO FRONTEND
+            // sobre os resultados JÁ CARREGADOS pelo backend (ex: se a data não mudou).
+            // No entanto, a abordagem de redirecionamento é mais robusta para filtros de backend.
+            /*
             const cards = document.querySelectorAll('.card');
             cards.forEach(card => {
                 const rota = card.dataset.rota || '';
                 const cidade = card.dataset.cidade || '';
                 const entrega = card.dataset.entrega || '';
                 const emSeparacao = card.dataset.separacao || '';
-                const estaFinalizado = card.classList.contains('finalizado');
+                const estaFinalizado = card.dataset.finalizado === '1';
 
                 const rotaOk = rota.includes(rotaFiltro);
                 const cidadeOk = cidade.includes(cidadeFiltro);
                 const entregaOk = entregaFiltro === '' || entrega === entregaFiltro;
                 const separacaoOk = separacaoFiltro === '' || separacaoFiltro === emSeparacao;
-                const finalizadoOk = finalizadoFiltro === '' ||
-                    (finalizadoFiltro === '1' && estaFinalizado) ||
-                    (finalizadoFiltro === '0' && !estaFinalizado);
 
-
-                card.style.display = (rotaOk && cidadeOk && entregaOk && separacaoOk && finalizadoOk) ? '' : 'none';
+                card.style.display = (rotaOk && cidadeOk && entregaOk && separacaoOk) ? '' : 'none';
             });
+            */
         }
 
+        // Função para limpar filtros e redirecionar
         function limparFiltro() {
-            document.getElementById('data').value = '';
-            document.getElementById('filtroRota').value = '';
-            document.getElementById('filtroCidade').value = '';
-            document.getElementById('filtroEntrega').value = '';
-            document.getElementById('filtroSeparacao').value = '';
-            document.getElementById('filtroFinalizado').value = '';
-
             // Limpa os valores dos filtros do localStorage
+            localStorage.removeItem('dataInicioFiltro');
+            localStorage.removeItem('dataFimFiltro');
             localStorage.removeItem('rotaFiltro');
             localStorage.removeItem('cidadeFiltro');
             localStorage.removeItem('entregaFiltro');
             localStorage.removeItem('separacaoFiltro');
-            localStorage.removeItem('finalizadoFiltro');
-            localStorage.removeItem('dataFiltro');
 
+            // Redireciona para a URL base para recarregar sem filtros
             window.location.href = '/registros';
-            aplicarFiltros(); // Aplica os filtros vazios para mostrar todos os cards
         }
 
-        function filtrarPorData() {
-            const data = document.getElementById('data').value;
-            localStorage.setItem('dataFiltro', data); // Salva a data
-            if (!data) {
-                window.location.href = '/registros';
-                return;
-            }
+        // Função para abrir um registro específico
+        function abrirRegistro(id, isFinalizada) { // CORRIGIDO: use isFinalizada aqui
+            console.log("ID recebido na função abrirRegistro:", id, "Status Finalizada:", isFinalizada); // CORRIGIDO: use Status Finalizada
 
-            const partes = data.split('-');
-            if (partes.length === 3) {
-                const dataFormatada = `${partes[0]}-${partes[1]}-${partes[2]}`;
-                window.location.href = `/registros?data=${dataFormatada}`;
+            // Agora isFinalizada deve ser 0 ou 1
+            if (isFinalizada === 1) { // Verifica se é exatamente o número 1
+                alert('Este registro já foi finalizado e não pode ser alterado.');
+                return; // Impede o redirecionamento
             }
+            window.location.href = `/associacao?id=${id}`;
         }
 
-        // Função para carregar os filtros salvos ao carregar a página
-        function carregarFiltrosSalvos() {
+        // --- Lógica do Menu Lateral ---
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const overlay = document.getElementById('overlay');
+
+        // Abre o menu
+        function openSidebar() {
+            sidebar.classList.add('open');
+            overlay.style.display = 'block';
+        }
+
+        // Fecha o menu
+        function closeSidebar() {
+            sidebar.classList.remove('open');
+            overlay.style.display = 'none';
+        }
+
+        // Event listeners para abrir/fechar o menu
+        sidebarToggle.addEventListener('click', openSidebar);
+        overlay.addEventListener('click', closeSidebar); // Fecha ao clicar no overlay
+
+        // Fecha o menu se a janela for redimensionada para uma largura maior (opcional)
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768) { // Exemplo: fecha se a tela for maior que 768px
+                closeSidebar();
+            }
+        });
+
+        // --- Função para Exportar Dados ---
+        // REMOVIDA CONFORME SOLICITADO
+
+
+        // Carrega os filtros salvos ao carregar a página e aplica os filtros DOM
+        document.addEventListener('DOMContentLoaded', function() {
+            // Carrega os valores dos filtros do localStorage para os inputs
+            // Note que os valores da URL já são definidos pelo Flask no valor do input
             const rotaFiltroSalvo = localStorage.getItem('rotaFiltro');
             const cidadeFiltroSalvo = localStorage.getItem('cidadeFiltro');
             const entregaFiltroSalvo = localStorage.getItem('entregaFiltro');
             const separacaoFiltroSalvo = localStorage.getItem('separacaoFiltro');
-            const finalizadoFiltroSalvo = localStorage.getItem('finalizadoFiltro');
-            const dataFiltroSalvo = localStorage.getItem('dataFiltro');
+            const dataInicioFiltroSalvo = localStorage.getItem('dataInicioFiltro');
+            const dataFimFiltroSalvo = localStorage.getItem('dataFimFiltro');
 
-            if (rotaFiltroSalvo) {
-                document.getElementById('filtroRota').value = rotaFiltroSalvo;
+
+            if (rotaFiltroSalvo) document.getElementById('filtroRota').value = rotaFiltroSalvo;
+            if (cidadeFiltroSalvo) document.getElementById('filtroCidade').value = cidadeFiltroSalvo;
+            if (entregaFiltroSalvo) document.getElementById('filtroEntrega').value = entregaFiltroSalvo;
+            if (separacaoFiltroSalvo) document.getElementById('filtroSeparacao').value = separacaoFiltroSalvo;
+
+            // Define os valores das datas apenas se não foram definidos pelo Flask (via URL)
+            if (dataInicioFiltroSalvo && !document.getElementById('dataInicio').value) {
+                 document.getElementById('dataInicio').value = dataInicioFiltroSalvo;
             }
-            if (cidadeFiltroSalvo) {
-                document.getElementById('filtroCidade').value = cidadeFiltroSalvo;
-            }
-            if (entregaFiltroSalvo) {
-                document.getElementById('filtroEntrega').value = entregaFiltroSalvo;
-            }
-            if (separacaoFiltroSalvo) {
-                document.getElementById('filtroSeparacao').value = separacaoFiltroSalvo;
-            }
-            if (finalizadoFiltroSalvo) {
-                document.getElementById('filtroFinalizado').value = finalizadoFiltroSalvo;
-            }
-            if (dataFiltroSalvo) {
-                document.getElementById('data').value = dataFiltroSalvo;
-                // Não precisamos redirecionar aqui, pois a data já está no input
+             if (dataFimFiltroSalvo && !document.getElementById('dataFim').value) {
+                 document.getElementById('dataFim').value = dataFimFiltroSalvo;
             }
 
-            // Aplica os filtros carregados
-            aplicarFiltros();
-        }
 
-        // Carrega os filtros salvos quando a página é carregada
-        window.onload = carregarFiltrosSalvos;
+            // A filtragem no frontend baseada nos inputs NÃO é mais a principal forma
+            // de aplicar filtros quando a data range é usada, pois a data range
+            // exige uma nova busca no backend (redirecionamento).
+            // O código abaixo só seria relevante se você QUISESSE filtrar
+            // os cards JÁ CARREGADOS na página com os filtros que não sejam de data.
+            // Como a rota Flask já aplica TODOS os filtros na busca inicial,
+            // este `aplicarFiltros()` na carga da página não é estritamente necessário
+            // para a lógica de filtragem, mas mantém os inputs sincronizados com o localStorage.
+            // aplicarFiltros(); // Comentado para evitar redirecionamento duplo na carga
 
-        function onDblClick(card, id) {
-            card.classList.add('separado');
+            
 
-            if (!card.querySelector('.em-separacao-label')) {
-                const label = document.createElement('span');
-                label.textContent = "Em Separação";
-                label.classList.add('em-separacao-label');
-                card.appendChild(label);
-            }
+        });
 
-            const checkbox = card.querySelector('input[type="checkbox"]');
-            if (checkbox && !checkbox.checked) {
-                checkbox.checked = true;
-                checkbox.disabled = true;
-                checkbox.form.submit();
-            }
-            abrirRegistro(id);
-        }
-
-        function abrirRegistro(id) {
-             window.location.href = `/associacao?id=${id}`;
-        }
     </script>
 </body>
 </html>

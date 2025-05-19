@@ -193,7 +193,7 @@
             margin-bottom: 6px;
             padding: 8px;
             font-size: 0.9em;
-            color: red;
+            color: rgb(180, 7, 7);
             border: 1px solid red;
             border-radius: 4px;
             animation: blink 1s linear infinite;
@@ -270,6 +270,30 @@
             margin-top: 20px;
         }
 
+        /* Estilo para o botão de ativar som */
+        #enable-sound-btn {
+            position: fixed; /* Posição fixa na tela */
+            top: 50%; /* Centraliza verticalmente */
+            left: 50%; /* Centraliza horizontalmente */
+            transform: translate(-50%, -50%); /* Ajusta para o centro exato */
+            padding: 15px 30px;
+            background-color: #007bff; /* Cor azul */
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.2em;
+            font-weight: bold;
+            z-index: 1001; /* Acima dos tickers */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            display: none; /* Inicialmente oculto, mostrado se o som precisar ser ativado */
+        }
+
+        #enable-sound-btn:hover {
+            background-color: #0056b3; /* Azul mais escuro no hover */
+        }
+
+
     </style>
 </head>
 <body>
@@ -334,6 +358,12 @@
          <img src="{{ url_for('static', filename='imagem/tvs.png') }}" alt="SPX" class="ticker-logo"> {# <-- SUBSTITUA O CAMINHO E ALT PELA SUA LOGO #}
     </div>
 
+    {# Elemento de Áudio para Notificações #}
+    <audio id="notification-audio" src="{{ url_for('static', filename='audio/spx.mp3') }}"  preload="auto"></audio> {# <-- SUBSTITUA O CAMINHO DO ÁUDIO AQUI #}
+
+    {# Botão para Ativar o Som (inicialmente oculto) #}
+    <button id="enable-sound-btn">Clique para Ativar o Som</button>
+
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -341,24 +371,52 @@
             let isShowingPainel = true; // Começa mostrando o Painel
             let painelTimer = null; // Timer para a duração do Painel
             let midiaTimer = null; // Timer para a duração da Mídia
-            let lastEmSeparacaoRecordIds = null; // Para detectar novos registros no Quadro 1 "Em Separação"
+            let lastEmSeparacaoRecordIds = []; // Para detectar novos registros no Quadro 1 "Em Separação" - Inicializado como array vazio
+            let lastNoShowRecordIds = []; // Para detectar novos registros no Quadro 2 "No-Show" - Inicializado como array vazio
+            let soundEnabled = false; // Estado para controlar se o som está ativado
 
             const PAINEL_DURATION = 90000; // 1 minuto em ms
             const MIDIA_DURATION = 30000; // 30 segundos em ms
+            const FETCH_INTERVAL = 1000; // Intervalo de busca por novos registros (1 segundo)
+            const NEWS_FETCH_INTERVAL = 180000; // Intervalo de busca de notícias (3 minutos)
+            const OPERATIONAL_INFO_FETCH_INTERVAL = 30000; // Intervalo de busca de info operacional (30 segundos)
+
 
             // --- Obtém referências aos elementos ---
             const topTickerText = document.querySelector('#top-ticker .ticker-text'); // Elemento do texto do letreiro superior
             const bottomTickerText = document.querySelector('#bottom-ticker .ticker-text'); // Elemento do texto do letreiro inferior
 
             const painelContentDiv = document.getElementById('painel-content'); // Container que tem os Quadros 1 e 2
-            const midiaContentDiv = document.getElementById('midia-content');   // Container que tem o iframe
-            const midiaIframe = document.getElementById('midia-iframe');         // O iframe para carregar midia.html
+            const midiaContentDiv = document.getElementById('midia-content');   // Container que tem o iframe
+            const midiaIframe = document.getElementById('midia-iframe');         // O iframe para carregar midia.html
 
             // Obtém referências aos containers dos Quadros 1 e 2 (necessário para as funções de fetch/display)
             const quadro1 = document.getElementById('quadro1');
             const quadro2 = document.getElementById('quadro2');
             const colunasContainer = document.getElementById('colunasContainer'); // Container Quadro 2
             const registrosEmSeparacaoContainer = document.getElementById('registrosEmSeparacaoContainer'); // Container Quadro 1
+
+            const notificationAudio = document.getElementById('notification-audio'); // Elemento de áudio
+            const enableSoundBtn = document.getElementById('enable-sound-btn'); // Botão para ativar som
+
+
+            // --- Função para tocar o áudio de notificação ---
+            function playNotificationSound() {
+                if (soundEnabled && notificationAudio) {
+                    // Clone o nó de áudio para permitir que vários sons sejam tocados rapidamente
+                    const audioClone = notificationAudio.cloneNode();
+                    audioClone.play().catch(e => console.warn("Erro ao tocar áudio:", e));
+                }
+            }
+
+            // --- Listener para o botão de ativar som ---
+            enableSoundBtn.addEventListener('click', function() {
+                 // Tenta tocar o áudio para "desbloquear" a reprodução no navegador
+                 playNotificationSound(); // Toca uma vez para ativar
+                 soundEnabled = true; // Define o estado como ativado
+                 enableSoundBtn.style.display = 'none'; // Esconde o botão
+                 console.log("DEBUG: Som de notificação ativado.");
+            });
 
 
             // --- Função para enviar mensagem para o iframe da Mídia ---
@@ -399,6 +457,7 @@
                 console.log(`DEBUG: Timer do Painel iniciado (${PAINEL_DURATION / 1000}s). Próxima troca para Mídia em ${PAINEL_DURATION / 1000} segundos.`);
             }
 
+
             // --- Função para alternar para a view da Mídia ---
             function switchToMidia() {
                 console.log("DEBUG: Alternando para a Mídia.");
@@ -419,25 +478,25 @@
                           if (midiaIframe.contentWindow && midiaIframe.contentWindow.document && (midiaIframe.contentWindow.document.readyState === 'complete' || midiaIframe.contentWindow.document.readyState === 'interactive')) {
                                console.log("DEBUG: iframe midia.html já estava pronto (readyState). Enviando 'resume' imediatamente.");
                                sendMidiaMessage('resume');
-                          } else {
+                           } else {
                                midiaIframe.addEventListener('load', tempLoadListener);
                                console.log("DEBUG: iframe midia.html ainda não pronto. Adicionado tempLoadListener para enviar 'resume'.");
-                          }
+                           }
 
-                       } else {
-                            console.warn("DEBUG: Não foi possível enviar comando 'resume' para o iframe (iframe ou contentWindow não acessível).");
-                            if (midiaIframe) {
-                                console.warn("DEBUG: Fallback: Recarregando iframe devido a falha ao enviar 'resume'.");
-                                midiaIframe.src = '/midia';
-                             }
-                       }
-                   } catch (e) {
-                       console.warn("DEBUG: Erro ao tentar enviar comando 'resume' para o iframe.", e);
-                        if (midiaIframe) {
-                             console.warn("DEBUG: Fallback: Recarregando iframe devido a exceção.", e);
-                             midiaIframe.src = '/midia';
+                         } else {
+                             console.warn("DEBUG: Não foi possível enviar comando 'resume' para o iframe (iframe ou contentWindow não acessível).");
+                             if (midiaIframe) {
+                                 console.warn("DEBUG: Fallback: Recarregando iframe devido a falha ao enviar 'resume'.");
+                                 midiaIframe.src = '/midia'; // Recarrega o iframe para tentar novamente
+                               }
                          }
-                   }
+                     } catch (e) {
+                         console.warn("DEBUG: Erro ao tentar enviar comando 'resume' para o iframe.", e);
+                          if (midiaIframe) {
+                              console.warn("DEBUG: Fallback: Recarregando iframe devido a exceção.", e);
+                              midiaIframe.src = '/midia'; // Recarrega o iframe em caso de erro
+                            }
+                     }
 
 
                 isShowingPainel = false;
@@ -495,6 +554,17 @@
                     // --- DEBUG LOG: Mostra o total de registros que serão exibidos ---
                     console.log("DEBUG fetchAndDisplayNoShow: Total de registros para exibir no Quadro 2:", totalRegistrosParaExibir);
 
+                    // --- Lógica de Notificação Sonora para Quadro 2 ---
+                    const currentNoShowRecordIds = filteredRecordsForColumns.map(registro => registro.id);
+                    if (lastNoShowRecordIds.length > 0) { // Só verifica se já houve uma busca anterior
+                        const newNoShowRecordsAppeared = currentNoShowRecordIds.some(id => !lastNoShowRecordIds.includes(id));
+                        if (newNoShowRecordsAppeared) {
+                            console.log("DEBUG: NOVO registro No-Show detectado!");
+                            playNotificationSound();
+                        }
+                    }
+                    lastNoShowRecordIds = currentNoShowRecordIds; // Atualiza a lista de IDs
+
 
                     if (totalRegistrosParaExibir > 0) {
                          // Se houver registros para exibir no Quadro 2, ajusta larguras e mostra Quadro 2
@@ -522,10 +592,10 @@
                              const recordsToDisplayInitially = recordsForThisRua.slice(0, displayLimit);
                              if (recordsToDisplayInitially && recordsToDisplayInitially.length > 0) {
                                  recordsToDisplayInitially.forEach(record => {
-                                     // Exibir apenas a Rota e " - Entre"
+                                     // Exibir apenas a Rota e " - Liberada"
                                      col.innerHTML += `
                                          <div class="registro">
-                                             <div class="rotulo"><span>Rota:</span> ${record.rota || 'N/A'} - Entre</div>
+                                             <div class="rotulo"><span>Rota:</span> ${record.rota || 'N/A'} - Liberada</div>
                                          </div>
                                      `;
                                  });
@@ -577,19 +647,20 @@
                     const registros = await response.json();
                     const currentEmSeparacaoRecordIds = registros.map(registro => registro.id);
 
-                    // Lógica para detectar novos registros e interromper a mídia
-                    if (lastEmSeparacaoRecordIds !== null) {
+                    // --- Lógica para detectar novos registros e tocar som ---
+                    if (lastEmSeparacaoRecordIds.length > 0) { // Só verifica se já houve uma busca anterior
                         const newRecordsAppeared = currentEmSeparacaoRecordIds.some(id => !lastEmSeparacaoRecordIds.includes(id));
-                        if (newRecordsAppeared && !isShowingPainel) {
-                            console.log("DEBUG: NOVO registro 'Em Separação' detectado! Interrompendo Mídia.");
-                            switchToPainel();
-                            // Atualiza lastEmSeparacaoRecordIds APENAS após a troca para o painel
-                            lastEmSeparacaoRecordIds = currentEmSeparacaoRecordIds;
-                            return; // Sai da função para evitar renderização duplicada imediatamente
+                        if (newRecordsAppeared) {
+                            console.log("DEBUG: NOVO registro 'Em Separação' detectado!");
+                            playNotificationSound();
+                             // Interrompe a mídia e volta para o painel se um novo registro aparecer e a mídia estiver ativa
+                             if (!isShowingPainel) {
+                                console.log("DEBUG: Interrompendo Mídia para mostrar novo registro 'Em Separação'.");
+                                switchToPainel();
+                             }
                         }
                     }
-                    // Atualiza lastEmSeparacaoRecordIds se não houve interrupção da mídia
-                    lastEmSeparacaoRecordIds = currentEmSeparacaoRecordIds;
+                    lastEmSeparacaoRecordIds = currentEmSeparacaoRecordIds; // Atualiza a lista de IDs
 
 
                     registrosEmSeparacaoContainer.innerHTML = ''; // Limpa o conteúdo atual
@@ -629,9 +700,9 @@
                         const combinedText = data.headlines.join(' | ');
                         topTickerText.textContent = combinedText;
                          // Ajusta a duração da animação com base no comprimento do texto
-                        const textLength = combinedText.length;
-                        const duration = Math.max(20, textLength * 0.15); // Duração mínima de 20s, aumenta com o texto
-                        topTickerText.style.animationDuration = `${duration}s`;
+                         const textLength = combinedText.length;
+                         const duration = Math.max(20, textLength * 0.15); // Duração mínima de 20s, aumenta com o texto
+                         topTickerText.style.animationDuration = `${duration}s`;
 
                     } else {
                         topTickerText.textContent = "Nenhuma notícia disponível no momento.";
@@ -646,9 +717,9 @@
              // --- FIM: Função para buscar notícias ---
 
 
-             // --- Função para buscar e atualizar o letreiro inferior com informações operacionais ---
-             // ATENÇÃO: A rota /api/operational_info causou erro 404 nos logs anteriores.
-             // Você precisa implementar essa rota no seu Flask ou remover a chamada se não for usá-la.
+            // --- Função para buscar e atualizar o letreiro inferior com informações operacionais ---
+            // ATENÇÃO: A rota /api/operational_info causou erro 404 nos logs anteriores.
+            // Você precisa implementar essa rota no seu Flask ou remover a chamada se não for usá-la.
              async function fetchOperationalInfo() {
                   console.log("DEBUG: Fetching operational info...");
                   try {
@@ -668,7 +739,7 @@
                             bottomTickerText.textContent = data.info;
                              // Ajusta a duração da animação com base no comprimento do texto
                             const textLength = data.info.length;
-                            const duration = Math.max(20, textLength * 0.15); // Duração mínima de 20s, aumenta com o texto
+                            const duration = Math.max(30, textLength * 0.30); // Duração mínima de 30s, aumenta com o texto
                             bottomTickerText.style.animationDuration = `${duration}s`;
                        } else {
                             bottomTickerText.textContent = "Nenhuma informação operacional disponível.";
@@ -682,11 +753,11 @@
                        bottomTickerText.textContent = fallbackText;
                         // Ajusta a duração da animação para o texto fallback
                        const textLength = fallbackText.length;
-                       const duration = Math.max(20, textLength * 0.15);
+                       const duration = Math.max(20, textLength * 0.30);
                        bottomTickerText.style.animationDuration = `${duration}s`;
                    }
               }
-              // --- FIM: Função para buscar informações operacionais ---
+             // --- FIM: Função para buscar informações operacionais ---
 
 
             // --- Configuração Inicial e Timers ---
@@ -704,20 +775,43 @@
             }
 
             // Inicia os fetches de background para os dados dos Quadros 1 e 2 (a cada 1s)
-            setInterval(fetchAndDisplayNoShow, 1000);
-            setInterval(fetchAndDisplayRegistrosEmSeparacao, 1000);
+            setInterval(fetchAndDisplayNoShow, FETCH_INTERVAL);
+            setInterval(fetchAndDisplayRegistrosEmSeparacao, FETCH_INTERVAL);
 
              // Frequência de atualização das notícias (busca no Flask) - 3 minutos
              fetchNewsHeadlines(); // Busca inicial ao carregar a página
-             setInterval(fetchNewsHeadlines, 180000); // <-- Atualiza notícias a cada 3 minutos (180000 ms)
+             setInterval(fetchNewsHeadlines, NEWS_FETCH_INTERVAL); // <-- Atualiza notícias a cada 3 minutos (180000 ms)
 
 
              fetchOperationalInfo(); // Busca inicial ao carregar a página
-             setInterval(fetchOperationalInfo, 30000); // Exemplo: Atualiza info operacional a cada 30 segundos. VERIFIQUE SE ESSA ROTA EXISTE.
+             setInterval(fetchOperationalInfo, OPERATIONAL_INFO_FETCH_INTERVAL); // Exemplo: Atualiza info operacional a cada 30 segundos. VERIFIQUE SE ESSA ROTA EXISTE.
+
+
+            // --- Lógica para exibir o botão de ativar som se necessário ---
+            // Tenta tocar um som mudo para ver se a interação é necessária
+            notificationAudio.volume = 0; // Define o volume para 0 para não fazer barulho
+            notificationAudio.play().then(() => {
+                // Autoplay permitido, som já está "desbloqueado"
+                soundEnabled = true;
+                console.log("DEBUG: Autoplay permitido. Som de notificação ativado automaticamente.");
+                // Não precisa mostrar o botão
+            }).catch(() => {
+                // Autoplay bloqueado, precisa de interação do usuário
+                soundEnabled = false;
+                enableSoundBtn.style.display = 'block'; // Mostra o botão para o usuário clicar
+                console.log("DEBUG: Autoplay bloqueado. Botão 'Ativar Som' visível.");
+                notificationAudio.volume = 1; // Restaura o volume para quando for ativado pelo botão
+            });
 
 
             // Inicia o ciclo de alternância mostrando o Painel primeiro
+            // A primeira chamada a switchToPainel agora será feita após a verificação de autoplay
+            // ou após o clique no botão de ativar som, se necessário.
+            // Para garantir que o Painel seja exibido mesmo que o som não seja ativado,
+            // podemos iniciar o ciclo de alternância aqui, mas a reprodução da mídia
+            // só começará após o 'resume' (que depende da ativação do som).
             switchToPainel();
+
 
         }); // Fim DOMContentLoaded
     </script>

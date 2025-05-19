@@ -25,13 +25,6 @@
             flex-wrap: wrap; /* Allow wrapping on smaller screens */
         }
 
-        /* Removed .banner-content as its children are now direct children of .banner */
-        /* .banner-content {
-            display: flex;
-            align-items: center;
-            margin-bottom: 1rem;
-        } */
-
         .banner h1 {
             color: #fff;
             font-size: 1.5rem; /* Tailwind text-2xl */
@@ -246,14 +239,22 @@
         .card-actions .btn-associar { background-color: #22c55e; } /* Tailwind green-500 */
         .card-actions .btn-associar:hover { background-color: #16a34a; } /* Tailwind green-600 */
 
+        /* Style for disabled associate button */
+        .card-actions .btn-associar:disabled {
+            background-color: #a5d6a7; /* Lighter green for disabled */
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+
         .card-actions .btn-desassociar { background-color: #f97316; } /* Tailwind orange-500 */
         .card-actions .btn-desassociar:hover { background-color: #ea580c; } /* Tailwind orange-600 */
 
         .card-actions .btn-finalizar-carregamento { background-color: #6b7280; } /* Tailwind gray-500 */
         .card-actions .btn-finalizar-carregamento:hover { background-color: #4b5563; } /* Tailwind gray-600 */
 
-        .card-actions .btn-finalizar { background-color: #14b8a6; } /* Tailwind teal-500 */
-        .card-actions .btn-finalizar:hover { background-color: #0d9488; } /* Tailwind teal-600 */
+        .card-actions .btn-finalizar { background-color: #ea2102; } /* Tailwind teal-500 */
+        .card-actions .btn-finalizar:hover { background-color: #ea2102; } /* Tailwind teal-600 */
 
         .card-actions .btn-cancelar { background-color: #ef4444; } /* Tailwind red-500 */
         .card-actions .btn-cancelar:hover { background-color: #dc2626; } /* Tailwind red-600 */
@@ -380,63 +381,64 @@
     </style>
 </head>
 <body>
-    <div class="banner">
-        {# Logo is now a direct child of banner #}
-        <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" class="logo" alt="Logo Shopee">
-        {# Title is now a direct child of banner #}
-        <h1>Registros No Show - Sistema de Gerenciamento Operacional</h1>
-        {# Filtering form is also a direct child of banner #}
-        <form action="{{ url_for('registro_no_show') }}" method="GET" class="filters">
-            <label for="data">Data:</label>
-            <input type="date" id="data" name="data" value="{{ data_filtro }}">
 
-            <label for="nome">Nome:</label>
-            <input type="text" id="nome" name="nome" placeholder="Nome" value="{{ nome_filtro }}">
+<div class="banner">
+    {# Logo is now a direct child of banner #}
+    <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" class="logo" alt="Logo Shopee">
+    {# Title is now a direct child of banner #}
+    <h1>Registros No Show - Sistema de Gerenciamento Operacional</h1>
+    {# Filtering form is also a direct child of banner #}
+    <form action="{{ url_for('registro_no_show') }}" method="GET" class="filters">
+        <label for="data">Data:</label>
+        <input type="date" id="data" name="data" value="{{ data_filtro }}">
 
-            <label for="matricula">Matrícula:</label>
-            <input type="text" id="matricula" name="matricula" placeholder="Matrícula" value="{{ matricula_filtro }}">
+        <label for="nome">Nome:</label>
+        <input type="text" id="nome" name="nome" placeholder="Nome" value="{{ nome_filtro }}">
 
-            <label for="rota">Rota:</label>
-            <input type="text" id="rota" name="rota" placeholder="Rota" value="{{ rota_filtro }}">
+        <label for="matricula">Matrícula:</label>
+        <input type="text" id="matricula" name="matricula" placeholder="Matrícula" value="{{ matricula_filtro }}">
 
-            {# Removed Tipo Entrega filter #}
-            {# <label for="tipo_entrega">Tipo Entrega:</label>
-            <input type="text" id="tipo_entrega" name="tipo_entrega" placeholder="Tipo Entrega" value="{{ tipo_entrega_filtro }}"> #}
+        <label for="rota">Rota:</label>
+        <input type="text" id="rota" name="rota" placeholder="Rota" value="{{ rota_filtro }}">
 
-            {# Added Status filter #}
-            <label for="status">Status:</label>
-            <select id="status" name="status">
-                <option value="">Todos</option> {# Option to show all statuses #}
-                <option value="aguardando" {% if status_filtro == 'aguardando' %}selected{% endif %}>Aguardando Associação</option>
-                <option value="separacao" {% if status_filtro == 'separacao' %}selected{% endif %}>Em Separação</option>
-                <option value="carregamento_finalizado" {% if status_filtro == 'carregamento_finalizado' %}selected{% endif %}>Aguardando Entregador</option> {# Changed value to match em_separacao=2 #}
-                <option value="finalizado" {% if status_filtro == 'finalizado' %}selected{% endif %}>Finalizado</option>
-                <option value="cancelado" {% if status_filtro == 'cancelado' %}selected{% endif %}>Cancelado</option>
-                 <option value="transferido" {% if status_filtro == 'transferido' %}selected{% endif %}>Transferido</option>
-            </select>
+        {# Removed Tipo Entrega filter #}
+        {# <label for="tipo_entrega">Tipo Entrega:</label>
+        <input type="text" id="tipo_entrega" name="tipo_entrega" placeholder="Tipo Entrega" value="{{ tipo_entrega_filtro }}"> #}
+
+        {# Added Status filter #}
+        <label for="status">Status:</label>
+        <select id="status" name="status">
+            <option value="">Todos</option> {# Option to show all statuses #}
+            <option value="aguardando" {% if status_filtro == 'aguardando' %}selected{% endif %}>Aguardando Associação</option>
+            <option value="separacao" {% if status_filtro == 'separacao' %}selected{% endif %}>Em Separação</option>
+            <option value="carregamento_finalizado" {% if status_filtro == 'carregamento_finalizado' %}selected{% endif %}>Aguardando Entregador</option> {# Changed value to match em_separacao=2 #}
+            <option value="finalizado" {% if status_filtro == 'finalizado' %}selected{% endif %}>Finalizado</option>
+            <option value="cancelado" {% if status_filtro == 'cancelado' %}selected{% endif %}>Cancelado</option>
+             <option value="transferido" {% if status_filtro == 'transferido' %}selected{% endif %}>Transferido</option>
+        </select>
 
 
-            <button type="submit">Filtrar</button>
-            {# Button to clear filters - navigates back to the base URL #}
-            <a href="{{ url_for('registro_no_show') }}" class="clear-filters">Limpar Filtros</a>
-        </form>
-    </div>
+        <button type="submit">Filtrar</button>
+        {# Button to clear filters - navigates back to the base URL #}
+        <a href="{{ url_for('registro_no_show') }}" class="clear-filters">Limpar Filtros</a>
+    </form>
+</div>
 
-    <div class="container">
-        {# Display flash messages #}
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <ul class="flashes">
+<div class="container">
+    {# Display flash messages #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
                 {% for category, message in messages %}
-                    <li class="{{ category }}">{{ message }}</li>
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
                 {% endfor %}
-                </ul>
-            {% endif %}
-        {% endwith %}
+            </div>
+        {% endif %}
+    {% endwith %}
 
-        <div class="cards">
-            {% if registros_no_show %}
-                {% for registro in registros_no_show %}
+    <div class="cards">
+        {% if registros_no_show %}
+            {% for registro in registros_no_show %}
                 {# Add ID to the card div for scrolling #}
                 <div class="card" id="no-show-registro-{{ registro.id }}">
                     {# Status Label - This already correctly shows "Cancelado" and "Finalizado" #}
@@ -464,11 +466,13 @@
                     <p><strong>Estação:</strong> {{ registro.estacao | default('N/A') }}</p>
 
                     {# Modified line for Finalizado text to show time if finalized, "Cancelado" if canceled, or "Não Finalizado" #}
-                    <p><strong>Finalizado:</strong>
+                    <p><strong>Data \ Hora Fim:</strong>
                         {% if registro.finalizada == 1 %}
                             {{ registro.hora_finalizacao|formata_data_hora }}
                         {% elif registro.cancelado == 1 %}
                             Cancelado
+                        {% elif registro.em_separacao == 4 %} {# Adicionada condição para status Transferido #}
+                             {{ registro.hora_finalizacao|formata_data_hora }} {# Exibe a hora de finalização para Transferido #}
                         {% else %}
                             Não Finalizado
                         {% endif %}
@@ -484,7 +488,8 @@
                                 <input type="text" name="gaiola" placeholder="Rota:" required> {# Alterado: Placeholder para Rota #}
                                 <input type="text" name="estacao" placeholder="Estação:" required>
                                 <input type="text" name="rua" placeholder="Rua:" value="{{ registro.rua | default('') }}"> {# Adicionado campo para Rua #}
-                                <button type="submit" class="btn-associar">Associar</button>
+                                {# Adicionado o atributo 'disabled' e a classe 'js-disable-manual-associate' #}
+                                <button type="submit" class="btn-associar js-disable-manual-associate" disabled>Associar</button>
                             </form>
                         {% else %}
                             {# Form to Desassociate #}
@@ -501,7 +506,7 @@
 
                         {# Form to Finalizar #}
                         <form action="{{ url_for('marcar_como_finalizado_no_show_id', id=registro.id) }}" method="POST">
-                            <button type="submit" class="btn-finalizar">Finalizar</button>
+                            <button type="submit" class="btn-finalizar">Cancelar</button>
                         </form>
 
                         {# Original Form to Cancel - Removed as requested #}
@@ -517,26 +522,108 @@
                          {# Removed the "Voltar para Associação" button form #}
                     </div>
                 </div>
-                {% endfor %}
-            {% else %}
-                <p class="text-center text-gray-600 mt-8">Nenhum registro de No-Show encontrado com os filtros aplicados.</p>
-            {% endif %}
-        </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-center text-gray-600 mt-8">Nenhum registro de No-Show encontrado com os filtros aplicados.</p>
+        {% endif %}
     </div>
 
-    <script>
+    <div class="paginacao">
+        {% if total_paginas > 1 %}
+            <span>Página {{ pagina }} de {{ total_paginas }}</span>
+            <br>
+            {% if pagina > 1 %}
+                <a href="{{ url_for('associacao', pagina=pagina-1, rota=rota, tipo_entrega=tipo_entrega) }}">Anterior</a>
+            {% endif %}
+            {% for p in range(1, total_paginas + 1) %}
+                {% if p == pagina %}
+                    <strong>{{ p }}</strong>
+                {% elif p >= pagina - 2 and p <= pagina + 2 %} {# Limita a exibição de números de página #}
+                    <a href="{{ url_for('associacao', pagina=p, rota=rota, tipo_entrega=tipo_entrega) }}">{{ p }}</a>
+                {% elif p == 1 or p == total_paginas or (p == pagina - 3 and pagina > 4) or (p == pagina + 3 and pagina < total_paginas - 3) %}
+                    ... {# Adiciona reticências para saltos maiores #}
+                {% endif %}
+            {% endfor %}
+            {% if pagina < total_paginas %}
+                <a href="{{ url_for('associacao', pagina=pagina+1, rota=rota, tipo_entrega=tipo_entrega) }}">Próxima</a>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', (event) => {
         // Optional: Scroll to a specific record if an ID is in the URL fragment
-        document.addEventListener('DOMContentLoaded', (event) => {
-            if (window.location.hash) {
-                try {
-                    document.querySelector(window.location.hash).scrollIntoView({
-                        behavior: 'smooth'
-                    });
-                } catch (e) {
-                    console.error("Failed to scroll to element:", e);
+        if (window.location.hash) {
+            try {
+                const el = document.querySelector(window.location.hash);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'auto', block: 'center' });
+                    // Focar no primeiro input de texto não desabilitado dentro do card
+                    const firstTextInput = el.querySelector('input[type="text"]:not(:disabled)');
+                    if (firstTextInput) {
+                         firstTextInput.focus();
+                    }
                 }
+            } catch (e) {
+                console.error("Failed to scroll to element:", e);
+            }
+        } else {
+             // Focar no primeiro input de texto não desabilitado na página (se não houver hash)
+            const firstTextInput = document.querySelector('.card:not(.finalizado-definitivo) input[type="text"]:not(:disabled)');
+            if (firstTextInput) {
+                 firstTextInput.focus();
+            }
+        }
+
+        // Add event listeners to disable the "Associar" button and show alert
+        const associateButtons = document.querySelectorAll('.js-disable-manual-associate');
+
+        associateButtons.forEach(button => {
+            button.addEventListener('click', function(event) {
+                event.preventDefault(); // Prevent the form from submitting
+                alert("Para associar um registro No-Show, você deve CANCELAR o registro atual e CRIAR um NOVO registro para Associação No-Show.");
+            });
+        });
+
+
+        // Adiciona event listeners para controlar a navegação com Tab/Enter (mantido do código original)
+        document.querySelectorAll('.card-actions form').forEach(form => { // Seleciona todos os formulários dentro de card-actions
+            // Verifica se este é o formulário de associação manual
+            if (form.querySelector('.btn-associar.js-disable-manual-associate')) {
+                const gaiolaInput = form.querySelector('input[name="gaiola"]');
+                const estacaoInput = form.querySelector('input[name="estacao"]');
+                const ruaInput = form.querySelector('input[name="rua"]'); // Captura o input de rua
+                const salvarButton = form.querySelector('button[type="submit"]'); // Botão de salvar do form de associação
+
+                // Melhoria na navegação: Tab/Enter do Gaiola vai para Estação, de Estação vai para Rua, de Rua vai para Salvar
+                if (gaiolaInput) {
+                    gaiolaInput.addEventListener('keydown', function (event) {
+                        if (event.key === 'Enter' || event.key === 'Tab') {
+                            event.preventDefault();
+                            if (estacaoInput) estacaoInput.focus();
+                        }
+                    });
+                }
+                if (estacaoInput) {
+                    estacaoInput.addEventListener('keydown', function (event) {
+                         if (event.key === 'Enter' || event.key === 'Tab') {
+                             event.preventDefault();
+                             if (ruaInput) ruaInput.focus(); // Vai para Rua
+                         }
+                    });
+                }
+                 if (ruaInput) { // Nova navegação do Rua para Salvar
+                     ruaInput.addEventListener('keydown', function (event) {
+                         if (event.key === 'Enter' || event.key === 'Tab') {
+                             event.preventDefault();
+                             if (salvarButton) salvarButton.focus(); // Vai para Salvar
+                         }
+                     });
+                 }
             }
         });
-    </script>
+    });
+</script>
 </body>
 </html>
