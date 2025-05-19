@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Status do Motorista</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -37,13 +40,16 @@
             width: 100%;
             box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         }
-        .status-aguardando { background-color: #f01809; }
-        .status-em-separacao { background-color: #22db11; }
-        .status-carregamento-finalizado { background-color: #28a745; }
-        .status-finalizado { background-color: #6c757d; }
-        .status-cancelado { background-color: #dc3545; }
-        .status-transferido { background-color: #6f42c1; }
-        .status-nao-encontrado { background-color: #6c757d; }
+        /* Cores dos Status */
+        .status-em-fila { background-color: #e83108; } /* Vermelho para Em Fila / Aguardando Liberação (em_separacao = 0) */
+        .status-carregamento-liberado-normal { background-color: #22db11; } /* Verde para Carregamento Liberado (Normal ou No-Show, em_separacao = 1) */
+        .status-carregamento-concluido { background-color: #f39c12; } /* Laranja para Carregamento Concluído (em_separacao = 2) */
+        .status-aguardando-motorista { background-color: #22db11; } /* Azul para Aguardando Motorista (em_separacao = 3) */
+        .status-finalizado { background-color: #6c757d; } /* Cinza para Finalizado (finalizada = 1) */
+        .status-cancelado { background-color: #dc3545; } /* Vermelho para Cancelado */
+        .status-transferido { background-color: #6f42c1; } /* Roxo para Transferido (No-Show original, em_separacao = 4) */
+        .status-nao-encontrado { background-color: #6c757d; } /* Cinza para Não Encontrado */
+
 
         .info-card {
             background-color: #e9ecef;
@@ -113,13 +119,13 @@
             <div class="info-card">
                 <p id="nome-paragraph"><span class="font-semibold">Nome:</span> <span id="nome"></span></p>
                 <p id="matricula-paragraph"><span class="font-semibold">Matrícula:</span> <span id="matricula"></span></p>
-                <p><span class="font-semibold">Data\Hora:</span> <span id="data_hora_login"></span></p>
+                <p><span class="font-semibold">Data \ Hora Chegada:</span> <span id="data_hora_login"></span></p>
                 <p><span class="font-semibold">Rota:</span> <span id="rota"></span></p>
                 <p><span class="font-semibold">Tipo de Entrega:</span> <span id="tipo_entrega"></span></p>
                 <p><span class="font-semibold">Cidade de Entrega:</span> <span id="cidade_entrega"></span></p>
                 <p id="rua-paragraph"><span class="font-semibold">Rua:</span> <span id="rua"></span></p>
-                <p><span class="font-semibold">Gaiola:</span> <span id="gaiola"></span></p>
-                <p><span class="font-semibold">Estação:</span> <span id="estacao"></span></p>
+                <p><span class="font-semibold">Rota de Entrega:</span> <span id="gaiola"></span></p>
+                <p><span class="font-semibold">Estação de Carregamento:</span> <span id="estacao"></span></p>
             </div>
 
             <div id="status-display" class="status-card"></div>
@@ -128,9 +134,9 @@
         <div id="error-message" class="hidden text-red-500 mt-4"></div>
 
         <div id="no-active-record" class="hidden text-gray-600 mt-4">
-            Nenhum registro ativo encontrado para esta matrícula.
+            Seu Carregamento foi finalizado ou registro não esta mais ativo.
             <div id="no-record-status-display" class="status-card status-nao-encontrado mt-4">
-                Nenhum registro ativo
+                Carregamento Finalizado
             </div>
         </div>
 
@@ -151,11 +157,8 @@
             const statusDisplayDiv = document.getElementById('status-display');
             const noActiveRecordDiv = document.getElementById('no-active-record');
 
-            // Adicionado referências aos novos spans de Nome e Matrícula
             const nomeSpan = document.getElementById('nome');
             const matriculaSpan = document.getElementById('matricula');
-            // Fim das referências adicionadas
-
             const rotaSpan = document.getElementById('rota');
             const tipoEntregaSpan = document.getElementById('tipo_entrega');
             const cidadeEntregaSpan = document.getElementById('cidade_entrega');
@@ -168,7 +171,7 @@
             const notificationSound = document.getElementById('notification-sound');
             const enableSoundBtn = document.getElementById('enable-sound-btn');
 
-            let lastStatusText = null;
+            let lastStatusText = null; // Mantido para lógica de notificação sonora
             let soundEnabled = false;
 
             enableSoundBtn.addEventListener('click', () => {
@@ -232,11 +235,8 @@
                         noActiveRecordDiv.classList.add('hidden');
                         errorDiv.classList.add('hidden');
 
-                        // Preencher os novos spans de Nome e Matrícula
                         nomeSpan.textContent = formatField(registro.nome);
                         matriculaSpan.textContent = formatField(registro.matricula);
-                        // Fim do preenchimento dos novos spans
-
                         rotaSpan.textContent = formatField(registro.rota);
                         tipoEntregaSpan.textContent = formatField(registro.tipo_entrega);
                         cidadeEntregaSpan.textContent = formatField(registro.cidade_entrega);
@@ -253,29 +253,68 @@
                         estacaoSpan.textContent = formatField(registro.estacao);
                         dataHoraLoginSpan.textContent = formatarDataHora(registro.data_hora_login);
 
-                        let statusText = registro.status_text || 'Status Desconhecido';
+                        let currentStatusText = '';
+                        let currentStatusClass = 'bg-gray-500'; // Default fallback class
 
-                        const statusTextLower = statusText.toLowerCase();
-                        if (statusTextLower.includes('aguardando motorista')) {
-                            statusText = 'Carregamento Liberado';
-                        } else if (statusTextLower.includes('aguardando associação/carregamento')) {
-                            statusText = 'Em Fila - Aguardando Liberação';
-                        } else if (statusTextLower.includes('em separação (aguardando carregamento)')) {
-                            statusText = 'Carregamento Liberado';
-                        }
-
-                        statusDisplayDiv.textContent = statusText;
-                        statusDisplayDiv.className = 'status-card ' + (registro.status_class || 'bg-gray-500');
-
-                        // Se o status mudou, toca som e vibra, só se som estiver ativado
-                        if (lastStatusText !== null && lastStatusText !== statusText && soundEnabled) {
-                            notificationSound.play().catch(() => {});
-                            if (navigator.vibrate) {
-                                navigator.vibrate(200);
+                        // --- Lógica para determinar o texto e a classe com base em finalizada e em_separacao ---
+                        if (registro.finalizada === 1) {
+                            currentStatusText = 'Finalizado';
+                            currentStatusClass = 'status-finalizado'; // Cinza
+                        } else {
+                            // Se não está finalizado, use a lógica baseada em em_separacao
+                            switch (registro.em_separacao) {
+                                case 0:
+                                    currentStatusText = 'Em Fila - Aguardando Liberação';
+                                    currentStatusClass = 'status-em-fila'; // Vermelho
+                                    break;
+                                case 1:
+                                    currentStatusText = 'Carregamento Liberado';
+                                    // Cor verde para Carregamento Liberado (Normal ou No-Show)
+                                    currentStatusClass = 'status-carregamento-liberado-normal';
+                                    break;
+                                case 2:
+                                    currentStatusText = 'Carregamento Concluído';
+                                    currentStatusClass = 'status-carregamento-concluido'; // Laranja
+                                    break;
+                                case 3: // Status 3 para Aguardando Motorista (específico para No-Show antes da transferência)
+                                    currentStatusText = 'Carregamento Liberado';
+                                    currentStatusClass = 'status-aguardando-motorista'; // Azul
+                                    break;
+                                case 4: // Status 4 é usado para o registro No-Show original após transferência
+                                    currentStatusText = 'Transferido (No-Show)';
+                                    currentStatusClass = 'status-transferido'; // Roxo
+                                    break;
+                                default:
+                                    // Fallback para status text e class da API se em_separacao for inesperado
+                                    currentStatusText = registro.status_text || 'Status Desconhecido';
+                                    currentStatusClass = registro.status_class || 'bg-gray-500';
+                                    // Mapeamentos adicionais para status_text comuns como fallback
+                                     if (currentStatusText.toLowerCase().includes('aguardando motorista')) {
+                                          currentStatusClass = 'status-aguardando-motorista'; // Mantém azul para Aguardando Motorista
+                                     } else if (currentStatusText.toLowerCase().includes('em separação')) {
+                                          // Se o status text for 'Em Separação' e não foi pego pelo case 1
+                                          currentStatusClass = 'status-carregamento-liberado-normal'; // Verde
+                                     }
+                                    // Adicione mais mapeamentos aqui se necessário
                             }
                         }
 
-                        lastStatusText = statusText;
+
+                        statusDisplayDiv.textContent = currentStatusText;
+                        statusDisplayDiv.className = 'status-card ' + currentStatusClass;
+
+                        // Se o status de TEXTO mudou, toca som e vibra, só se som estiver ativado
+                        if (lastStatusText !== null && lastStatusText !== currentStatusText && soundEnabled) {
+                             notificationSound.play().catch(() => {
+                                 console.warn("Failed to play sound."); // Log potential errors
+                             });
+                             if (navigator.vibrate) {
+                                 navigator.vibrate(200);
+                             }
+                         }
+
+                        lastStatusText = currentStatusText; // Atualiza o último texto de status VISTO
+
 
                     } else {
                         statusInfoDiv.classList.add('hidden');
@@ -287,6 +326,8 @@
                             errorDiv.classList.remove('hidden');
                             errorDiv.textContent = data.message || 'Não foi possível carregar o status do registro.';
                         }
+                         // Limpa o último status text se não houver registro ativo
+                         lastStatusText = null;
                     }
                 } catch (fetchError) {
                     loadingDiv.classList.add('hidden');
@@ -294,11 +335,13 @@
                     noActiveRecordDiv.classList.add('hidden');
                     errorDiv.classList.remove('hidden');
                     errorDiv.textContent = 'Erro na comunicação com o servidor.';
+                     // Limpa o último status text em caso de erro
+                    lastStatusText = null;
                 }
             }
 
             fetchStatus();
-            setInterval(fetchStatus, 1000);
+            setInterval(fetchStatus, 1000); // Atualiza a cada 1 segundo
         });
     </script>
 </body>

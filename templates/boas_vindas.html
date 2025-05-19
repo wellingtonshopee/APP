@@ -104,7 +104,7 @@
         <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" class="logo" alt="Logo Shopee">
         <div class="message">
             <h2>Bem-vindo(a)!</h2> {# Mensagem mais genérica #}
-            <p>Você está na Fila de Cerrgamento!</p>
+            <p>Você está na Fila de Carregamento!</p> {# Corrigido "Cerrgamento" para "Carregamento" #}
             {# Mensagem indicando o redirecionamento para o status #}
             <p>Você será redirecionado em breve para acompanhar o status da sua fila de carregamento.</p>
         </div>
@@ -121,9 +121,10 @@
             const matricula = urlParams.get('matricula');
 
             // Define a URL de destino usando a matrícula
-            const targetUrl = matricula ? `/status_motorista/${matricula}` : '/'; // Redireciona para login se matrícula não for encontrada
+            // Redireciona para login se matrícula não for encontrada
+            const targetUrl = matricula ? `/status_motorista/${matricula}` : '/';
 
-            // Redireciona após 5 segundos (ajustado para 8s, pode mudar se preferir)
+            // Redireciona após 8 segundos
             setTimeout(function() {
                 window.location.href = targetUrl;
             }, 8000); // 8000 milissegundos = 8 segundos

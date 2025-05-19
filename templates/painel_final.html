@@ -61,8 +61,8 @@
             animation: scroll-left linear infinite; /* Scrolling animation */
             /* Animation duration should be set via JS or inline */
              /* Permite que o texto cresça horizontalmente dentro do flex container */
-            flex-shrink: 0;
-            flex-grow: 1; /* Ocupa espaço flexível */
+             flex-shrink: 0;
+             flex-grow: 1; /* Ocupa espaço flexível */
              /* Adiciona margem para separar o texto das logos */
              margin: 0 10px; /* 10px de margem na esquerda e direita */
         }
@@ -137,7 +137,7 @@
             overflow-y: auto;
             width: calc(100% - 45%);
              /* >>> ESTILO DA MOLDURA PARA O QUADRO 1 <<< */
-             border: 3px solid #48484a; /* Borda sólida azul, 3px de espessura */
+             border: 3px solid #df4102; /* Borda sólida azul, 3px de espessura */
              border-radius: 10px; /* Cantos levemente arredondados */
         }
 
@@ -276,10 +276,13 @@
 
     {# Top Ticker #}
     <div id="top-ticker" class="ticker-container">
-        {# O texto inicial será substituído pelo JS #}
+        {# >>> Adicionando a Logo Antes do Texto <<< #}
+        <img src="{{ url_for('static', filename='imagem/tvs.png') }}" alt="Logo 1" class="ticker-logo"> {# <-- SUBSTITUA O CAMINHO E ALT PELA SUA LOGA #}
         <div class="ticker-text" style="animation-duration: 180s;">{# AJUSTADO AQUI PARA 180 SEGUNDOS (3 MINUTOS) #}
             Carregando notícias...
         </div>
+        {# >>> Adicionando a Logo Depois do Texto <<< #}
+        <img src="{{ url_for('static', filename='imagem/tvs.png') }}" alt="Logo 2" class="ticker-logo"> {# <-- SUBSTITUA O CAMINHO E ALT PELA SUA LOGO #}
     </div>
 
     {# Main Content Area - This div holds the Painel OR Midia content #}
@@ -320,15 +323,15 @@
     {# Bottom Ticker - COM LOGO #}
     <div id="bottom-ticker" class="ticker-container">
          {# >>> Adicionando a Logo Antes do Texto <<< #}
-         <img src="{{ url_for('static', filename='imagem/logop.png') }}" alt="SPX" class="ticker-logo"> {# <-- SUBSTITUA O CAMINHO E ALT PELA SUA LOGO #}
+         <img src="{{ url_for('static', filename='imagem/tvs.png') }}" alt="SPX" class="ticker-logo"> {# <-- SUBSTITUA O CAMINHO E ALT PELA SUA LOGO #}
 
          {# O texto rolante #}
          <div class="ticker-text" style="animation-duration: 25s;">{# Mantido em 25s para o inferior #}
-            Carregando informações...
-        </div>
+             Carregando informações...
+         </div>
 
-        {# >>> Adicionando a Logo Depois do Texto <<< #}
-        <img src="{{ url_for('static', filename='imagem/logop.png') }}" alt="SPX" class="ticker-logo"> {# <-- SUBSTITUA O CAMINHO E ALT PELA SUA LOGO #}
+         {# >>> Adicionando a Logo Depois do Texto <<< #}
+         <img src="{{ url_for('static', filename='imagem/tvs.png') }}" alt="SPX" class="ticker-logo"> {# <-- SUBSTITUA O CAMINHO E ALT PELA SUA LOGO #}
     </div>
 
 
@@ -340,7 +343,7 @@
             let midiaTimer = null; // Timer para a duração da Mídia
             let lastEmSeparacaoRecordIds = null; // Para detectar novos registros no Quadro 1 "Em Separação"
 
-            const PAINEL_DURATION = 60000; // 1 minuto em ms
+            const PAINEL_DURATION = 90000; // 1 minuto em ms
             const MIDIA_DURATION = 30000; // 30 segundos em ms
 
             // --- Obtém referências aos elementos ---
@@ -406,35 +409,35 @@
                 midiaContentDiv.style.display = 'block';
 
                  try {
-                    if (midiaIframe && midiaIframe.contentWindow) {
-                         const tempLoadListener = () => {
-                             console.log("DEBUG: iframe midia.html carregado (tempLoadListener). Enviando 'resume'.");
-                             sendMidiaMessage('resume');
-                             midiaIframe.removeEventListener('load', tempLoadListener);
-                         };
-
-                         if (midiaIframe.contentWindow && midiaIframe.contentWindow.document && (midiaIframe.contentWindow.document.readyState === 'complete' || midiaIframe.contentWindow.document.readyState === 'interactive')) {
-                              console.log("DEBUG: iframe midia.html já estava pronto (readyState). Enviando 'resume' imediatamente.");
+                     if (midiaIframe && midiaIframe.contentWindow) {
+                          const tempLoadListener = () => {
+                              console.log("DEBUG: iframe midia.html carregado (tempLoadListener). Enviando 'resume'.");
                               sendMidiaMessage('resume');
-                         } else {
-                             midiaIframe.addEventListener('load', tempLoadListener);
-                             console.log("DEBUG: iframe midia.html ainda não pronto. Adicionado tempLoadListener para enviar 'resume'.");
-                         }
+                              midiaIframe.removeEventListener('load', tempLoadListener);
+                          };
 
-                     } else {
-                          console.warn("DEBUG: Não foi possível enviar comando 'resume' para o iframe (iframe ou contentWindow não acessível).");
-                          if (midiaIframe) {
-                               console.warn("DEBUG: Fallback: Recarregando iframe devido a falha ao enviar 'resume'.");
-                               midiaIframe.src = '/midia';
-                           }
-                     }
-                 } catch (e) {
-                     console.warn("DEBUG: Erro ao tentar enviar comando 'resume' para o iframe.", e);
-                      if (midiaIframe) {
-                           console.warn("DEBUG: Fallback: Recarregando iframe devido a exceção.", e);
-                           midiaIframe.src = '/midia';
+                          if (midiaIframe.contentWindow && midiaIframe.contentWindow.document && (midiaIframe.contentWindow.document.readyState === 'complete' || midiaIframe.contentWindow.document.readyState === 'interactive')) {
+                               console.log("DEBUG: iframe midia.html já estava pronto (readyState). Enviando 'resume' imediatamente.");
+                               sendMidiaMessage('resume');
+                          } else {
+                               midiaIframe.addEventListener('load', tempLoadListener);
+                               console.log("DEBUG: iframe midia.html ainda não pronto. Adicionado tempLoadListener para enviar 'resume'.");
+                          }
+
+                       } else {
+                            console.warn("DEBUG: Não foi possível enviar comando 'resume' para o iframe (iframe ou contentWindow não acessível).");
+                            if (midiaIframe) {
+                                console.warn("DEBUG: Fallback: Recarregando iframe devido a falha ao enviar 'resume'.");
+                                midiaIframe.src = '/midia';
+                             }
                        }
-                 }
+                   } catch (e) {
+                       console.warn("DEBUG: Erro ao tentar enviar comando 'resume' para o iframe.", e);
+                        if (midiaIframe) {
+                             console.warn("DEBUG: Fallback: Recarregando iframe devido a exceção.", e);
+                             midiaIframe.src = '/midia';
+                         }
+                   }
 
 
                 isShowingPainel = false;
@@ -447,70 +450,118 @@
             // --- Função para buscar e exibir dados No-Show (Quadro 2) ---
             async function fetchAndDisplayNoShow() {
                 try {
-                    const response = await fetch('/api/no_show_aguardando_motorista'); // Chamada para a API do Quadro 2
+                    // Chamando a rota API correta para registros 'Aguardando Motorista'
+                    const response = await fetch('/api/noshow/aguardando-motorista');
                     if (!response.ok) {
                         const errorText = await response.text();
                         throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
                     }
                     const allAguardandoMotoristaRecords = await response.json();
-                    const ruaDataValueToColumnTitle = { '1': 'Rua 1', '2': 'Rua 2', '3': 'Rua 3' };
+
+                    // --- DEBUG LOG: Mostra todos os registros retornados pela API ---
+                    console.log("DEBUG fetchAndDisplayNoShow: Registros retornados pela API /api/noshow/aguardando-motorista:", allAguardandoMotoristaRecords);
+
+                    // MODIFICAÇÃO AQUI: Mudando os títulos das ruas
+                    const ruaDataValueToColumnTitle = { '1': 'R 1', '2': 'R 2', '3': 'R 3' };
                     const validRuaDataValues = Object.keys(ruaDataValueToColumnTitle);
+
+                    // Filtra e agrupa os registros pela rua (apenas 1, 2, 3)
                     const filteredRecordsForColumns = allAguardandoMotoristaRecords.filter(record => {
+                        // Garante que 'rua' existe e é um dos valores válidos
                         const ruaDataValue = record.rua ? String(record.rua).trim() : '';
-                        return validRuaDataValues.includes(ruaDataValue);
+                        const isValid = validRuaDataValues.includes(ruaDataValue);
+                        // --- DEBUG LOG: Mostra se o registro foi filtrado e porquê ---
+                        if (!isValid) {
+                            console.log(`DEBUG fetchAndDisplayNoShow: Filtrando registro (rua inválida/ausente):`, record);
+                        }
+                        return isValid;
                     });
+
+                    // --- DEBUG LOG: Mostra os registros após a filtragem ---
+                    console.log("DEBUG fetchAndDisplayNoShow: Registros após filtragem por rua:", filteredRecordsForColumns);
+
+
                     const groupedByRuaDataValue = {};
-                    validRuaDataValues.forEach(value => { groupedByRuaDataValue[value] = []; });
+                    validRuaDataValues.forEach(value => { groupedByRuaDataValue[value] = []; }); // Garante que todas as ruas (1, 2, 3) existam no objeto
                     filteredRecordsForColumns.forEach(record => {
                          const ruaDataValue = String(record.rua).trim();
                          if (groupedByRuaDataValue[ruaDataValue]) {
                              groupedByRuaDataValue[ruaDataValue].push(record);
                          }
                     });
+
                     const totalRegistrosParaExibir = filteredRecordsForColumns.length;
+
+                    // --- DEBUG LOG: Mostra o total de registros que serão exibidos ---
+                    console.log("DEBUG fetchAndDisplayNoShow: Total de registros para exibir no Quadro 2:", totalRegistrosParaExibir);
+
+
                     if (totalRegistrosParaExibir > 0) {
+                         // Se houver registros para exibir no Quadro 2, ajusta larguras e mostra Quadro 2
                          quadro1.style.width = 'calc(100% - 45%)';
                          quadro1.style.flexGrow = '0';
                          quadro2.style.width = '45%';
                          quadro2.style.flexShrink = '0';
-                         quadro2.style.display = 'flex';
-                        colunasContainer.innerHTML = '';
-                        const displayLimit = 12;
-                        validRuaDataValues.forEach(ruaDataValue => {
-                            const colunaTitle = ruaDataValueToColumnTitle[ruaDataValue];
-                            const recordsForThisRua = groupedByRuaDataValue[ruaDataValue];
-                            const col = document.createElement('div');
-                            col.className = 'coluna';
-                            col.innerHTML = `<h3>${colunaTitle} (${recordsForThisRua.length} Rotas)</h3>`;
-                            const recordsToDisplayInitially = recordsForThisRua.slice(0, displayLimit);
-                            if (recordsToDisplayInitially && recordsToDisplayInitially.length > 0) {
-                                recordsToDisplayInitially.forEach(record => {
-                                    col.innerHTML += `<div class="registro"><div class="rotulo"><span>Rota</span> ${record.rota || 'N/A'} - Entre</div></div>`;
-                                });
-                                if (recordsForThisRua.length > displayLimit) {
-                                    col.innerHTML += `<p style="text-align:center; font-size:0.8em; margin-top:10px;">+${recordsForThisRua.length - displayLimit} registros aguardando... (total ${recordsForThisRua.length})</p>`;
-                                }
-                            } else {
-                                col.innerHTML += `<p>Nenhum registro para ${colunaTitle}.</p>`;
-                            }
-                            colunasContainer.appendChild(col);
-                        });
+                         quadro2.style.display = 'flex'; // Garante que o Quadro 2 seja exibido
+
+                         colunasContainer.innerHTML = ''; // Limpa o conteúdo atual das colunas
+
+                         const displayLimit = 12; // Limite de exibição por coluna antes do "+N registros"
+
+                         // Itera pelas ruas válidas para criar as colunas
+                         validRuaDataValues.forEach(ruaDataValue => {
+                             const colunaTitle = ruaDataValueToColumnTitle[ruaDataValue];
+                             const recordsForThisRua = groupedByRuaDataValue[ruaDataValue]; // Registros para esta rua
+
+                             const col = document.createElement('div');
+                             col.className = 'coluna';
+                             // MODIFICAÇÃO AQUI: Adiciona o título da coluna em negrito com a contagem de rotas
+                             col.innerHTML = `<h3><strong>${colunaTitle}</strong> (${recordsForThisRua.length} Rotas)</h3>`;
+
+                             // Exibe os registros para esta rua, respeitando o limite
+                             const recordsToDisplayInitially = recordsForThisRua.slice(0, displayLimit);
+                             if (recordsToDisplayInitially && recordsToDisplayInitially.length > 0) {
+                                 recordsToDisplayInitially.forEach(record => {
+                                     // Exibir apenas a Rota e " - Entre"
+                                     col.innerHTML += `
+                                         <div class="registro">
+                                             <div class="rotulo"><span>Rota:</span> ${record.rota || 'N/A'} - Entre</div>
+                                         </div>
+                                     `;
+                                 });
+
+                                 // Adiciona a mensagem de mais registros se houver
+                                 if (recordsForThisRua.length > displayLimit) {
+                                     col.innerHTML += `<p style="text-align:center; font-size:0.8em; margin-top:10px;">+${recordsForThisRua.length - displayLimit} registros aguardando... (total ${recordsForThisRua.length})</p>`;
+                                 }
+                             } else {
+                                 // Mensagem se não houver registros para esta rua específica
+                                 col.innerHTML += `<p>Nenhum registro para ${colunaTitle}.</p>`;
+                             }
+                             colunasContainer.appendChild(col); // Adiciona a coluna ao container de colunas
+                         });
+
                     } else {
-                         colunasContainer.innerHTML = '';
-                         quadro1.style.width = '100%';
-                         quadro1.style.flexGrow = '1';
-                         quadro2.style.width = '0%';
-                         quadro2.style.flexShrink = '1';
-                         quadro2.style.display = 'none';
+                        // Se não houver registros para exibir no Quadro 2, esconde Quadro 2 e expande Quadro 1
+                        colunasContainer.innerHTML = ''; // Limpa o conteúdo
+                        quadro1.style.width = '100%';
+                        quadro1.style.flexGrow = '1';
+                        quadro2.style.width = '0%';
+                        quadro2.style.flexShrink = '1';
+                        quadro2.style.display = 'none'; // Esconde o quadro 2
+                         console.log("DEBUG fetchAndDisplayNoShow: Nenhum registro para exibir no Quadro 2. Ocultando Quadro 2.");
                     }
                 } catch (error) {
                     console.error('Erro ao buscar dados No-Show:', error);
                     colunasContainer.innerHTML = '<p class="error-message">Erro ao carregar dados No-Show.</p>';
-                    quadro1.style.width = '60%';
+                    // Em caso de erro, pode ser útil mostrar ambos os quadros com mensagens de erro
+                    // Mantém o layout dividido para mostrar o erro no Quadro 2, se Quadro 1 tiver dados
+                    // Se Quadro 1 também tiver erro, ele exibirá sua própria mensagem de erro
+                    quadro1.style.width = 'calc(100% - 45%)'; // Mantém espaço para Quadro 2 mesmo com erro
                     quadro1.style.flexGrow = '0';
-                    quadro2.style.width = '40%';
+                    quadro2.style.width = '45%';
                     quadro2.style.flexShrink = '0';
-                    quadro2.style.display = 'flex';
+                    quadro2.style.display = 'flex'; // Garante que o quadro 2 esteja visível para mostrar o erro
                 }
             }
 
@@ -525,23 +576,30 @@
                     }
                     const registros = await response.json();
                     const currentEmSeparacaoRecordIds = registros.map(registro => registro.id);
+
+                    // Lógica para detectar novos registros e interromper a mídia
                     if (lastEmSeparacaoRecordIds !== null) {
                         const newRecordsAppeared = currentEmSeparacaoRecordIds.some(id => !lastEmSeparacaoRecordIds.includes(id));
                         if (newRecordsAppeared && !isShowingPainel) {
                             console.log("DEBUG: NOVO registro 'Em Separação' detectado! Interrompendo Mídia.");
                             switchToPainel();
+                            // Atualiza lastEmSeparacaoRecordIds APENAS após a troca para o painel
                             lastEmSeparacaoRecordIds = currentEmSeparacaoRecordIds;
-                            return;
+                            return; // Sai da função para evitar renderização duplicada imediatamente
                         }
                     }
+                    // Atualiza lastEmSeparacaoRecordIds se não houve interrupção da mídia
                     lastEmSeparacaoRecordIds = currentEmSeparacaoRecordIds;
-                    registrosEmSeparacaoContainer.innerHTML = '';
+
+
+                    registrosEmSeparacaoContainer.innerHTML = ''; // Limpa o conteúdo atual
                     if (registros && registros.length > 0) {
                          registros.forEach(registro => {
+                             // Exibir Rota e Tipo de Entrega no Quadro 1
                              registrosEmSeparacaoContainer.innerHTML += `
                                  <div class="registro-quadro1">
                                      <p><strong>Nome:</strong> ${registro.nome || 'N/A'}</p>
-                                     <p><strong>Rota:</strong> ${registro.rota || 'N/A'}</p>
+                                     <p><strong>Rota:</strong> ${registro.rota || 'N/A'} - ${registro.tipo_entrega || 'N/A'}</p>
                                      <p><strong>Gaiola:</strong> ${registro.gaiola || 'N/A'} <strong>Estação:</strong> ${registro.estacao || 'N/A'}</p>
                                  </div>
                              `;
@@ -570,12 +628,19 @@
                     if (data.headlines && data.headlines.length > 0) {
                         const combinedText = data.headlines.join(' | ');
                         topTickerText.textContent = combinedText;
+                         // Ajusta a duração da animação com base no comprimento do texto
+                        const textLength = combinedText.length;
+                        const duration = Math.max(20, textLength * 0.15); // Duração mínima de 20s, aumenta com o texto
+                        topTickerText.style.animationDuration = `${duration}s`;
+
                     } else {
                         topTickerText.textContent = "Nenhuma notícia disponível no momento.";
+                         topTickerText.style.animationDuration = '20s'; // Duração padrão se não houver texto
                     }
                 } catch (error) {
                     console.error('Erro ao buscar notícias:', error);
                     topTickerText.textContent = "Erro ao carregar notícias.";
+                     topTickerText.style.animationDuration = '20s'; // Duração padrão em caso de erro
                 }
             }
              // --- FIM: Função para buscar notícias ---
@@ -592,8 +657,8 @@
                        const response = await fetch('/api/operational_info'); // <<-- VERIFIQUE ESTA ROTA NO FLASK
 
                        if (!response.ok) {
-                           const errorText = await response.text();
-                           throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
+                            const errorText = await response.text();
+                            throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
                        }
 
                        const data = await response.json();
@@ -601,16 +666,27 @@
 
                        if (data.info) {
                             bottomTickerText.textContent = data.info;
+                             // Ajusta a duração da animação com base no comprimento do texto
+                            const textLength = data.info.length;
+                            const duration = Math.max(20, textLength * 0.15); // Duração mínima de 20s, aumenta com o texto
+                            bottomTickerText.style.animationDuration = `${duration}s`;
                        } else {
-                           bottomTickerText.textContent = "Nenhuma informação operacional disponível.";
+                            bottomTickerText.textContent = "Nenhuma informação operacional disponível.";
+                             bottomTickerText.style.animationDuration = '20s'; // Duração padrão se não houver texto
                        }
 
                    } catch (error) {
                        console.error('Erro ao buscar informações operacionais:', error);
-                       bottomTickerText.textContent = "HUB Muriaé Informa: Rotas No-Show já estão liberadas para carregamento imediato! Procure o Analista de Transporte para mais orientações. |  Carregamento Mercadão! As rotas liberadas para Carregamento ja estão disponiveis, dirija-se até sua Estação.";
-                      }
-             }
-             // --- FIM: Função para buscar informações operacionais ---
+                       // Mensagem fallback se a API falhar
+                       const fallbackText = "HUB Muriaé Informa: Rotas No-Show já estão liberadas para carregamento imediato! Procure o Analista de Transporte para mais orientações. | Carregamento Mercadão! As rotas liberadas para Carregamento ja estão disponiveis, dirija-se até sua Estação.";
+                       bottomTickerText.textContent = fallbackText;
+                        // Ajusta a duração da animação para o texto fallback
+                       const textLength = fallbackText.length;
+                       const duration = Math.max(20, textLength * 0.15);
+                       bottomTickerText.style.animationDuration = `${duration}s`;
+                   }
+              }
+              // --- FIM: Função para buscar informações operacionais ---
 
 
             // --- Configuração Inicial e Timers ---

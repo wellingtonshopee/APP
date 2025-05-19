@@ -67,12 +67,17 @@
     {# Container Principal de Exibição - OCUPA A TELA TODA #}
     <div class="main-display-container">
         {# >>> Seus Vídeos e Slides Vão Aqui <<< #}
-        {# Certifique-se de ter 3 vídeos e 17 slides com IDs únicos e classes 'media-item' #}
+        {# Certifique-se de ter 7 vídeos e 17 slides com IDs únicos e classes 'media-item' #}
 
-        {# Vídeos (3) #}
+        {# Vídeos (7) - IDs ajustados para serem únicos #}
         <video id="video1" src="/static/imagem/video1.mp4" class="media-item" muted playsinline></video>
         <video id="video2" src="/static/imagem/video2.mp4" class="media-item" muted playsinline></video>
         <video id="video3" src="/static/imagem/video3.mp4" class="media-item" muted playsinline></video>
+        <video id="video4" src="/static/imagem/video4.mp4" class="media-item" muted playsinline></video>
+        <video id="video5" src="/static/imagem/video5.mp4" class="media-item" muted playsinline></video>
+        <video id="video6" src="/static/imagem/video6.mp4" class="media-item" muted playsinline></video>
+        <video id="video7" src="/static/imagem/video7.mp4" class="media-item" muted playsinline></video>
+
 
         {# Slides (17) - Caminhos ajustados #}
         <img id="slide1" src="/static/imagem/sld1.png" class="media-item" alt="Slide 1">
@@ -91,7 +96,7 @@
         <img id="slide14" src="/static/imagem/sld14.png" class="media-item" alt="Slide 14">
         <img id="slide15" src="/static/imagem/sld15.png" class="media-item" alt="Slide 15">
         <img id="slide16" src="/static/imagem/sld16.png" class="media-item" alt="Slide 16">
-        <img id="slide17" src="/static/imagem/sld17.png" class="media-item" alt="Slide 17">
+        <img id="slide17" src="/static/imagem/TVSG.png" class="media-item" alt="Slide 17">
 
         {# FIM Vídeos e Slides #}
     </div>
@@ -113,7 +118,7 @@
             let videoIndex = 0;
             let slideIndex = 0;
 
-            // Monta a playlist intercalando
+            // Monta a playlist intercalando: 1 vídeo, 2 slides
             while (videoIndex < videos.length || slideIndex < slides.length) {
                 // Adiciona 1 vídeo se houver
                 if (videoIndex < videos.length) {
@@ -132,6 +137,9 @@
                 }
             }
 
+            console.log("DEBUG (Midia): Playlist gerada:", playlist.map(item => item.id));
+
+
             let currentItemIndex = 0; // Índice do item atualmente sendo exibido na playlist
             let slideTimeout = null; // Para armazenar o timeout do slide
 
@@ -148,12 +156,9 @@
                      if (item.tagName === 'VIDEO') {
                          item.pause();
                          // Remove listeners específicos deste vídeo antes de escondê-lo
-                         const endedRef = item.dataset.endedHandlerRef; // Pega a referência do dataset
-                         const errorRef = item.dataset.errorHandlerRef;
-                         if(endedRef) item.removeEventListener('ended', eval(endedRef)); // Usa eval para obter a função de volta (menos seguro)
-                         if(errorRef) item.removeEventListener('error', eval(errorRef));
-                         item.dataset.endedHandlerRef = ''; // Limpa a referência no dataset
-                         item.dataset.errorHandlerRef = '';
+                         // Usando as referências diretas das funções
+                         item.removeEventListener('ended', genericVideoEndedHandler);
+                         item.removeEventListener('error', genericVideoErrorHandler);
                      }
                  });
 
@@ -165,31 +170,18 @@
                  }
              }
 
-            // --- Handlers de Evento de Vídeo (Nomes fixos para remover) ---
-             // Para remover event listeners corretamente, eles precisam ser a mesma referência de função.
-             // Vamos usar closures ou dataset para isso. O uso de eval no hideAllItems é um hack.
-             // Uma forma mais robusta é definir handlers genéricos e usar o currentItemIndex.
-
+             // --- Handlers de Evento de Vídeo (Nomes fixos para remover) ---
              // Handlers genéricos que se referem ao item atual
              const genericVideoEndedHandler = () => {
                  console.log("DEBUG (Midia): genericVideoEndedHandler triggered for index:", currentItemIndex);
-                 const currentVideo = playlist[currentItemIndex];
-                 if (currentVideo) {
-                      // Remove os listeners deste item atual
-                      currentVideo.removeEventListener('ended', genericVideoEndedHandler);
-                      currentVideo.removeEventListener('error', genericVideoErrorHandler);
-                 }
+                 // Não precisa remover listeners aqui, hideAllItems faz isso antes de mostrar o próximo
+
                  showNextItem(); // Avança para o próximo item
              };
 
              const genericVideoErrorHandler = () => {
                  console.error("DEBUG (Midia): genericVideoErrorHandler triggered for index:", currentItemIndex);
-                  const currentVideo = playlist[currentItemIndex];
-                  if (currentVideo) {
-                      // Remove os listeners deste item atual
-                      currentVideo.removeEventListener('ended', genericVideoEndedHandler);
-                      currentVideo.removeEventListener('error', genericVideoErrorHandler);
-                  }
+                 // Não precisa remover listeners aqui, hideAllItems faz isso antes de mostrar o próximo
                  showNextItem(); // Avança para o próximo item em caso de erro
              };
 
@@ -228,7 +220,7 @@
 
                     // Se a Mídia NÃO ESTIVER PAUSADA, tenta dar play
                     if (!isCurrentlyPaused) {
-                        // Define o tempo atual (será 0 se não veio de uma pausa de vídeo)
+                         // Define o tempo atual (será 0 se não veio de uma pausa de vídeo)
                          item.currentTime = pausedVideoCurrentTime || 0;
                          pausedVideoCurrentTime = 0; // Reseta o tempo salvo após usá-lo
 
@@ -237,6 +229,8 @@
                          }).catch(error => {
                              console.error("DEBUG (Midia): Erro ao iniciar play/resume do vídeo:", item.id, error);
                              // Se o autoplay for bloqueado (ex: não mutado), pode ser necessário interagir ou pular
+                             // Como os vídeos estão mutados e playsinline, o autoplay deve funcionar.
+                             // Se falhar por outro motivo, pule para o próximo.
                              showNextItem(); // Pula para o próximo item em caso de falha no play
                          });
                     } else {
@@ -350,12 +344,12 @@
                     // Retoma a exibição/reprodução a partir do item e tempo salvos
                     const currentItem = playlist[currentItemIndex];
                     if (currentItem) {
-                        // O item já está visível (porque a div #midia-content foi mostrada no parent)
-                        // Chamamos showItem novamente. showItem verificará que isCurrentlyPaused AGORA é false
-                        // e iniciará o play/timer do item correto (currentItemIndex).
-                        // O tempo do vídeo (pausedVideoCurrentTime) será usado por showItem.
-                        showItem(currentItemIndex);
-                        console.log("DEBUG (Midia): Executando showItem para retomar.");
+                         // O item já está visível (porque a div #midia-content foi mostrada no parent)
+                         // Chamamos showItem novamente. showItem verificará que isCurrentlyPaused AGORA é false
+                         // e iniciará o play/timer do item correto (currentItemIndex).
+                         // O tempo do vídeo (pausedVideoCurrentTime) será usado por showItem.
+                         showItem(currentItemIndex);
+                         console.log("DEBUG (Midia): Executando showItem para retomar.");
 
                     } else {
                          console.warn("DEBUG (Midia): Comando 'resume' recebido, mas nenhum item atual encontrado na playlist. Tentando iniciar do 0.");
@@ -363,7 +357,7 @@
                          if (playlist.length > 0) {
                              showItem(0); // Tenta iniciar a playlist
                          } else {
-                            console.error("DEBUG (Midia): Playlist vazia, não é possível retomar.");
+                             console.error("DEBUG (Midia): Playlist vazia, não é possível retomar.");
                          }
                     }
                 }

@@ -32,8 +32,9 @@
 
 
         .pagina-associacao input[name="gaiola"],
-        .pagina-associacao input[name="estacao"] {
-            width: 120px;
+        .pagina-associacao input[name="estacao"],
+        .pagina-associacao input[name="rua"] { /* Adicionado o input de rua */
+            width: 120px; /* Pode ajustar a largura conforme necessário */
         }
 
         .pagina-associacao .card {
@@ -155,24 +156,28 @@
                 const el = document.querySelector(hash);
                 if (el) {
                     el.scrollIntoView({ behavior: 'auto', block: 'center' });
-                    const firstGaiolaInput = el.querySelector('input[name="gaiola"]');
-                    if (firstGaiolaInput && !firstGaiolaInput.disabled) { // Focar apenas se não estiver desabilitado
-                        firstGaiolaInput.focus();
+                    // Focar no primeiro input de texto não desabilitado dentro do card
+                    const firstTextInput = el.querySelector('input[type="text"]:not(:disabled)');
+                    if (firstTextInput) {
+                         firstTextInput.focus();
                     }
                 }
             } else {
-                const firstGaiolaInput = document.querySelector('.card:not(.finalizado-definitivo) input[name="gaiola"]');
-                if (firstGaiolaInput && !firstGaiolaInput.disabled) {
-                    firstGaiolaInput.focus();
-                }
+                 // Focar no primeiro input de texto não desabilitado na página (se não houver hash)
+                 const firstTextInput = document.querySelector('.card:not(.finalizado-definitivo) input[type="text"]:not(:disabled)');
+                 if (firstTextInput) {
+                      firstTextInput.focus();
+                 }
             }
 
             // Adiciona event listeners para controlar a navegação com Tab/Enter
             document.querySelectorAll('.form-associar').forEach(form => {
                 const gaiolaInput = form.querySelector('input[name="gaiola"]');
                 const estacaoInput = form.querySelector('input[name="estacao"]');
+                const ruaInput = form.querySelector('input[name="rua"]'); // Captura o input de rua
                 const salvarButton = form.querySelector('button[type="submit"]'); // Botão de salvar do form de associação
 
+                // Melhoria na navegação: Tab/Enter do Gaiola vai para Estação, de Estação vai para Rua, de Rua vai para Salvar
                 if (gaiolaInput) {
                     gaiolaInput.addEventListener('keydown', function (event) {
                         if (event.key === 'Enter' || event.key === 'Tab') {
@@ -183,12 +188,38 @@
                 }
                 if (estacaoInput) {
                     estacaoInput.addEventListener('keydown', function (event) {
-                        if (event.key === 'Enter' || event.key === 'Tab') {
-                            event.preventDefault();
-                            if (salvarButton) salvarButton.focus();
-                        }
+                         if (event.key === 'Enter' || event.key === 'Tab') {
+                              event.preventDefault();
+                              // Navega para Rua SOMENTE se o tipo de entrega for No-Show e o campo Rua existir
+                              // Precisa encontrar o elemento que contém o tipo de entrega.
+                              // Uma forma robusta é subir na árvore DOM até o card e procurar o parágrafo correto.
+                              const cardElement = estacaoInput.closest('.card');
+                              let tipoEntrega = '';
+                              if (cardElement) {
+                                  // Procura pelo parágrafo que contém "Tipo de Entrega:"
+                                  const tipoEntregaElement = Array.from(cardElement.querySelectorAll('p')).find(p => p.querySelector('strong') && p.querySelector('strong').textContent.includes('Tipo de Entrega:'));
+                                  if (tipoEntregaElement) {
+                                      // Extrai o texto após o strong, removendo espaços em branco
+                                      tipoEntrega = tipoEntregaElement.textContent.replace('Tipo de Entrega:', '').trim();
+                                  }
+                              }
+
+                              if (tipoEntrega === 'No-Show' && ruaInput) {
+                                  ruaInput.focus(); // Vai para Rua
+                              } else if (salvarButton) {
+                                  salvarButton.focus(); // Vai direto para Salvar se não for No-Show
+                              }
+                         }
                     });
                 }
+                 if (ruaInput) { // Nova navegação do Rua para Salvar
+                      ruaInput.addEventListener('keydown', function (event) {
+                           if (event.key === 'Enter' || event.key === 'Tab') {
+                                event.preventDefault();
+                                if (salvarButton) salvarButton.focus(); // Vai para Salvar
+                           }
+                      });
+                 }
             });
         }
     </script>
@@ -201,6 +232,17 @@
 </div>
 
 <div class="container">
+    {# Exibe mensagens flash #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
     <div class="cards-container">
         {% if registros %}
             {% for registro in registros %}
@@ -226,18 +268,26 @@
                     <p><strong>Tipo de Entrega:</strong> {{ registro.tipo_entrega }}</p>
                     <p><strong>Data / Hora Chegada:</strong> {{ registro.data_hora_login|formata_data_hora }}</p>
 
-                    {# Formulário para associar/salvar gaiola e estação #}
+                    {# Formulário para associar/salvar gaiola, estação e rua #}
                     {# Este formulário só faz sentido se não estiver 'em_separacao == 2' #}
+                    {# Se estiver 'em_separacao == 1', os campos devem ser readonly e apenas o botão de Finalizar deve aparecer #}
                     {% if registro.em_separacao != 2 %}
                     <form method="post" action="{{ url_for('associar_id', id=registro.id) }}" class="form-associar">
                         <div>
-                            <label for="gaiola-{{registro.id}}">Gaiola / Rua:</label>
+                            <label for="gaiola-{{registro.id}}">Gaiola:</label>
                             <input type="text" id="gaiola-{{registro.id}}" name="gaiola" value="{{ registro.gaiola or '' }}" {% if registro.em_separacao == 1 %}readonly{% endif %}>
                         </div>
                         <div>
                             <label for="estacao-{{registro.id}}">Estação:</label>
                             <input type="text" id="estacao-{{registro.id}}" name="estacao" value="{% if registro.tipo_entrega == 'No-Show' and not registro.estacao %}06{% else %}{{ registro.estacao or '' }}{% endif %}" {% if registro.em_separacao == 1 %}readonly{% endif %}>
                         </div>
+                        {# CAMPO PARA RUA - EXIBIR APENAS SE FOR 'No-Show' #}
+                        {% if registro.tipo_entrega == 'No-Show' %}
+                        <div>
+                            <label for="rua-{{registro.id}}">Rua:</label>
+                            <input type="text" id="rua-{{registro.id}}" name="rua" value="{{ registro.rua or '' }}" {% if registro.em_separacao == 1 %}readonly{% endif %}>
+                        </div>
+                        {% endif %}
                         {% if registro.em_separacao == 0 %} {# Mostrar botão Salvar apenas se não estiver em separação #}
                         <div>
                             <button type="submit" class="botao-estilo-transparente" style="background-color: #007bff; color: white; border-color: #007bff;">Salvar Associação</button>
@@ -250,32 +300,39 @@
                         </div>
                     </form>
                     {% else %}
-                        <p><strong>Gaiola / Rua:</strong> {{ registro.gaiola or 'N/A' }}</p>
+                        {# Exibe os dados se o status for em_separacao == 2 #}
+                        <p><strong>Gaiola:</strong> {{ registro.gaiola or 'N/A' }}</p>
                         <p><strong>Estação:</strong> {{ registro.estacao or 'N/A' }}</p>
+                        {# EXIBE O CAMPO RUA APENAS SE FOR 'No-Show' #}
+                        {% if registro.tipo_entrega == 'No-Show' %}
+                        <p><strong>Rua:</strong> {{ registro.rua or 'N/A' }}</p>
+                        {% endif %}
                     {% endif %}
 
 
                     <div class="botoes-container">
                         <button onclick="window.location.href='{{ url_for('registros') }}#registro-{{ registro.id }}'" class="botao-estilo-transparente" style="background-color: #6c757d; color: white; border-color: #6c757d;">Ver Lista</button>
 
+                        {# Botão para Finalizar Definitivamente (marcar finalizada=1) #}
+                        {# Este botão chama a rota marcar_como_finalizado_id #}
                         {% if registro.em_separacao == 1 or registro.em_separacao == 2 %}
-                            {# Botão para Finalizar Definitivamente (marcar finalizada=1) #}
-                            {# Este botão chama a NOVA ROTA #}
                             <form method="post" action="{{ url_for('marcar_como_finalizado_id', id=registro.id) }}" style="margin:0;">
-                                <button type="submit" class="botao-estilo-transparente" style="background-color: #28a745; color: white; border-color: #28a745;">
+                                <button type="submit" class="botao-estilo-transparente" style="background-color: #28a745; color: white; border-color: #28a45;">
                                     Finalizar Carreg.
                                 </button>
                             </form>
                         {% endif %}
 
                         {# Botão para Desassociar (volta em_separacao para 0) #}
+                        {# Este botão chama a rota desassociar_id #}
                         {% if registro.em_separacao == 1 or registro.em_separacao == 2 %}
                             <form method="post" action="{{ url_for('desassociar_id', id=registro.id) }}" style="margin:0;">
                                 <button type="submit" class="botao-estilo-transparente" style="background-color: #dc3545; color: white; border-color: #dc3545;">Desassociar</button>
                             </form>
                         {% endif %}
 
-                        {# Botão para antigo "Finalizado Laranja" (em_separacao=2) - MOSTRAR APENAS SE TIPO_ENTREGA FOR 'No-Show' #}
+                        {# Botão para antigo "Finalizado Laranja" (em_separacao=2) - MOSTRAR APENAS SE TIPO_ENTREGA FOR 'No-Show' E STATUS FOR 1 #}
+                        {# Este botão chama a rota finalizar_carregamento_id_status_separacao #}
                         {% if registro.em_separacao == 1 and registro.tipo_entrega == 'No-Show' %}
                             <form method="post" action="{{ url_for('finalizar_carregamento_id_status_separacao', id=registro.id) }}" style="margin:0;">
                                 <button type="submit" class="botao-estilo-transparente" style="background-color: #f39c12; color: white; border-color: #f39c12;">Concluir Carreg.</button>
