@@ -306,6 +306,8 @@ def login():
     """
     Lida com o processo de login.
     Verifica se a matrícula existe e cria um novo registro (em 'registros' ou 'no_show').
+    Após o login bem-sucedido e a criação do registro, redireciona para a página de boas-vindas
+    (que por sua vez redirecionará para a página de status do motorista).
     """
     erro = None
     if request.method == 'POST':
@@ -353,23 +355,28 @@ def login():
 
                     conn.commit()
 
-                    # Pegar o ID da nova sessão criada
+                    # Pegar o ID da nova sessão criada (opcional, não usado no redirecionamento, mas útil para logs)
                     new_session_id = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
                     print(f"Nova sessão criada para o número de registro {matricula} (login_id: {login_id}) com ID: {new_session_id} na tabela {tabela_destino}.")
 
-                    # Redireciona para a tela de boas-vindas
-                    return redirect(url_for('boas_vindas', id=new_session_id))
+                    # Redireciona para a tela de boas-vindas, passando a matrícula como parâmetro
+                    # MODIFICAÇÃO AQUI: Redireciona para boas_vindas com a matrícula
+                    return redirect(url_for('boas_vindas', matricula=matricula))
                 else:
                     erro = 'Erro ao buscar dados do usuário. Por favor, tente novamente.'
                     print(f"Erro ao buscar dados para login_id {login_id}.")
+                    # Se houver erro ao buscar dados do usuário, renderiza a página de login novamente
                     return render_template('login.html', erro=erro)
 
             else:
                 erro = 'Número de registro não cadastrado. Por favor, cadastre-se primeiro.'
                 print(f"Login falhou para o número de registro {matricula}: Não encontrado na tabela login.")
+                # Se a matrícula não for encontrada, renderiza a página de login novamente
                 return render_template('login.html', erro=erro)
 
+    # Para requisições GET, apenas renderiza o formulário de login
     return render_template('login.html', erro=erro)
+
 
 
 
@@ -526,7 +533,13 @@ def historico():
     with get_db_connection() as conn:
         historico_data = conn.execute('SELECT h.*, r.nome, r.matricula FROM historico h JOIN registros r ON h.registro_id = r.id ORDER BY h.data_hora DESC').fetchall()
     return render_template('historico.html', historico=historico_data)
+# ... (suas importações e configuração do Flask) ...
 
+# Função auxiliar para obter a conexão com o banco de dados
+# Assumindo que get_db_connection está definida em outro lugar
+# from sua_conexao_db import get_db_connection
+# Assumindo que get_data_hora_brasilia está definida em outro lugar
+# from suas_funcoes_uteis import get_data_hora_brasilia
 
 @app.route('/associacao')
 def associacao():
@@ -540,16 +553,35 @@ def associacao():
     tipo_entrega_filtro = request.args.get('tipo_entrega')  # Filters for the list view
     registros_por_pagina = 10  # Adjusted pagination size for list view - was 1
 
+    # --- DEBUG PRINT: Verifica se o ID está sendo recebido na rota ---
+    print(f"DEBUG /associacao: Rota acessada. id_registro recebido: {id_registro}")
+    print(f"DEBUG /associacao: Página: {pagina}, Rota Filtro: {rota_filtro}, Tipo Entrega Filtro: {tipo_entrega_filtro}")
+
+
     with get_db_connection() as conn:
         if id_registro:
             # If an ID is provided, display only that specific active record
             # Check if it's still active (not finalizada or cancelled)
-            registro = conn.execute('SELECT * FROM registros WHERE id = ? AND finalizada = 0 AND cancelado = 0', (id_registro,)).fetchone()
-            registros_data = [registro] if registro else []
-            total_paginas = 1 if registro else 0  # Only one page if viewing a single record
+            query = 'SELECT * FROM registros WHERE id = ? AND finalizada = 0 AND cancelado = 0'
+            print(f"DEBUG /associacao: Executando query para ID específico: {query} com parâmetro {id_registro}")
+            registro = conn.execute(query, (id_registro,)).fetchone()
+
+            if registro:
+                print(f"DEBUG /associacao: Registro encontrado para ID {id_registro}: {registro}")
+                registros_data = [registro]
+                total_paginas = 1
+            else:
+                print(f"DEBUG /associacao: Nenhum registro ATIVO encontrado para ID {id_registro}.")
+                # Se o registro não for encontrado (pode ter sido finalizado/cancelado),
+                # podemos optar por mostrar a lista completa ou uma mensagem.
+                # Para depuração, vamos mostrar a lista completa neste caso.
+                # Em produção, você pode querer redirecionar para a lista principal ou mostrar uma mensagem de "não encontrado/finalizado".
+                print("DEBUG /associacao: Redirecionando para a lista completa pois o registro específico não foi encontrado como ativo.")
+                return redirect(url_for('associacao')) # Redireciona para a lista completa sem ID
+
             # Pass filters back even for single view, in case user removes ID from URL
             return render_template('associacao.html', registros=registros_data, pagina=1, total_paginas=total_paginas,
-                                 rota=rota_filtro, tipo_entrega=tipo_entrega_filtro, filtro_id=id_registro)
+                                   rota=rota_filtro, tipo_entrega=tipo_entrega_filtro, filtro_id=id_registro)
         else:
             # If no specific ID, display paginated list of active records with filters
             base_query = 'SELECT * FROM registros WHERE finalizada = 0 AND cancelado = 0'  # Only active records
@@ -579,38 +611,149 @@ def associacao():
             base_query += ' ORDER BY em_separacao ASC, data_hora_login DESC LIMIT ? OFFSET ?'
             params.extend([registros_por_pagina, (pagina - 1) * registros_por_pagina])  # Corrected offset calculation
 
+            print(f"DEBUG /associacao: Executando query para lista paginada: {base_query} com parâmetros {params}")
             registros_data = conn.execute(base_query, params).fetchall()
+            print(f"DEBUG /associacao: Total de registros na lista paginada: {len(registros_data)}")
+
 
             return render_template('associacao.html', registros=registros_data, pagina=pagina,
-                                 total_paginas=total_paginas, rota=rota_filtro,
-                                 tipo_entrega=tipo_entrega_filtro, filtro_id=None)
+                                   total_paginas=total_paginas, rota=rota_filtro,
+                                   tipo_entrega=tipo_entrega_filtro, filtro_id=None)
 
-
+### Rota Associação ID
 @app.route('/associar/<int:id>', methods=['POST'])
 def associar_id(id):
-    """Associa um registro com gaiola/estacao e define o status como 'em separacao'."""
-    gaiola = request.form.get('gaiola', '').title()
-    estacao = request.form.get('estacao', '').title()
-    em_separacao = 1  # Ao associar, marca como "em separação"
+    """
+    Associa um registro com gaiola/estacao/rua.
+    Verifica se há um registro No-Show correspondente para transferir dados.
+    Se um registro No-Show correspondente (matrícula '0001', mesma rota, status 'Aguardando Motorista')
+    for encontrado, transfere os dados (rota, gaiola, estacao, rua) do No-Show para o registro
+    na tabela 'registros', marca ambos como processados e finaliza o registro em 'registros'.
+    Caso contrário, realiza a associação manual com os dados do formulário.
+    """
+    print(f"DEBUG: /associar/{id} - Rota acessada.")
+    gaiola_form = request.form.get('gaiola', '').title()
+    estacao_form = request.form.get('estacao', '').title()
+    rua_form = request.form.get('rua', '').title() # Captura a rua do formulário
     data_hora = get_data_hora_brasilia()
 
     with get_db_connection() as conn:
-        # Apenas atualiza se o registro não estiver finalizado ou cancelado
-        conn.execute('''
-            UPDATE registros
-            SET gaiola = ?, estacao = ?, em_separacao = ?
-            WHERE id = ? AND finalizada = 0 AND cancelado = 0
-        ''', (gaiola, estacao, em_separacao, id))
+        # 1. Buscar o registro na tabela 'registros' que está sendo associado
+        registro_registros = conn.execute('SELECT * FROM registros WHERE id = ?', (id,)).fetchone()
 
-        # Registra a ação no histórico
-        conn.execute('''
-            INSERT INTO historico (registro_id, acao, gaiola, estacao, data_hora)
-            VALUES (?, 'associated', ?, ?, ?)
-        ''', (id, gaiola, estacao, data_hora))
-        conn.commit()
+        if not registro_registros:
+            flash('Registro não encontrado.', 'error')
+            print(f"DEBUG: /associar/{id} - Registro com ID {id} não encontrado.")
+            # Retorna para a página anterior ou associacao, sem hash se o registro não existe
+            return redirect(request.referrer or url_for('associacao'))
 
-    # Redireciona de volta para a página de origem, preservando filtros e rolando para o registro
-    return redirect(request.referrer + f'#registro-{id}')
+        # Verificar se o registro já está finalizado ou cancelado
+        if registro_registros['finalizada'] == 1 or registro_registros['cancelado'] == 1:
+            flash('Este registro já está finalizado ou cancelado e não pode ser associado.', 'warning')
+            print(f"DEBUG: /associar/{id} - Registro com ID {id} já finalizado/cancelado.")
+            # Redireciona de volta para a página de associação principal, pois o registro não estará mais na lista ativa
+            return redirect(url_for('associacao'))
+
+        # 2. Tentar encontrar um registro No-Show correspondente para transferência
+        # Critérios: matricula '0001', mesma rota do registro 'registros',
+        # status 'Aguardando Motorista' (em_separacao = 3), não finalizado, não cancelado, não transferido.
+        registro_no_show_correspondente = conn.execute('''
+            SELECT *
+            FROM no_show
+            WHERE matricula = '0001'
+              AND rota = ?
+              AND em_separacao = 3 -- Status 'Aguardando Motorista'
+              AND finalizada = 0
+              AND cancelado = 0
+              AND transferred_to_registro_id IS NULL
+            ORDER BY data_hora_login ASC -- Pega o mais antigo se houver múltiplos
+            LIMIT 1
+        ''', (registro_registros['rota'],)).fetchone()
+
+        if registro_no_show_correspondente:
+            print(f"DEBUG: /associar/{id} - Encontrado registro No-Show correspondente (ID: {registro_no_show_correspondente['id']}). Realizando transferência.")
+            # --- Lógica de Transferência ---
+            try:
+                # Inicia uma transação para garantir atomicidade
+                conn.execute('BEGIN')
+
+                # Atualiza o registro na tabela 'registros' com os dados do No-Show
+                # E marca como finalizado (status 3 em em_separacao e finalizada=1)
+                conn.execute('''
+                    UPDATE registros
+                    SET rota = ?, gaiola = ?, estacao = ?, rua = ?, -- Campos copiados do No-Show
+                        em_separacao = 3, finalizada = 1, hora_finalizacao = ? -- Status de finalização após transferência
+                    WHERE id = ?
+                ''', (registro_no_show_correspondente['rota'], registro_no_show_correspondente['gaiola'],
+                      registro_no_show_correspondente['estacao'], registro_no_show_correspondente['rua'],
+                      data_hora, id))
+
+                # Atualiza o registro No-Show correspondente
+                # Marca como transferido (em_separacao = 4) e vincula ao registro de destino
+                conn.execute('''
+                    UPDATE no_show
+                    SET em_separacao = 4, transferred_to_registro_id = ?, hora_finalizacao = ?
+                    WHERE id = ?
+                ''', (id, data_hora, registro_no_show_correspondente['id']))
+
+                # Registra a ação no histórico de registros
+                conn.execute('''
+                    INSERT INTO historico (registro_id, acao, data_hora)
+                    VALUES (?, 'data_transferred_from_no_show', ?)
+                ''', (id, data_hora))
+
+                # Registra a ação no histórico de no-show
+                conn.execute('''
+                    INSERT INTO historico_no_show (registro_no_show_id, acao, data_hora)
+                    VALUES (?, 'transferred_to_registro', ?)
+                ''', (registro_no_show_correspondente['id'], data_hora))
+
+                conn.commit() # Confirma a transação
+
+                flash('Dados transferidos de registro No-Show e registro de carregamento finalizado com sucesso!', 'success')
+                print(f"DEBUG: /associar/{id} - Transferência e finalização concluídas para registro {id}.")
+
+            except Exception as e:
+                conn.rollback() # Desfaz a transação em caso de erro
+                flash(f'Ocorreu um erro durante a transferência do registro: {e}', 'error')
+                print(f"DEBUG: /associar/{id} - Erro durante a transferência: {e}")
+
+            # Após a transferência, o registro em 'registros' foi finalizado,
+            # então ele não aparecerá mais na lista padrão de /associacao.
+            # Redirecionar para a página principal de associação sem o hash.
+            return redirect(url_for('associacao'))
+
+        else:
+            # --- Lógica de Associação Manual (se nenhum No-Show correspondente for encontrado) ---
+            print(f"DEBUG: /associar/{id} - Nenhum registro No-Show correspondente encontrado. Realizando associação manual.")
+            try:
+                # Apenas atualiza se o registro não estiver finalizado ou cancelado
+                # Define o status como 'em separacao' (em_separacao = 1)
+                conn.execute('''
+                    UPDATE registros
+                    SET gaiola = ?, estacao = ?, rua = ?, em_separacao = ?
+                    WHERE id = ? AND finalizada = 0 AND cancelado = 0
+                ''', (gaiola_form, estacao_form, rua_form, 1, id)) # Usa os dados do formulário e define em_separacao = 1
+
+                # Registra a ação no histórico de registros
+                conn.execute('''
+                    INSERT INTO historico (registro_id, acao, gaiola, estacao, data_hora)
+                    VALUES (?, 'associated_manual', ?, ?, ?) -- Ação 'associated_manual' para diferenciar
+                ''', (id, gaiola_form, estacao_form, data_hora))
+                conn.commit()
+
+                flash('Registro associado manualmente com sucesso!', 'success')
+                print(f"DEBUG: /associar/{id} - Associação manual concluída para registro {id}.")
+
+            except Exception as e:
+                conn.rollback() # Desfaz a transação em caso de erro
+                flash(f'Ocorreu um erro durante a associação manual: {e}', 'error')
+                print(f"DEBUG: /associar/{id} - Erro durante a associação manual: {e}")
+
+            # --- MODIFICAÇÃO AQUI ---
+            # Redireciona de volta para a página de associação, adicionando o hash do registro E o ID como parâmetro de query
+            return redirect(url_for('associacao', id=id) + f'#registro-{id}')
+
 
 @app.route('/desassociar/<int:id>', methods=['POST'])
 def desassociar_id(id):
@@ -621,7 +764,7 @@ def desassociar_id(id):
         # Apenas atualiza se o registro não estiver finalizado ou cancelado
         conn.execute('''
             UPDATE registros
-            SET gaiola = NULL, estacao = NULL, em_separacao = 0
+            SET gaiola = NULL, estacao = NULL, rua = NULL, em_separacao = 0 -- Reseta o campo rua e em_separacao
             WHERE id = ? AND finalizada = 0 AND cancelado = 0
         ''', (id,))
         # Registra a ação no histórico
@@ -630,8 +773,10 @@ def desassociar_id(id):
             VALUES (?, 'disassociated', ?)
         ''', (id, data_hora))
         conn.commit()
-    # Redireciona de volta para a página de origem, preservando filtros e rolando para o registro
-    return redirect(request.referrer + f'#registro-{id}')
+    flash('Associação removida com sucesso!', 'success')
+    # --- MODIFICAÇÃO AQUI ---
+    # Redireciona de volta para a página de associação, adicionando o hash do registro E o ID como parâmetro de query
+    return redirect(url_for('associacao', id=id) + f'#registro-{id}')
 
 @app.route('/finalizar_carregamento_status_separacao/<int:id>', methods=['POST'])
 def finalizar_carregamento_id_status_separacao(id):
@@ -650,8 +795,10 @@ def finalizar_carregamento_id_status_separacao(id):
             VALUES (?, 'loading_finished_separation_status', ?)
         ''', (id, data_hora))
         conn.commit()
-    # Redireciona de volta para a página de origem, preservando filtros e rolando para o registro
-    return redirect(request.referrer + f'#registro-{id}')
+    flash('Carregamento marcado como concluído!', 'success')
+    # --- MODIFICAÇÃO AQUI ---
+    # Redireciona de volta para a página de associação, adicionando o hash do registro E o ID como parâmetro de query
+    return redirect(url_for('associacao', id=id) + f'#registro-{id}')
 
 
 @app.route('/marcar_como_finalizado/<int:id>', methods=['POST'])
@@ -680,9 +827,11 @@ def marcar_como_finalizado_id(id):
         else:
             print(f"Failed to mark record {id} as finalized in the database or it was already finalized/cancelled.")
 
-    # Redireciona de volta para a página de origem, preservando filtros.
-    # O registro pode desaparecer da lista ativa, então não precisa rola
-    return redirect(request.referrer)
+    flash('Registro finalizado com sucesso!', 'success')
+    # --- SEM MODIFICAÇÃO AQUI ---
+    # Redireciona de volta para a página de associação principal sem o hash,
+    # pois o registro finalizado não aparecerá mais na lista ativa.
+    return redirect(url_for('associacao'))
 
 @app.route('/cancelar_registro/<int:id>', methods=['POST'])
 def cancelar_registro_id(id):
@@ -701,9 +850,11 @@ def cancelar_registro_id(id):
             VALUES (?, 'cancelled', ?)
         ''', (id, data_hora))
         conn.commit()
-    # Redireciona de volta para a página de origem, preservando filtros.
-    # O registro pode desaparecer da lista ativa, então não precisa rola
-    return redirect(request.referrer)
+    flash('Registro cancelado com sucesso!', 'success')
+    # --- SEM MODIFICAÇÃO AQUI ---
+    # Redireciona de volta para a página de associação principal sem o hash,
+    # pois o registro cancelado não aparecerá mais na lista ativa.
+    return redirect(url_for('associacao'))
 
 
 @app.route('/voltar_para_associacao/<int:id>', methods=['POST'])
@@ -714,7 +865,7 @@ def voltar_para_associacao_id(id):
         # Apenas redefine se o registro estiver finalizado ou cancelado
         conn.execute('''
             UPDATE registros
-            SET gaiola = NULL, estacao = NULL, em_separacao = 0, finalizada = 0, cancelado = 0, hora_finalizacao = NULL
+            SET gaiola = NULL, estacao = NULL, rua = NULL, em_separacao = 0, finalizada = 0, cancelado = 0, hora_finalizacao = NULL
             WHERE id = ? AND (finalizada = 1 OR cancelado = 1)
         ''', (id,))
         # Registra a ação no histórico
@@ -723,8 +874,13 @@ def voltar_para_associacao_id(id):
             VALUES (?, 'returned_to_association', ?)
         ''', (id, data_hora))
         conn.commit()
-    # Redireciona de volta para a página de origem, preservando filtros e rolando para o registro
-    return redirect(request.referrer + f'#registro-{id}')
+    flash('Registro reativado para associação!', 'success')
+    # --- MODIFICAÇÃO AQUI ---
+    # Redireciona de volta para a página de associação, adicionando o hash do registro E o ID como parâmetro de query
+    return redirect(url_for('associacao', id=id) + f'#registro-{id}')
+
+# ... (outras rotas) ...
+
 
 # --- Rota para o painel final ---
 @app.route('/painel_final')
