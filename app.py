@@ -6,7 +6,9 @@ import pytz
 from flask import Flask, jsonify, render_template, request # Certifique-se que jsonify, render_template, request estão importados
 import requests # Para fazer requisições HTTP (útil se não usar feedparser ou para outras APIs)
 import feedparser # Para parsear feeds RSS
+from math import ceil # Importe ceil para arredondar para cima - CORRIGIDO: AGORA EXPLICITAMENTE INCLUÍDO AQUI
 from datetime import datetime # Útil se precisar de timestamps, embora não essencial para este ticker
+from io import BytesIO # Precisamos de BytesIO para dados binários do Excel
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'sua_chave_secreta_aqui' # Adicione uma chave secreta para flash messages
@@ -460,22 +462,36 @@ def todos_registros():
             ORDER BY CASE WHEN finalizada = 0 AND cancelado = 0 THEN 0 ELSE 1 END, data_hora_login DESC
         ''').fetchall()
     return render_template('todos_registros.html', registros=registros)
+# Defina quantos registros por página você quer exibir
+# CORRIGIDO: Definido fora da função para ser acessível globalmente
+REGISTROS_POR_PAGINA = 20 # Ajuste este valor conforme necessário
 
 @app.route('/registros', methods=['GET', 'POST'])
 def registros():
-    """Displays records with filtering options."""
+    """
+    Displays records with filtering options and pagination.
+    Handles POST requests for updating 'em_separacao' status.
+    """
     # Parâmetros para manter o estado do filtro no redirecionamento
     data_filtro = request.args.get('data', '')
-    nome_filtro = request.args.get('nome', '')
-    matricula_filtro = request.args.get('matricula', '')
+    nome_filtro = request.args.get('nome', '') # Este filtro não está no HTML atual, mas mantido na rota
+    matricula_filtro = request.args.get('matricula', '') # Este filtro não está no HTML atual, mas mantido na rota
     rota_filtro = request.args.get('rota', '')
     tipo_entrega_filtro = request.args.get('tipo_entrega', '')
+    # Adicionados filtros do HTML que não estavam na rota original fornecida
+    em_separacao_filtro = request.args.get('em_separacao', '')
+    finalizado_filtro = request.args.get('finalizado', '')
+
+
+    # --- Obtém o número da página atual ---
+    pagina = request.args.get('pagina', 1, type=int)
 
     # The POST part here handles the 'em_separacao' checkbox from the registrations list view.
     # This logic seems specific to managing the list, not login/registration duplicates.
     if request.method == 'POST':
         if 'registro_id' in request.form and 'em_separacao' in request.form:
             registro_id = request.form['registro_id']
+            # O valor do checkbox 'on' indica marcado, caso contrário não está no form
             em_separacao = 1 if request.form.get('em_separacao') == 'on' else 0
             with get_db_connection() as conn:
                 # Ensure we only update if the record is not finalized or cancelled
@@ -485,46 +501,104 @@ def registros():
                     WHERE id = ? AND finalizada = 0 AND cancelado = 0
                 ''', (em_separacao, registro_id))
                 conn.commit()
-        # Redirect while keeping filters
-        return redirect(request.referrer)
-    # Handle other POST actions if any, or ignore POST requests not for the checkbox
+            # Redireciona para a página atual, mantendo os filtros e a página
+            # Preserva todos os argumentos da query string
+            args = request.args.to_dict()
+            # Remove 'registro_id' e 'em_separacao' dos args para o redirect
+            args.pop('registro_id', None)
+            args.pop('em_separacao', None)
+            # Mantém a página atual no redirect
+            args['pagina'] = pagina
+            return redirect(url_for('registros', **args))
 
-    query = 'SELECT * FROM registros WHERE 1=1'
-    parametros = []
+        # Handle other POST actions if any, or ignore POST requests not for the checkbox
+        # Se houver outros POSTs, adicione a lógica aqui. Se não, este bloco POST só lida com em_separacao.
+        pass # Se nenhum POST conhecido foi tratado, apenas continua para a renderização GET-like
 
+    # --- Lógica de Filtros e Paginação (para requisições GET ou após POST) ---
+    query_base = 'SELECT * FROM registros WHERE 1=1'
+    parametros_base = []
+
+    # Adiciona as condições de filtro à query base e aos parâmetros
     if data_filtro:
         try:
             # Validate the date format before using in query
             datetime.strptime(data_filtro, '%Y-%m-%d')
             # SQLite stores DATETIME as TEXT, so we match the date part
-            query += ' AND substr(data_hora_login, 1, 10) = ?'
-            parametros.append(data_filtro)
+            query_base += ' AND substr(data_hora_login, 1, 10) = ?'
+            parametros_base.append(data_filtro)
         except ValueError:
-            pass  # Ignore invalid date format
+            # Se a data for inválida, ignora o filtro de data mas continua com os outros
+            pass
 
-    if nome_filtro:
-        query += ' AND nome LIKE ?'
-        parametros.append(f'%{nome_filtro.title()}%')
-    if matricula_filtro:
-        query += ' AND matricula LIKE ?'
-        parametros.append(f'%{matricula_filtro}%')
+    if nome_filtro: # Filtro não presente no HTML atual
+        query_base += ' AND nome LIKE ?'
+        parametros_base.append(f'%{nome_filtro.title()}%')
+    if matricula_filtro: # Filtro não presente no HTML atual
+        query_base += ' AND matricula LIKE ?'
+        parametros_base.append(f'%{matricula_filtro}%')
     if rota_filtro:
-        query += ' AND rota LIKE ?'
-        parametros.append(f'%{rota_filtro.title()}%')
+        query_base += ' AND LOWER(rota) LIKE ?'
+        parametros_base.append(f'%{rota_filtro.lower()}%')
     if tipo_entrega_filtro:
-        query += ' AND tipo_entrega LIKE ?'
-        parametros.append(f'%{tipo_entrega_filtro.title()}%')
+        query_base += ' AND LOWER(tipo_entrega) LIKE ?' # Usando LIKE e lower para flexibilidade
+        parametros_base.append(f'%{tipo_entrega_filtro.lower()}%')
 
-    # Order by active (not finalizada/cancelado) first, then by login time
-    query += ' ORDER BY CASE WHEN finalizada = 0 AND cancelado = 0 THEN 0 ELSE 1 END, data_hora_login DESC'
+    # Adiciona filtros de em_separacao e finalizado
+    if em_separacao_filtro != '': # Verifica se o filtro não é a opção "Todos"
+        query_base += ' AND em_separacao = ?'
+        parametros_base.append(int(em_separacao_filtro)) # Converte para inteiro
+
+    if finalizado_filtro != '': # Verifica se o filtro não é a opção "Todos"
+        # Se finalizado_filtro é '1', queremos finalizado=1
+        # Se finalizado_filtro é '0', queremos finalizado=0
+        query_base += ' AND finalizada = ?'
+        parametros_base.append(int(finalizado_filtro)) # Converte para inteiro
+
 
     with get_db_connection() as conn:
-        registros_data = conn.execute(query, parametros).fetchall()
+        # --- Contar o total de registros COM os filtros aplicados ---
+        # Usa a query base com os filtros, mas conta as linhas
+        count_query = query_base.replace("SELECT *", "SELECT COUNT(*)", 1) # Substitui apenas a primeira ocorrência
+        total_registros = conn.execute(count_query, parametros_base).fetchone()[0]
 
-    return render_template('registros.html', registros=registros_data,
-                           data_filtro=data_filtro, nome_filtro=nome_filtro,
-                           matricula_filtro=matricula_filtro, rota_filtro=rota_filtro,
-                           tipo_entrega_filtro=tipo_entrega_filtro)
+        # --- Calcular o total de páginas ---
+        # Garante que total_paginas seja pelo menos 1, mesmo com 0 registros
+        # Usa a constante REGISTROS_POR_PAGINA definida globalmente
+        total_paginas = ceil(total_registros / REGISTROS_POR_PAGINA) if total_registros > 0 else 1
+
+        # --- Ajusta a query para buscar APENAS os registros da página atual ---
+        offset = (pagina - 1) * REGISTROS_POR_PAGINA
+        # Order by active (not finalizada/cancelado) first, then by login time
+        # Ajuste na ordenação para colocar os não finalizados/cancelados primeiro,
+        # depois ordenar por em_separacao (0, 1, 2, 3) e data de login descendente
+        query_paginada = query_base + ' ORDER BY CASE WHEN finalizada = 0 AND cancelado = 0 THEN 0 ELSE 1 END, em_separacao ASC, data_hora_login DESC LIMIT ? OFFSET ?'
+        parametros_paginada = parametros_base + [REGISTROS_POR_PAGINA, offset]
+
+
+        registros_data = conn.execute(query_paginada, parametros_paginada).fetchall()
+
+        # --- Opcional: Obter lista de cidades para o datalist no HTML ---
+        # Se você precisar popular o datalist de cidades, adicione a query aqui
+        cidades_query = 'SELECT DISTINCT cidade_entrega FROM registros WHERE cidade_entrega IS NOT NULL AND cidade_entrega != "" ORDER BY cidade_entrega'
+        cidades_data = [row[0] for row in conn.execute(cidades_query).fetchall()]
+
+
+    # --- Passa total_paginas e pagina para o template ---
+    return render_template('registros.html',
+                           registros=registros_data,
+                           total_paginas=total_paginas, # Variável total_paginas
+                           pagina=pagina,             # Variável pagina atual
+                           # Passa as variáveis de filtro de volta para preencher os inputs
+                           data=data_filtro,
+                           # nome=nome_filtro, # Não está no HTML, mas pode ser útil passar
+                           # matricula=matricula_filtro, # Não está no HTML, mas pode ser útil passar
+                           rota=rota_filtro,
+                           tipo_entrega=tipo_entrega_filtro,
+                           em_separacao=em_separacao_filtro, # Passa o valor do filtro de separacao
+                           finalizado=finalizado_filtro,     # Passa o valor do filtro de finalizado
+                           cidades=cidades_data # Passa a lista de cidades para o datalist
+                           )
 
 
 @app.route('/historico')
@@ -535,11 +609,7 @@ def historico():
     return render_template('historico.html', historico=historico_data)
 # ... (suas importações e configuração do Flask) ...
 
-# Função auxiliar para obter a conexão com o banco de dados
-# Assumindo que get_db_connection está definida em outro lugar
-# from sua_conexao_db import get_db_connection
-# Assumindo que get_data_hora_brasilia está definida em outro lugar
-# from suas_funcoes_uteis import get_data_hora_brasilia
+# ... (Rota Exportar) ...
 
 @app.route('/associacao')
 def associacao():
@@ -1283,31 +1353,38 @@ def associar_no_show_id(id):
     gaiola = request.form.get('gaiola', '').title()
     estacao = request.form.get('estacao', '').title()
     rua = request.form.get('rua', '').title() # Captura a rua
-    em_separacao = 1  # Ao associar, marca como "em separação"
+    em_separacao = 1 # Ao associar, marca como "em separação"
     data_hora = get_data_hora_brasilia()
     print(f"DEBUG: /registro_no_show/associar/{id} - Dados recebidos: gaiola='{gaiola}', estacao='{estacao}', rua='{rua}'")
 
 
     with get_db_connection() as conn:
-        # Apenas atualiza se o registro não estiver finalizado, cancelado ou transferido
+        # Apenas atualiza se o registro não estiver finalizado ou cancelado.
+        # REMOVIDA a condição AND transferred_to_registro_id IS NULL para permitir re-associação manual.
         conn.execute('''
             UPDATE no_show
             SET gaiola = ?, estacao = ?, rua = ?, em_separacao = ?
-            WHERE id = ? AND finalizada = 0 AND cancelado = 0 AND transferred_to_registro_id IS NULL
+            WHERE id = ? AND finalizada = 0 AND cancelado = 0
         ''', (gaiola, estacao, rua, em_separacao, id))
 
         # Registra a ação no histórico de no-show
+        # Nota: O histórico não precisa saber o transferred_to_registro_id, apenas a ação e os dados associados.
         conn.execute('''
-            INSERT INTO historico_no_show (registro_no_show_id, acao, gaiola, estacao, data_hora)
-            VALUES (?, 'associated', ?, ?, ?)
-        ''', (id, gaiola, estacao, data_hora))
+            INSERT INTO historico_no_show (registro_no_show_id, acao, gaiola, estacao, rua, data_hora)
+            VALUES (?, 'associated', ?, ?, ?, ?)
+        ''', (id, gaiola, estacao, rua, data_hora)) # Adicionado 'rua' no histórico
         conn.commit()
         print(f"DEBUG: /registro_no_show/associar/{id} - Update e histórico registrados.")
 
 
     # Redireciona de volta para a página de origem, preservando filtros e rolando para o registro
-    print(f"DEBUG: /registro_no_show/associar/{id} - Redirecionando para: {request.referrer + f'#no-show-registro-{id}'}")
-    return redirect(request.referrer + f'#no-show-registro-{id}')
+    # request.referrer contém a URL da página que originou a requisição POST
+    redirect_url = request.referrer if request.referrer else url_for('registro_no_show')
+    print(f"DEBUG: /registro_no_show/associar/{id} - Redirecionando para: {redirect_url + f'#no-show-registro-{id}'}")
+    return redirect(redirect_url + f'#no-show-registro-{id}')
+
+
+## Fim registro No Show Associar
 
 @app.route('/registro_no_show/desassociar/<int:id>', methods=['POST'])
 def desassociar_no_show_id(id):
