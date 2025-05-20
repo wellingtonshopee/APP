@@ -10,6 +10,7 @@ from math import ceil # Importe ceil para arredondar para cima - CORRIGIDO: AGOR
 from datetime import datetime # Útil se precisar de timestamps, embora não essencial para este ticker
 from io import BytesIO # Precisamos de BytesIO para dados binários do Excel
 
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'sua_chave_secreta_aqui' # Adicione uma chave secreta para flash messages
 
@@ -464,142 +465,125 @@ def todos_registros():
     return render_template('todos_registros.html', registros=registros)
 # Defina quantos registros por página você quer exibir
 # CORRIGIDO: Definido fora da função para ser acessível globalmente
+
 REGISTROS_POR_PAGINA = 20 # Ajuste este valor conforme necessário
 
 @app.route('/registros', methods=['GET', 'POST'])
 def registros():
-    """
-    Displays records with filtering options and pagination.
-    Handles POST requests for updating 'em_separacao' status.
-    """
-    # Parâmetros para manter o estado do filtro no redirecionamento
-    data_filtro = request.args.get('data', '')
-    nome_filtro = request.args.get('nome', '') # Este filtro não está no HTML atual, mas mantido na rota
-    matricula_filtro = request.args.get('matricula', '') # Este filtro não está no HTML atual, mas mantido na rota
+    from datetime import datetime
+    from math import ceil
+
+    # Parâmetros de filtro da URL
+    data_inicio_filtro = request.args.get('data_inicio', '')
+    data_fim_filtro = request.args.get('data_fim', '')
+    nome_filtro = request.args.get('nome', '')
+    matricula_filtro = request.args.get('matricula', '')
     rota_filtro = request.args.get('rota', '')
     tipo_entrega_filtro = request.args.get('tipo_entrega', '')
-    # Adicionados filtros do HTML que não estavam na rota original fornecida
     em_separacao_filtro = request.args.get('em_separacao', '')
     finalizado_filtro = request.args.get('finalizado', '')
-
-
-    # --- Obtém o número da página atual ---
     pagina = request.args.get('pagina', 1, type=int)
 
-    # The POST part here handles the 'em_separacao' checkbox from the registrations list view.
-    # This logic seems specific to managing the list, not login/registration duplicates.
+    # POST: Atualiza 'em_separacao'
     if request.method == 'POST':
         if 'registro_id' in request.form and 'em_separacao' in request.form:
             registro_id = request.form['registro_id']
-            # O valor do checkbox 'on' indica marcado, caso contrário não está no form
             em_separacao = 1 if request.form.get('em_separacao') == 'on' else 0
             with get_db_connection() as conn:
-                # Ensure we only update if the record is not finalized or cancelled
                 conn.execute('''
                     UPDATE registros
                     SET em_separacao = ?
                     WHERE id = ? AND finalizada = 0 AND cancelado = 0
                 ''', (em_separacao, registro_id))
                 conn.commit()
-            # Redireciona para a página atual, mantendo os filtros e a página
-            # Preserva todos os argumentos da query string
+
             args = request.args.to_dict()
-            # Remove 'registro_id' e 'em_separacao' dos args para o redirect
             args.pop('registro_id', None)
             args.pop('em_separacao', None)
-            # Mantém a página atual no redirect
             args['pagina'] = pagina
             return redirect(url_for('registros', **args))
 
-        # Handle other POST actions if any, or ignore POST requests not for the checkbox
-        # Se houver outros POSTs, adicione a lógica aqui. Se não, este bloco POST só lida com em_separacao.
-        pass # Se nenhum POST conhecido foi tratado, apenas continua para a renderização GET-like
-
-    # --- Lógica de Filtros e Paginação (para requisições GET ou após POST) ---
+    # Filtros base
     query_base = 'SELECT * FROM registros WHERE 1=1'
     parametros_base = []
 
-    # Adiciona as condições de filtro à query base e aos parâmetros
-    if data_filtro:
+    # Filtro de intervalo de data usando substr para contornar o formato irregular
+    if data_inicio_filtro:
         try:
-            # Validate the date format before using in query
-            datetime.strptime(data_filtro, '%Y-%m-%d')
-            # SQLite stores DATETIME as TEXT, so we match the date part
-            query_base += ' AND substr(data_hora_login, 1, 10) = ?'
-            parametros_base.append(data_filtro)
+            datetime.strptime(data_inicio_filtro, '%Y-%m-%d')
+            query_base += ' AND substr(data_hora_login, 1, 10) >= ?'
+            parametros_base.append(data_inicio_filtro)
         except ValueError:
-            # Se a data for inválida, ignora o filtro de data mas continua com os outros
             pass
 
-    if nome_filtro: # Filtro não presente no HTML atual
+    if data_fim_filtro:
+        try:
+            datetime.strptime(data_fim_filtro, '%Y-%m-%d')
+            query_base += ' AND substr(data_hora_login, 1, 10) <= ?'
+            parametros_base.append(data_fim_filtro)
+        except ValueError:
+            pass
+
+    if nome_filtro:
         query_base += ' AND nome LIKE ?'
         parametros_base.append(f'%{nome_filtro.title()}%')
-    if matricula_filtro: # Filtro não presente no HTML atual
+
+    if matricula_filtro:
         query_base += ' AND matricula LIKE ?'
         parametros_base.append(f'%{matricula_filtro}%')
+
     if rota_filtro:
         query_base += ' AND LOWER(rota) LIKE ?'
         parametros_base.append(f'%{rota_filtro.lower()}%')
+
     if tipo_entrega_filtro:
-        query_base += ' AND LOWER(tipo_entrega) LIKE ?' # Usando LIKE e lower para flexibilidade
+        query_base += ' AND LOWER(tipo_entrega) LIKE ?'
         parametros_base.append(f'%{tipo_entrega_filtro.lower()}%')
 
-    # Adiciona filtros de em_separacao e finalizado
-    if em_separacao_filtro != '': # Verifica se o filtro não é a opção "Todos"
+    if em_separacao_filtro != '':
         query_base += ' AND em_separacao = ?'
-        parametros_base.append(int(em_separacao_filtro)) # Converte para inteiro
+        parametros_base.append(int(em_separacao_filtro))
 
-    if finalizado_filtro != '': # Verifica se o filtro não é a opção "Todos"
-        # Se finalizado_filtro é '1', queremos finalizado=1
-        # Se finalizado_filtro é '0', queremos finalizado=0
+    if finalizado_filtro != '':
         query_base += ' AND finalizada = ?'
-        parametros_base.append(int(finalizado_filtro)) # Converte para inteiro
-
+        parametros_base.append(int(finalizado_filtro))
 
     with get_db_connection() as conn:
-        # --- Contar o total de registros COM os filtros aplicados ---
-        # Usa a query base com os filtros, mas conta as linhas
-        count_query = query_base.replace("SELECT *", "SELECT COUNT(*)", 1) # Substitui apenas a primeira ocorrência
+        # Total de registros
+        count_query = query_base.replace("SELECT *", "SELECT COUNT(*)", 1)
         total_registros = conn.execute(count_query, parametros_base).fetchone()[0]
-
-        # --- Calcular o total de páginas ---
-        # Garante que total_paginas seja pelo menos 1, mesmo com 0 registros
-        # Usa a constante REGISTROS_POR_PAGINA definida globalmente
         total_paginas = ceil(total_registros / REGISTROS_POR_PAGINA) if total_registros > 0 else 1
-
-        # --- Ajusta a query para buscar APENAS os registros da página atual ---
         offset = (pagina - 1) * REGISTROS_POR_PAGINA
-        # Order by active (not finalizada/cancelado) first, then by login time
-        # Ajuste na ordenação para colocar os não finalizados/cancelados primeiro,
-        # depois ordenar por em_separacao (0, 1, 2, 3) e data de login descendente
-        query_paginada = query_base + ' ORDER BY CASE WHEN finalizada = 0 AND cancelado = 0 THEN 0 ELSE 1 END, em_separacao ASC, data_hora_login DESC LIMIT ? OFFSET ?'
+
+        # Ordenação: ativos primeiro, depois por separação e data
+        query_paginada = query_base + '''
+            ORDER BY CASE WHEN finalizada = 0 AND cancelado = 0 THEN 0 ELSE 1 END,
+                     em_separacao ASC,
+                     data_hora_login DESC
+            LIMIT ? OFFSET ?
+        '''
         parametros_paginada = parametros_base + [REGISTROS_POR_PAGINA, offset]
-
-
         registros_data = conn.execute(query_paginada, parametros_paginada).fetchall()
 
-        # --- Opcional: Obter lista de cidades para o datalist no HTML ---
-        # Se você precisar popular o datalist de cidades, adicione a query aqui
-        cidades_query = 'SELECT DISTINCT cidade_entrega FROM registros WHERE cidade_entrega IS NOT NULL AND cidade_entrega != "" ORDER BY cidade_entrega'
+        cidades_query = '''
+            SELECT DISTINCT cidade_entrega
+            FROM registros
+            WHERE cidade_entrega IS NOT NULL AND cidade_entrega != ""
+            ORDER BY cidade_entrega
+        '''
         cidades_data = [row[0] for row in conn.execute(cidades_query).fetchall()]
 
-
-    # --- Passa total_paginas e pagina para o template ---
     return render_template('registros.html',
                            registros=registros_data,
-                           total_paginas=total_paginas, # Variável total_paginas
-                           pagina=pagina,             # Variável pagina atual
-                           # Passa as variáveis de filtro de volta para preencher os inputs
-                           data=data_filtro,
-                           # nome=nome_filtro, # Não está no HTML, mas pode ser útil passar
-                           # matricula=matricula_filtro, # Não está no HTML, mas pode ser útil passar
+                           total_paginas=total_paginas,
+                           pagina=pagina,
+                           data_inicio=data_inicio_filtro,
+                           data_fim=data_fim_filtro,
                            rota=rota_filtro,
                            tipo_entrega=tipo_entrega_filtro,
-                           em_separacao=em_separacao_filtro, # Passa o valor do filtro de separacao
-                           finalizado=finalizado_filtro,     # Passa o valor do filtro de finalizado
-                           cidades=cidades_data # Passa a lista de cidades para o datalist
-                           )
-
+                           em_separacao=em_separacao_filtro,
+                           finalizado=finalizado_filtro,
+                           cidades=cidades_data)
 
 @app.route('/historico')
 def historico():
@@ -959,12 +943,70 @@ def painel_final():
     return render_template('painel_final.html')
 
 
-@app.route('/registros_finalizados', methods=['GET'])
+# ---- Registros Finalizados -------
+@app.route('/registros_finalizados', methods=['GET', 'POST'])
 def registros_finalizados():
-    """Retorna todos os registros finalizados para exibição em HTML."""
+    """
+    Exibe os registros finalizados. Com opção de exibir todos os registros (finalizados e não finalizados).
+    """
+    # Obtém parâmetros de filtro
+    data_filtro = request.args.get('data', '')
+    tipo_entrega_filtro = request.args.get('tipo_entrega', '')
+    rota_filtro = request.args.get('rota', '')
+    finalizado_filtro = request.args.get('finalizado', '')  # Filtro para status finalizado (1 ou 0)
+
+    # --- Obtém o número da página atual ---
+    pagina = request.args.get('pagina', 1, type=int)
+
+    # Lógica para filtrar registros de acordo com o status 'finalizado'
+    query_base = 'SELECT * FROM registros WHERE 1=1'
+    parametros_base = []
+
+    if data_filtro:
+        try:
+            datetime.strptime(data_filtro, '%Y-%m-%d')
+            query_base += ' AND substr(data_hora_login, 1, 10) = ?'
+            parametros_base.append(data_filtro)
+        except ValueError:
+            pass
+
+    if tipo_entrega_filtro:
+        query_base += ' AND LOWER(tipo_entrega) LIKE ?'
+        parametros_base.append(f'%{tipo_entrega_filtro.lower()}%')
+
+    if rota_filtro:
+        query_base += ' AND LOWER(rota) LIKE ?'
+        parametros_base.append(f'%{rota_filtro.lower()}%')
+
+    # Adiciona a filtragem para o campo 'finalizado' apenas se o filtro for passado
+    if finalizado_filtro != '':  # Se não for vazio, aplica o filtro
+        query_base += ' AND finalizada = ?'
+        parametros_base.append(int(finalizado_filtro))  # Converte para inteiro (1 ou 0)
+
     with get_db_connection() as conn:
-        registros = conn.execute('SELECT * FROM registros WHERE finalizada = 1 ORDER BY hora_finalizacao DESC').fetchall()
-    return render_template('registros_finalizados.html', registros=registros)
+        # Contar o total de registros com os filtros aplicados
+        count_query = query_base.replace("SELECT *", "SELECT COUNT(*)", 1)
+        total_registros = conn.execute(count_query, parametros_base).fetchone()[0]
+
+        # Calcular o total de páginas
+        total_paginas = ceil(total_registros / REGISTROS_POR_PAGINA) if total_registros > 0 else 1
+
+        # Ajusta a query para buscar os registros da página atual
+        offset = (pagina - 1) * REGISTROS_POR_PAGINA
+        query_paginada = query_base + ' ORDER BY data_hora_login DESC LIMIT ? OFFSET ?'
+        parametros_paginada = parametros_base + [REGISTROS_POR_PAGINA, offset]
+
+        registros_data = conn.execute(query_paginada, parametros_paginada).fetchall()
+
+    return render_template('registros_finalizados.html',
+                           registros=registros_data,
+                           total_paginas=total_paginas,
+                           pagina=pagina,
+                           data=data_filtro,
+                           tipo_entrega=tipo_entrega_filtro,
+                           rota=rota_filtro,
+                           finalizado=finalizado_filtro)  # Passa o filtro 'finalizado'
+# ---- Fim da Rota
 
 # --- Nova Rota para Status do Motorista ---
 # --- Rota para exibir o status do motorista (agora por matrícula) ---
@@ -983,237 +1025,141 @@ def status_motorista(matricula):
 # --- Rota API para buscar o status do motorista pela matrícula ---
 @app.route('/api/status_registro_by_matricula/<string:matricula>', methods=['GET'])
 def api_status_registro_by_matricula(matricula):
-    """
-    Busca o status do registro ativo mais relevante para uma dada matrícula.
-    Prioriza o registro ativo em 'registros'. Se encontrado, verifica se há um
-    registro 'no_show' correspondente (matrícula '0001', status 3, mesma rota)
-    para combinar as informações de carregamento.
-    Retorna os dados combinados ou do registro de 'registros', ou o registro
-    'no_show' se a matrícula for '0001' e não houver registro em 'registros'.
-    """
     print(f"DEBUG: /api/status_registro_by_matricula/{matricula} - Rota API acessada.")
-    registro_registros = None
-    registro_noshow_correspondente = None
+    
+    # Parâmetro opcional 'tipo_entrega' para permitir a filtragem explícita
+    # Ex: /api/status_registro_by_matricula/123?tipo_entrega=Normal
+    requested_tipo_entrega = request.args.get('tipo_entrega') 
+    print(f"DEBUG: 'tipo_entrega' solicitado via query param: {requested_tipo_entrega}")
+
+    registro_registros_data = None
+    registro_noshow_data = None
     response_data = None
     tabela_origem = None # Para logs e depuração
 
     with get_db_connection() as conn:
-        # 1. Tentar buscar o registro ativo mais recente na tabela 'registros' para a matrícula fornecida
-        registro_registros_data = conn.execute('''
+        # --- 1. Tentar buscar o registro ativo mais recente na tabela 'registros' para a matrícula fornecida ---
+        # Prioriza um registro "Normal" para a matrícula específica, a menos que o No-Show seja solicitado explicitamente.
+        
+        query_registros = '''
             SELECT *
             FROM registros
             WHERE matricula = ? AND finalizada = 0 AND cancelado = 0
-            ORDER BY data_hora_login DESC
-            LIMIT 1
-        ''', (matricula,)).fetchone()
+        '''
+        params_registros = [matricula]
+
+        # Se um tipo de entrega foi solicitado e NÃO é 'No-Show' (ou se a matrícula não é '0001'),
+        # filtra a busca por 'registros' para esse tipo.
+        # Caso contrário, tentaremos pegar o registro "Normal" por padrão para esta matrícula.
+        if requested_tipo_entrega and requested_tipo_entrega.lower() != 'no-show':
+            query_registros += ' AND tipo_entrega = ?'
+            params_registros.append(requested_tipo_entrega)
+        elif not requested_tipo_entrega: # Se não pediu um tipo específico, e não é '0001', assume 'Normal'
+            # Isso impede que um 'No-Show' por acidente em 'registros' seja pego para uma matrícula que não é '0001'
+            query_registros += ' AND tipo_entrega = "Normal"' 
+
+        query_registros += ' ORDER BY data_hora_login DESC LIMIT 1'
+        registro_registros_data = conn.execute(query_registros, params_registros).fetchone()
 
         if registro_registros_data:
-            registro_registros = dict(registro_registros_data)
-            print(f"DEBUG: Encontrado registro ativo em 'registros' para matrícula {matricula} (ID: {registro_registros.get('id')}, Rota: {registro_registros.get('rota')}, Status em_separacao: {registro_registros.get('em_separacao')}).")
+            response_data = dict(registro_registros_data)
+            tabela_origem = 'registros'
+            print(f"DEBUG: Encontrado registro ativo em 'registros' para matrícula {matricula} (ID: {response_data.get('id')}, Rota: {response_data.get('rota')}, Tipo: {response_data.get('tipo_entrega')}).")
 
-            tabela_origem = 'registros' # Assume registros como origem inicial
+            # Apenas para a matrícula '0001' e se o tipo for 'No-Show', tentaremos buscar no 'no_show'.
+            # Caso contrário, se é um motorista Normal com um registro Normal, este é o que interessa.
+            # A lógica de combinação de "No-Show correspondente" é removida aqui, pois ela causava a confusão.
+            # O 'No-Show' da matrícula '0001' é um registro independente, não uma "carga" para um registro Normal.
 
-            # 2. Se um registro em 'registros' foi encontrado, buscar um candidato em 'no_show'
-            # com matrícula '0001', status 3 E A MESMA ROTA do registro de 'registros'.
-            registro_noshow_correspondente_data = conn.execute('''
+        # --- 2. Se nenhum registro ativo foi encontrado em 'registros' para a matrícula OU se o tipo 'No-Show' foi explicitamente solicitado (e a matrícula é '0001') ---
+        if not response_data or (matricula == '0001' and requested_tipo_entrega and requested_tipo_entrega.lower() == 'no-show'):
+            print(f"DEBUG: Nenhum registro ativo 'Normal' encontrado para matrícula {matricula} OU 'No-Show' explicitamente solicitado para '0001'. Verificando 'no_show' agora.")
+            
+            # Buscar na tabela 'no_show'. A matrícula deve ser '0001' para este fluxo de 'no_show' direto.
+            # E agora, se 'tipo_entrega' foi especificado, usá-lo como filtro.
+            query_noshow = '''
                 SELECT *
                 FROM no_show
                 WHERE matricula = '0001'
                   AND finalizada = 0
                   AND cancelado = 0
-                  AND em_separacao = 3 -- Busca especificamente por 'Aguardando Motorista'
                   AND transferred_to_registro_id IS NULL
-                  AND rota = ? -- Adicionada a condição de correspondência de rota
-                ORDER BY data_hora_login DESC
-                LIMIT 1
-            ''', (registro_registros.get('rota'),)).fetchone() # Passa a rota do registro de 'registros' como parâmetro
+            '''
+            params_noshow = []
 
-            if registro_noshow_correspondente_data:
-                registro_noshow_correspondente = dict(registro_noshow_correspondente_data)
-                print(f"DEBUG: Encontrado registro correspondente em 'no_show' (ID: {registro_noshow_correspondente.get('id')}, Rota: {registro_noshow_correspondente.get('rota')}, Status em_separacao: {registro_noshow_correspondente.get('em_separacao')}) com status 'Aguardando Motorista' e rota correspondente.")
-                # Neste cenário, a origem primária dos dados de exibição será o No-Show,
-                # mas combinando com dados do registro de registros.
-                tabela_origem = 'no_show_combinado'
+            # Se um tipo de entrega foi solicitado (e for 'No-Show'), adiciona ao filtro.
+            if requested_tipo_entrega and requested_tipo_entrega.lower() == 'no-show':
+                query_noshow += ' AND tipo_entrega = "No-Show"' # Garante que só busca tipo "No-Show"
+            elif not requested_tipo_entrega and matricula == '0001': # Se 0001 e não pediu nada, assume No-Show
+                query_noshow += ' AND tipo_entrega = "No-Show"' 
+                
+            query_noshow += ' ORDER BY data_hora_login DESC LIMIT 1'
+            
+            registro_noshow_data = conn.execute(query_noshow, params_noshow).fetchone()
+
+            if registro_noshow_data:
+                # Se encontrarmos um registro em 'no_show', ele se torna o response_data principal.
+                response_data = dict(registro_noshow_data)
+                tabela_origem = 'no_show_direto'
+                print(f"DEBUG: Encontrado registro relevante em 'no_show' (ID: {response_data.get('id')}, Rota: {response_data.get('rota')}, Tipo: {response_data.get('tipo_entrega')}) diretamente para matrícula '0001'.")
             else:
-                 print(f"DEBUG: Nenhum registro correspondente em 'no_show' encontrado para a rota {registro_registros.get('rota')} com status 3 e matrícula '0001'.")
+                print(f"DEBUG: Nenhuma registro ativo relevante encontrado para matrícula {matricula} com os critérios fornecidos em 'registros' ou 'no_show'.")
 
 
-            # --- Preparar os dados de resposta ---
-            response_data = {}
-
-            # Se um registro No-Show correspondente foi encontrado, combinar dados
-            if registro_noshow_correspondente:
-                print("DEBUG: Combinando dados de No-Show correspondente e Registros.")
-                # Dados do No-Show (rota, tipo_entrega, rua, gaiola, estacao, status, etc.)
-                response_data['id'] = registro_noshow_correspondente.get('id') # ID do registro No-Show
-                response_data['rota'] = registro_noshow_correspondente.get('rota')
-                response_data['tipo_entrega'] = registro_noshow_correspondente.get('tipo_entrega')
-                response_data['cidade_entrega'] = registro_noshow_correspondente.get('cidade_entrega') # Manter cidade do No-Show? Ou do registro? Mantendo do No-Show.
-                response_data['rua'] = registro_noshow_correspondente.get('rua')
-                response_data['gaiola'] = registro_noshow_correspondente.get('gaiola')
-                response_data['estacao'] = registro_noshow_correspondente.get('estacao')
-                response_data['em_separacao'] = registro_noshow_correspondente.get('em_separacao')
-                response_data['finalizada'] = registro_noshow_correspondente.get('finalizada')
-                response_data['cancelado'] = registro_noshow_correspondente.get('cancelado')
-                response_data['transferred_to_registro_id'] = registro_noshow_correspondente.get('transferred_to_registro_id')
-                response_data['hora_finalizacao'] = registro_noshow_correspondente.get('hora_finalizacao')
-                response_data['tabela_origem'] = tabela_origem # 'no_show_combinado'
-
-                # Dados do Registro de Registros (nome, matricula, data_hora_login, cpf, tipo_veiculo, login_id)
-                response_data['nome'] = registro_registros.get('nome')
-                response_data['matricula'] = registro_registros.get('matricula')
-                response_data['data_hora_login'] = registro_registros.get('data_hora_login') # Usar a data do registro de registros para a data/hora de chegada.
-                response_data['cpf'] = registro_registros.get('cpf')
-                response_data['tipo_veiculo'] = registro_registros.get('tipo_veiculo')
-                response_data['login_id'] = registro_registros.get('login_id')
-
-                # Determinar status baseado no registro No-Show correspondente
-                if registro_noshow_correspondente.get('finalizada') == 1:
-                    status_text = 'Registro Finalizado'
-                    status_class = 'status-finalizado'
-                elif registro_noshow_correspondente.get('cancelado') == 1:
-                    status_text = 'Registro Cancelado'
-                    status_class = 'status-cancelado'
-                elif registro_noshow_correspondente.get('transferred_to_registro_id') is not None and registro_noshow_correspondente.get('em_separacao') == 4:
-                     status_text = 'Registro No-Show Transferido para Carregamento'
-                     status_class = 'status-transferido'
-                elif registro_noshow_correspondente.get('em_separacao') == 2:
-                    status_text = 'Liberado para Carregamento'
-                    status_class = 'status-carregamento-finalizado'
-                elif registro_noshow_correspondente.get('em_separacao') == 1:
-                    status_text = 'Em Separação (Aguardando Carregamento)'
-                    status_class = 'status-em-separacao'
-                elif registro_noshow_correspondente.get('em_separacao') == 3: # Status 3 no No-Show é "Aguardando Motorista"
-                     status_text = 'Aguardando Motorista (No-Show)'
-                     status_class = 'status-aguardando'
-                elif registro_noshow_correspondente.get('em_separacao') == 0:
-                    status_text = 'Aguardando Associação (No-Show)'
-                    status_class = 'status-aguardando'
-                else:
-                    status_text = 'Status Desconhecido (No-Show)'
-                    status_class = 'bg-gray-500'
-
-                response_data['status_text'] = status_text
-                response_data['status_class'] = status_class
-
-
-            else:
-                # Se nenhum registro No-Show correspondente foi encontrado, usar dados do registro de registros
-                print("DEBUG: Usando dados do registro de Registros diretamente.")
-                response_data = dict(registro_registros)
-                response_data['tabela_origem'] = tabela_origem # 'registros'
-
-                # Determinar status baseado no registro de Registros
-                if registro_registros.get('finalizada') == 1:
-                    status_text = 'Registro Finalizado'
-                    status_class = 'status-finalizado'
-                elif registro_registros.get('cancelado') == 1:
-                    status_text = 'Registro Cancelado'
-                    status_class = 'status-cancelado'
-                elif registro_registros.get('em_separacao') == 2:
-                    status_text = 'Liberado para Carregamento'
-                    status_class = 'status-carregamento-finalizado'
-                elif registro_registros.get('em_separacao') == 1:
-                    status_text = 'Em Separação (Aguardando Carregamento)'
-                    status_class = 'status-em-separacao'
-                elif registro_registros.get('em_separacao') == 0:
-                    status_text = 'Aguardando Associação/Carregamento'
-                    status_class = 'status-aguardando'
-                else:
-                    status_text = 'Status Desconhecido (Registros)'
-                    status_class = 'bg-gray-500'
-
-                response_data['status_text'] = status_text
-                response_data['status_class'] = status_class
-
-                # Garantir que campos como 'rua', 'gaiola', 'estacao' estejam sempre presentes,
-                # mesmo que sejam None no banco de dados do registro de registros.
-                response_data['rua'] = response_data.get('rua')
-                response_data['gaiola'] = response_data.get('gaiola')
-                response_data['estacao'] = response_data.get('estacao')
-
-
-        else:
-            # 3. Se nenhum registro foi encontrado em 'registros' PARA ESTA MATRÍCULA,
-            # verificar a tabela 'no_show' APENAS se a matrícula pesquisada for '0001'.
-            # Busca o registro No-Show com status 3 (Aguardando Motorista).
-            if matricula == '0001':
-                 registro_noshow_data = conn.execute('''
-                     SELECT *
-                     FROM no_show
-                     WHERE matricula = '0001'
-                       AND finalizada = 0
-                       AND cancelado = 0
-                       AND em_separacao = 3 -- Busca especificamente por 'Aguardando Motorista'
-                       AND transferred_to_registro_id IS NULL
-                     ORDER BY data_hora_login DESC
-                     LIMIT 1
-                 ''',).fetchone()
-
-                 if registro_noshow_data:
-                     response_data = dict(registro_noshow_data)
-                     tabela_origem = 'no_show_direto' # Indica que veio direto do no_show sem registro em registros
-                     print(f"DEBUG: Nenhum registro em 'registros' encontrado para matrícula {matricula}. Encontrado registro relevante em 'no_show' (ID: {response_data.get('id')}) diretamente.")
-
-                     # Determinar status baseado no registro No-Show
-                     if response_data.get('finalizada') == 1:
-                         status_text = 'Registro Finalizado'
-                         status_class = 'status-finalizado'
-                     elif response_data.get('cancelado') == 1:
-                         status_text = 'Registro Cancelado'
-                         status_class = 'status-cancelado'
-                     elif response_data.get('transferred_to_registro_id') is not None and response_data.get('em_separacao') == 4:
-                          status_text = 'Registro No-Show Transferido para Carregamento'
-                          status_class = 'status-transferido'
-                     elif response_data.get('em_separacao') == 2:
-                         status_text = 'Liberado para Carregamento'
-                         status_class = 'status-carregamento-finalizado'
-                     elif response_data.get('em_separacao') == 1:
-                         status_text = 'Em Separação (Aguardando Carregamento)'
-                         status_class = 'status-em-separacao'
-                     elif response_data.get('em_separacao') == 3: # Status 3 no No-Show é "Aguardando Motorista"
-                          status_text = 'Aguardando Motorista (No-Show)'
-                          status_class = 'status-aguardando'
-                     elif response_data.get('em_separacao') == 0:
-                         status_text = 'Aguardando Associação (No-Show)'
-                         status_class = 'status-aguardando'
-                     else:
-                         status_text = 'Status Desconhecido (No-Show Direto)'
-                         status_class = 'bg-gray-500'
-
-                     response_data['status_text'] = status_text
-                     response_data['status_class'] = status_class
-
-                     # Garantir que campos essenciais estejam presentes
-                     response_data['nome'] = response_data.get('nome')
-                     response_data['matricula'] = response_data.get('matricula')
-                     response_data['rota'] = response_data.get('rota')
-                     response_data['tipo_entrega'] = response_data.get('tipo_entrega')
-                     response_data['cidade_entrega'] = response_data.get('cidade_entrega')
-                     response_data['data_hora_login'] = response_data.get('data_hora_login')
-                     response_data['rua'] = response_data.get('rua')
-                     response_data['gaiola'] = response_data.get('gaiola')
-                     response_data['estacao'] = response_data.get('estacao')
-
-
-                 else:
-                     print(f"DEBUG: Nenhum registro em 'registros' encontrado para matrícula {matricula} E nenhum registro relevante em 'no_show' (matrícula '0001', status 3) encontrado.")
-                     # response_data permanece None
-            else:
-                 print(f"DEBUG: Matrícula {matricula} não é '0001' e nenhum registro em 'registros' encontrado.")
-                 # response_data permanece None
-
-
-    # --- Retornar resposta ---
+    # --- Preparar os dados de resposta e determinar status ---
     if response_data:
-        print(f"DEBUG: Dados de resposta preparados (Origem: {tabela_origem}): {response_data}")
-        return jsonify(response_data)
-    else:
-        print(f"DEBUG: /api/status_registro_by_matricula/{matricula} - Nenhum registro ativo relevante encontrado para a matrícula.")
-        # Retorna 404 Not Found com uma mensagem JSON
-        return jsonify({'message': 'Nenhum registro ativo encontrado para esta matrícula.'}), 404
+        # Garante que todos os campos esperados estejam presentes, mesmo que sejam None.
+        # Isso evita erros no frontend ao tentar acessar chaves inexistentes.
+        default_fields = {
+            'id': None, 'nome': None, 'matricula': None, 'data_hora_login': None,
+            'cpf': None, 'tipo_veiculo': None, 'login_id': None, 'rota': None,
+            'tipo_entrega': None, 'cidade_entrega': None, 'rua': None, 
+            'gaiola': None, 'estacao': None, 'em_separacao': None,
+            'finalizada': None, 'cancelado': None, 'transferred_to_registro_id': None,
+            'hora_finalizacao': None, 'tabela_origem': tabela_origem # Adiciona a origem para debug no frontend
+        }
+        final_response_data = {**default_fields, **response_data}
 
-# ... (o restante do seu código Flask existente após esta rota)
+
+        # Lógica para determinar 'status_text' e 'status_class' com base nos dados do registro encontrado
+        status_text = 'Status Desconhecido'
+        status_class = 'bg-gray-500' # Default
+
+        if final_response_data.get('finalizada') == 1:
+            status_text = 'Registro Finalizado'
+            status_class = 'status-finalizado'
+        elif final_response_data.get('cancelado') == 1:
+            status_text = 'Registro Cancelado'
+            status_class = 'status-cancelado'
+        # A prioridade aqui é do 'transferred_to_registro_id' e 'em_separacao = 4' para No-Show transferido
+        elif final_response_data.get('transferred_to_registro_id') is not None and final_response_data.get('em_separacao') == 4:
+            status_text = 'Registro No-Show Transferido para Carregamento'
+            status_class = 'status-transferido'
+        elif final_response_data.get('em_separacao') == 2:
+            status_text = 'Liberado para Carregamento'
+            status_class = 'status-carregamento-finalizado'
+        elif final_response_data.get('em_separacao') == 1:
+            status_text = 'Em Separação (Aguardando Carregamento)'
+            status_class = 'status-em-separacao'
+        elif final_response_data.get('em_separacao') == 3:
+            status_text = 'Aguardando Motorista'
+            status_class = 'status-aguardando-motorista'
+            # Se for um No-Show direto e status 3, podemos dar um toque extra na mensagem
+            if final_response_data.get('tabela_origem') == 'no_show_direto' and final_response_data.get('matricula') == '0001':
+                status_text = 'No-Show: Aguardando Associação/Motorista'
+                status_class = 'status-no-show-especifico' # Uma cor diferente para o No-Show da 0001
+        elif final_response_data.get('em_separacao') == 0:
+            status_text = 'Aguardando Associação/Carregamento'
+            status_class = 'status-em-fila' # Ou 'status-aguardando' conforme sua preferência
+        
+        final_response_data['status_text'] = status_text
+        final_response_data['status_class'] = status_class
+
+        print(f"DEBUG: Dados de resposta final (Origem: {tabela_origem}): {final_response_data}")
+        return jsonify(final_response_data)
+    else:
+        print(f"DEBUG: /api/status_registro_by_matricula/{matricula} - Nenhum registro ativo relevante encontrado para a matrícula com os critérios.")
+        return jsonify({'message': 'Nenhum registro ativo encontrado para esta matrícula com os critérios especificados.'}), 404
 
 
 #Fim status Motorista
@@ -1235,7 +1181,7 @@ def registro_no_show():
 
 
     pagina = int(request.args.get('pagina', 1))
-    registros_por_pagina = 10
+    registros_por_pagina = 10 # Mantido 10 como no seu código, mas a constante é 20. Ajuste se necessário.
 
     # A parte POST aqui lida com a checkbox 'em_separacao' da lista de registros.
     if request.method == 'POST':
@@ -1259,80 +1205,74 @@ def registro_no_show():
         return redirect(request.referrer)
     # Lida com outras ações POST, ou ignora requisições POST não relacionadas à checkbox
 
-    query = 'SELECT * FROM no_show WHERE 1=1' # Começa selecionando todos
-    parametros = []
-    count_query = 'SELECT COUNT(*) FROM no_show WHERE 1=1'
-    count_params = []
-
-    filter_conditions = []
+    query_base = 'SELECT * FROM no_show WHERE 1=1' # Começa selecionando todos
+    parametros_base = []
+    filter_conditions = [] # Usar uma lista para as condições de filtro
 
     if data_filtro:
         try:
             datetime.strptime(data_filtro, '%Y-%m-%d')
             filter_conditions.append('substr(data_hora_login, 1, 10) = ?')
-            parametros.append(data_filtro)
-            count_params.append(data_filtro)
+            parametros_base.append(data_filtro)
         except ValueError:
             pass
 
     if nome_filtro:
-        filter_conditions.append('nome LIKE ?')
-        parametros.append(f'%{nome_filtro.title()}%')
-        count_params.append(f'%{nome_filtro.title()}%')
+        filter_conditions.append('LOWER(nome) LIKE ?') # Usar LOWER para busca case-insensitive
+        parametros_base.append(f'%{nome_filtro.lower()}%') # Passar o filtro em minúsculas
 
     if matricula_filtro:
         filter_conditions.append('matricula LIKE ?')
-        parametros.append(f'%{matricula_filtro}%')
-        count_params.append(f'%{matricula_filtro}%')
+        parametros_base.append(f'%{matricula_filtro}%')
 
     if rota_filtro:
-        filter_conditions.append('rota LIKE ?')
-        parametros.append(f'%{rota_filtro.title()}%')
-        count_params.append(f'%{rota_filtro.title()}%')
+        filter_conditions.append('LOWER(gaiola) LIKE ?') # Assumindo que 'gaiola' é o campo para 'rota' no no_show
+        parametros_base.append(f'%{rota_filtro.lower()}%')
 
     if tipo_entrega_filtro:
-        filter_conditions.append('tipo_entrega LIKE ?')
-        parametros.append(f'%{tipo_entrega_filtro.title()}%')
-        count_params.append(f'%{tipo_entrega_filtro.title()}%')
+        filter_conditions.append('LOWER(tipo_entrega) LIKE ?')
+        parametros_base.append(f'%{tipo_entrega_filtro.lower()}%')
 
     # Adicionar filtro por status (em_separacao, finalizada, cancelado, transferred_to_registro_id)
     # Se status_filtro for vazio (''), nenhuma condição de status é adicionada, mostrando todos.
     if status_filtro:
         print(f"DEBUG: /registro_no_show - Aplicando filtro de status: {status_filtro}")
-        if status_filtro == 'aguardando_associacao':
-            filter_conditions.append('gaiola IS NULL AND estacao IS NULL AND em_separacao = 0 AND finalizada = 0 AND cancelado = 0 AND transferred_to_registro_id IS NULL')
-        elif status_filtro == 'em_separacao': # No-show 'em separacao' (status 1)
+        if status_filtro == 'aguardando': # Filtra estritamente por "Aguardando Motorista" (estado inicial)
+            filter_conditions.append('(gaiola IS NULL OR gaiola = "") AND (estacao IS NULL OR estacao = "") AND em_separacao = 0 AND finalizada = 0 AND cancelado = 0 AND transferred_to_registro_id IS NULL')
+        elif status_filtro == 'separacao': # No-show 'em separacao' (status 1)
             filter_conditions.append('em_separacao = 1 AND finalizada = 0 AND cancelado = 0 AND transferred_to_registro_id IS NULL')
         elif status_filtro == 'carregamento_finalizado': # No-show 'carregamento finalizado' (status 2)
-             filter_conditions.append('em_separacao = 2 AND finalizada = 0 AND cancelado = 0 AND transferred_to_registro_id IS NULL')
+            filter_conditions.append('em_separacao = 2 AND finalizada = 0 AND cancelado = 0 AND transferred_to_registro_id IS NULL')
         elif status_filtro == 'finalizado': # No-show finalizado (status 3)
-             filter_conditions.append('finalizada = 1') # Pode ser finalizado diretamente ou via cancelamento
+            filter_conditions.append('finalizada = 1') # Pode ser finalizado diretamente ou via cancelamento
         elif status_filtro == 'cancelado': # No-show cancelado (status 1)
-             filter_conditions.append('cancelado = 1')
+            filter_conditions.append('cancelado = 1')
         elif status_filtro == 'transferido': # No-show transferido (status 4)
-             filter_conditions.append('em_separacao = 4 AND transferred_to_registro_id IS NOT NULL')
+            filter_conditions.append('em_separacao = 4 AND transferred_to_registro_id IS NOT NULL')
         else:
             print(f"DEBUG: /registro_no_show - Status de filtro desconhecido: {status_filtro}. Nenhum filtro de status aplicado.")
 
 
     if filter_conditions:
-        query += ' AND ' + ' AND '.join(filter_conditions)
-        count_query += ' AND ' + ' AND '.join(filter_conditions)
+        query_base += ' AND ' + ' AND '.join(filter_conditions)
 
-    # Ordena por data de login mais recente para mostrar os mais novos primeiro
-    query += ' ORDER BY data_hora_login DESC LIMIT ? OFFSET ?'
-    parametros.extend([registros_por_pagina, (pagina - 1) * registros_por_pagina])
+    # Ordena para mostrar registros não finalizados, não cancelados e não transferidos primeiro
+    # e depois por data de login mais recente.
+    # A condição `em_separacao != 4` exclui os transferidos da prioridade de "não finalizados".
+    # A ordenação agora prioriza qualquer registro que não esteja finalizado, cancelado ou transferido.
+    query_paginada = query_base + ' ORDER BY CASE WHEN finalizada = 0 AND cancelado = 0 AND em_separacao != 4 THEN 0 ELSE 1 END, data_hora_login DESC LIMIT ? OFFSET ?'
+    parametros_paginada = parametros_base + [registros_por_pagina, (pagina - 1) * registros_por_pagina]
 
-    print(f"DEBUG: /registro_no_show - Query SQL: {query}")
-    print(f"DEBUG: /registro_no_show - Parâmetros da Query: {parametros}")
-    print(f"DEBUG: /registro_no_show - Count Query SQL: {count_query}")
-    print(f"DEBUG: /registro_no_show - Parâmetros da Count Query: {count_params}")
+    print(f"DEBUG: /registro_no_show - Query SQL final: {query_paginada}")
+    print(f"DEBUG: /registro_no_show - Parâmetros da Query: {parametros_paginada}")
 
 
     with get_db_connection() as conn:
-        total = conn.execute(count_query, count_params).fetchone()[0]
+        # Para a contagem total, use apenas a query_base com as condições de filtro
+        count_query = query_base.replace("SELECT *", "SELECT COUNT(*)", 1)
+        total = conn.execute(count_query, parametros_base).fetchone()[0]
         total_paginas = (total + registros_por_pagina - 1) // registros_por_pagina
-        registros_data = conn.execute(query, parametros).fetchall()
+        registros_data = conn.execute(query_paginada, parametros_paginada).fetchall()
 
     print(f"DEBUG: /registro_no_show - Total de registros encontrados (antes da paginação): {total}")
     print(f"DEBUG: /registro_no_show - Registros retornados para esta página: {len(registros_data)}")
@@ -1343,7 +1283,6 @@ def registro_no_show():
                            matricula_filtro=matricula_filtro, rota_filtro=rota_filtro,
                            tipo_entrega_filtro=tipo_entrega_filtro, status_filtro=status_filtro,
                            pagina=pagina, total_paginas=total_paginas)
-
 
 # --- Rotas para ações em registros No-Show ---
 @app.route('/registro_no_show/associar/<int:id>', methods=['POST'])
