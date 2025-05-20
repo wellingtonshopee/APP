@@ -170,14 +170,14 @@
         <h2>Menu de Navegação</h2>
         <ul>
             {# Links atualizados #}
-            <li><a href="{{ url_for('login') }}">Login</a></li>
-            <li><a href="{{ url_for('cadastro') }}">Cadastro</a></li>
-            <li><a href="{{ url_for('registros') }}">Registros</a></li> {# Link para a rota /registros #}
-            <li><a href="{{ url_for('associacao_no_show') }}">Criar Registros No Show</a></li> {# Link adicionado para a rota /associacao_no_show #}
-            <li><a href="{{ url_for('registro_no_show') }}">Registros No Show</a></li> {# Link para a rota /registro_no_show (visualização) #}
-            <li><a href="{{ url_for('registros_finalizados') }}">Registros Finalizados</a></li> {# NOVO: Link para Registros Finalizados #}
-            <li><a href="{{ url_for('painel_final') }}">Painel Final</a></li> {# Link para a rota /painel_final #}
-            {# Links removidos: Todos os Registros, Histórico, Associação #}
+            <li><a href="{{ url_for('menu_principal') }}">Página Inicial</a></li>
+            <li><a href="{{ url_for('login') }}">Login Drive</a></li>
+            <li><a href="{{ url_for('cadastro') }}">Cadastro Drive</a></li>
+            <li><a href="{{ url_for('registros') }}">Painel do Operador</a></li> 
+            <li><a href="{{ url_for('registro_no_show') }}">Listar Registros No-Show</a></li>
+            <li><a href="{{ url_for('associacao_no_show') }}">Criar Registro No-Show</a></li>
+            <li><a href="{{ url_for('registros_finalizados') }}">Relatório de Registros</a></li>
+            <li><a href="{{ url_for('painel_final') }}">Painel de Atendimento</a></li>
         </ul>
     </div>
 

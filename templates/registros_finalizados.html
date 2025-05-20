@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registros Finalizados</title>
+    <title>Relatório de Registros</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
     <style>
         body {
@@ -11,6 +11,89 @@
             margin: 0;
             padding: 0;
             background-color: #f4f4f4;
+            /* Ajuste o padding-top para acomodar o banner com os filtros */
+            padding-top: 120px; /* Altura do banner + filtros */
+            transition: margin-left 0.3s ease; /* Adiciona transição para o conteúdo principal */
+        }
+
+        /* Estilo para o overlay quando o menu está aberto */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999; /* Abaixo do sidebar, mas acima do conteúdo */
+            display: none; /* Inicialmente oculto */
+        }
+
+        /* Estilos para o menu lateral */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -250px; /* Começa fora da tela */
+            width: 250px;
+            height: 100%;
+            background-color: #1f2937; /* Tailwind gray-800 */
+            color: white;
+            transition: left 0.3s ease;
+            z-index: 1000; /* Acima de tudo */
+            padding-top: 60px; /* Espaço para o banner ou topo */
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
+            overflow-y: auto; /* Permite scroll se o conteúdo for longo */
+        }
+
+        .sidebar.open {
+            left: 0; /* Entra na tela */
+        }
+
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar ul li {
+            padding: 15px 20px;
+            border-bottom: 1px solid #374151; /* Tailwind gray-700 */
+        }
+
+        .sidebar ul li:last-child {
+            border-bottom: none;
+        }
+
+        .sidebar ul li a {
+            color: white;
+            text-decoration: none;
+            font-size: 0.95em; /* Fonte diminuída conforme solicitado */
+            display: block; /* Torna o link clicável em toda a área do li */
+            transition: color 0.2s ease;
+        }
+
+        .sidebar ul li a:hover {
+            color: #9ca3af; /* Tailwind gray-400 */
+        }
+
+        /* Estilo para o botão de toggle do menu */
+        .sidebar-toggle {
+            /* Removido position: fixed e propriedades de posicionamento */
+            /* Ele agora fluirá dentro do filter-container */
+            background-color: #10b981; /* Tailwind emerald-500 */
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1.2em;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.2s ease;
+            /* Adicionado margin para espaçamento dentro do flexbox */
+            margin-right: 10px; /* Espaçamento à direita do botão */
+        }
+
+        .sidebar-toggle:hover {
+            background-color: #059669; /* Tailwind emerald-600 */
         }
 
         .banner {
@@ -23,6 +106,11 @@
             height: auto;
             flex-wrap: wrap;
             box-sizing: border-box;
+            position: fixed; /* Adicionado para fixar o banner */
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 998; /* Abaixo do sidebar, mas acima do conteúdo */
         }
 
         .logo-banner {
@@ -48,6 +136,8 @@
             flex-wrap: wrap;
             gap: 10px;
             margin-bottom: 10px;
+            width: 100%; /* Garante que o filter-container ocupa toda a largura */
+            justify-content: flex-start; /* Alinha itens à esquerda */
         }
 
         .filter-container label {
@@ -74,7 +164,7 @@
             font-size: 0.8em;
         }
 
-         /* Estilo específico para o botão de Exportar */
+        /* Estilo específico para o botão de Exportar */
         #export-xls-button {
             background-color: #28a745; /* Cor verde */
         }
@@ -82,7 +172,6 @@
         #export-xls-button:hover {
             background-color: #218838; /* Verde mais escuro no hover */
         }
-
 
         .filter-container button:hover {
             background-color: #777;
@@ -99,7 +188,7 @@
         }
 
         .card {
-            background-color: #c4efcd;
+            background-color: #d3d7d4;
             border-radius: 6px;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
             padding: 8px;
@@ -135,15 +224,63 @@
 
         .card-finalizado {
             font-weight: bold;
-            color: #28a745;
+            color: #c6cec8;
             margin-top: 3px;
             text-align: right;
             font-size: 0.7em;
         }
 
         @media screen and (max-width: 768px) {
+            body {
+                padding-top: 180px; /* Ajusta padding do body para o banner maior em telas pequenas */
+            }
             .card {
                 width: calc(50% - 20px);
+            }
+            .banner {
+                height: auto; /* Altura automática para acomodar filtros empilhados */
+            }
+            .banner-content {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                height: auto; /* Altura automática */
+                padding-bottom: 10px; /* Espaço entre banner-content e filters */
+            }
+            .banner h1 {
+                text-align: center;
+                margin-left: 0;
+                margin-top: 10px;
+            }
+            .banner .logo {
+                margin-right: 0;
+            }
+            .filter-container {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 5px; /* Espaço menor entre filtros empilhados */
+            }
+            .filter-container input,
+            .filter-container select,
+            .filter-container button {
+                width: 100%;
+                box-sizing: border-box;
+                min-width: auto; /* Remove largura mínima em telas pequenas */
+            }
+            .sidebar {
+                width: 200px; /* Ajusta largura do sidebar em telas menores */
+                left: -200px;
+            }
+            .sidebar.open {
+                left: 0;
+            }
+            .sidebar-toggle {
+                /* Resetar estilos fixos para mobile também */
+                position: static; /* Volta a ser estático para fluir */
+                margin-left: auto; /* Mantém à direita */
+                top: auto;
+                left: auto;
+                z-index: auto;
             }
         }
 
@@ -163,28 +300,57 @@
     </style>
 </head>
 <body>
+    {# Menu Lateral #}
+    <aside class="sidebar" id="sidebar">
+        <ul>
+            <li><a href="{{ url_for('menu_principal') }}">Página Inicial</a></li>
+            <li><a href="{{ url_for('login') }}">Login Drive</a></li>
+            <li><a href="{{ url_for('cadastro') }}">Cadastro Drive</a></li>
+            <li><a href="{{ url_for('registros') }}">Painel do Operador</a></li> 
+            <li><a href="{{ url_for('registro_no_show') }}">Listar Registros No-Show</a></li>
+            <li><a href="{{ url_for('associacao_no_show') }}">Criar Registro No-Show</a></li>
+            <li><a href="{{ url_for('registros_finalizados') }}">Relatório de Registros</a></li>
+            <li><a href="{{ url_for('painel_final') }}">Painel de Atendimento</a></li>
+        </ul>
+    </aside>
+
+    {# Overlay para fechar o menu ao clicar fora #}
+    <div class="overlay" id="overlay"></div>
+
     <div class="banner">
         <div class="logo-banner">
-            <img src="{{ url_for('static', filename='imagem/logop.png') }}" alt="Logo">
+            <img src="{{ url_for('static', filename='imagem/logop.png') }}" alt="shopee">
         </div>
-        <h1 class="banner-title">Registros Finalizados - Sistema de Gerenciamento Operacional</h1>
+        <h1 class="banner-title">Relatório de Registros - Sistema de Gerenciamento Operacional</h1>
         <div class="filter-container">
-            <label for="start-date-filter">Data Chegada (De):</label>
+            {# Botão para abrir/fechar o menu lateral - MOVIDO AQUI #}
+            <button class="sidebar-toggle" id="sidebarToggle">☰</button>
+
+            <label for="start-date-filter">De:</label>
             <input type="date" id="start-date-filter">
 
-            <label for="end-date-filter">Data Chegada (Até):</label>
+            <label for="end-date-filter">Até:</label>
             <input type="date" id="end-date-filter">
 
-            <label for="tipo-entrega-filter">Tipo de Entrega:</label>
+            <label for="tipo-entrega-filter"></label>
             <select id="tipo-entrega-filter">
                 <option value="">Todos</option>
             </select>
 
-            <label for="rota-filter">Rota:</label>
+            <label for="rota-filter"></label>
             <input type="text" id="rota-filter" placeholder="Digite a rota">
 
+            {# NOVO FILTRO DE STATUS FINALIZADO #}
+            <label for="finalizado-filter"></label>
+            <select id="finalizado-filter">
+                <option value="">Todos</option>
+                <option value="1">Finalizados</option>
+                <option value="0">Não Finalizados</option>
+            </select>
+            {# FIM DO NOVO FILTRO #}
+
             <button id="limpar-filtro">Limpar Filtros</button>
-            <button id="export-xls-button">Exportar XLS</button> {# Botão Exportar XLS #}
+            <button id="export-xls-button">Exportar XLS</button>
         </div>
     </div>
     <div class="card-container">
@@ -198,7 +364,7 @@
              data-cidade-entrega="{{ registro.cidade_entrega }}"
              data-gaiola-rua="{{ registro.gaiola_rua }}"
              data-estacao="{{ registro.estacao }}"
-             data-hora-finalizacao="{{ registro.hora_finalizacao }}"
+             data-hora-finalizacao="{{ registro.hora_finalizacao if registro.hora_finalizacao is not none else '' }}" {# Garante string vazia se None #}
              data-finalizado="{{ registro.finalizado }}">
             <p><strong>Data / Hora Chegada:</strong> {{ registro.data_hora_login|formata_data_hora }}</p>
             <p><strong>Matrícula:</strong> {{ registro.matricula }}</p>
@@ -206,10 +372,10 @@
             <p><strong>Cidade:</strong> {{ registro.cidade_entrega }}</p>
             <p><strong>Rota:</strong> {{ registro.rota }}</p>
             <p><strong>Tipo de Entrega:</strong> {{ registro.tipo_entrega }}</p>
-            <p><strong>Gaiola \ Rua:</strong> {{ registro.gaiola_rua }}</p>
             <p><strong>Estação:</strong> {{ registro.estacao }}</p>
             <p><strong>Data / Hora Finalização:</strong> {{ registro.hora_finalizacao|formata_data_hora }}</p>
-            <p><strong>Finalizado:</strong> {{ registro.finalizado }}</p>
+            {# Exibir o status finalizado no card (opcional, mas útil para visualização) #}
+            <p><strong>Finalizado:</strong> {% if registro.finalizado == 1 %}Sim{% else %}Não{% endif %}</p>
         </div>
         {% endfor %}
     </div>
@@ -218,8 +384,9 @@
         const endDateFilterInput = document.getElementById('end-date-filter');
         const tipoEntregaFilterSelect = document.getElementById('tipo-entrega-filter');
         const rotaFilterInput = document.getElementById('rota-filter');
+        const finalizadoFilterSelect = document.getElementById('finalizado-filter');
         const limparFiltroButton = document.getElementById('limpar-filtro');
-        const exportXlsButton = document.getElementById('export-xls-button'); // Botão Exportar XLS
+        const exportXlsButton = document.getElementById('export-xls-button');
         const cards = document.querySelectorAll('.card');
 
         // Adicionar opções dinâmicas para o filtro de tipo de entrega
@@ -236,15 +403,24 @@
             const endDateValue = endDateFilterInput.value;
             const tipoEntregaFilterValue = tipoEntregaFilterSelect.value;
             const rotaFilterValue = rotaFilterInput.value.toLowerCase();
+            const finalizadoFilterValue = finalizadoFilterSelect.value;
 
             cards.forEach(card => {
-                const dataHoraLogin = card.dataset.dataHoraLogin.split(' ')[0]; // Filtra apenas pela data
+                const dataHoraLogin = card.dataset.dataHoraLogin.split(' ')[0];
                 const tipoEntrega = card.dataset.tipoEntrega;
                 const rota = card.dataset.rota.toLowerCase();
+                // Garante que horaFinalizacao é uma string e remove espaços em branco
+                const horaFinalizacao = (card.dataset.horaFinalizacao || '').trim();
+
+                console.log(`Card ID: ${card.dataset.id || 'N/A'}`);
+                console.log(`  horaFinalizacao: '${horaFinalizacao}' (tipo: ${typeof horaFinalizacao})`);
+                console.log(`  finalizadoFilterValue: '${finalizadoFilterValue}'`);
+
 
                 let matchesDateRange = true;
                 let matchesTipoEntrega = true;
                 let matchesRota = true;
+                let matchesFinalizado = true;
 
                 // Filtrar por intervalo de data
                 if (startDateValue && dataHoraLogin < startDateValue) {
@@ -255,7 +431,7 @@
                 }
 
                 // Filtrar por tipo de entrega
-                if (tipoEntregaFilterValue && tipoEntregaFilterValue !== tipoEntrega) {
+                if (tipoEntregaFilterValue && tipoEntrejaFilterValue !== tipoEntrega) {
                     matchesTipoEntrega = false;
                 }
 
@@ -264,21 +440,44 @@
                     matchesRota = false;
                 }
 
-                card.style.display = matchesDateRange && matchesTipoEntrega && matchesRota ? 'block' : 'none';
+                // NOVO: Filtrar por status finalizado (ajustado para hora_finalizacao)
+                if (finalizadoFilterValue !== "") { // Se o filtro não for "Todos"
+                    if (finalizadoFilterValue === '1') { // Quer registros Finalizados
+                        // Um registro é considerado finalizado se horaFinalizacao NÃO é vazia
+                        if (horaFinalizacao === '') { // Se horaFinalizacao é vazia, NÃO corresponde a 'Finalizados'
+                            matchesFinalizado = false;
+                            console.log(`    -> Não corresponde a 'Finalizados' (horaFinalizacao: '${horaFinalizacao}')`);
+                        } else {
+                            console.log(`    -> Corresponde a 'Finalizados'`);
+                        }
+                    } else if (finalizadoFilterValue === '0') { // Quer registros NÃO Finalizados
+                        // Um registro é considerado NÃO finalizado se horaFinalizacao É vazia
+                        if (horaFinalizacao !== '') { // Se horaFinalizacao NÃO é vazia, NÃO corresponde a 'Não Finalizados'
+                            matchesFinalizado = false;
+                            console.log(`    -> Não corresponde a 'Não Finalizados' (horaFinalizacao: '${horaFinalizacao}')`);
+                        } else {
+                             console.log(`    -> Corresponde a 'Não Finalizados'`);
+                        }
+                    }
+                }
+                console.log(`  Resultado final para card ${card.dataset.id || 'N/A'}: ${matchesDateRange && matchesTipoEntrega && matchesRota && matchesFinalizado}`);
+                card.style.display = (matchesDateRange && matchesTipoEntrega && matchesRota && matchesFinalizado) ? 'block' : 'none';
             });
         }
 
-        // Adicionar event listeners para os novos filtros de data
+        // Adicionar event listeners para os novos filtros
         startDateFilterInput.addEventListener('input', filterCards);
         endDateFilterInput.addEventListener('input', filterCards);
         tipoEntregaFilterSelect.addEventListener('change', filterCards);
         rotaFilterInput.addEventListener('input', filterCards);
+        finalizadoFilterSelect.addEventListener('change', filterCards);
 
         limparFiltroButton.addEventListener('click', function() {
-            startDateFilterInput.value = ''; // Limpa o filtro de data inicial
-            endDateFilterInput.value = ''; // Limpa o filtro de data final
+            startDateFilterInput.value = '';
+            endDateFilterInput.value = '';
             tipoEntregaFilterSelect.value = '';
             rotaFilterInput.value = '';
+            finalizadoFilterSelect.value = '';
             filterCards();
         });
 
@@ -291,14 +490,13 @@
                 "Data/Hora Chegada", "Matrícula", "Nome", "Cidade", "Rota",
                 "Tipo de Entrega", "Gaiola \\ Rua", "Estação", "Data/Hora Finalização", "Finalizado"
             ];
-            csvContent += headers.join(";") + "\r\n"; // Use ponto e vírgula como separador
+            csvContent += headers.join(";") + "\r\n";
 
             // Adicionar dados dos cards visíveis
             cards.forEach(card => {
-                // Apenas adiciona cards que estão visíveis (não display: none)
                 if (card.style.display !== 'none') {
                     const row = [
-                        `"${card.dataset.dataHoraLogin}"`, // Aspas para garantir que a data/hora seja tratada como texto
+                        `"${card.dataset.dataHoraLogin}"`,
                         `"${card.dataset.matricula}"`,
                         `"${card.dataset.nome}"`,
                         `"${card.dataset.cidadeEntrega}"`,
@@ -306,26 +504,54 @@
                         `"${card.dataset.tipoEntrega}"`,
                         `"${card.dataset.gaiolaRua}"`,
                         `"${card.dataset.estacao}"`,
-                         // Use o valor original para exportação, o filtro formata para exibição
                         `"${card.dataset.horaFinalizacao}"`,
                         `"${card.dataset.finalizado}"`
                     ];
-                    csvContent += row.join(";") + "\r\n"; // Use ponto e vírgula como separador
+                    csvContent += row.join(";") + "\r\n";
                 }
             });
 
-            // Criar um link para download
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
             link.setAttribute("download", "registros_finalizados.csv");
-            document.body.appendChild(link); // Necessário para Firefox
+            document.body.appendChild(link);
 
-            link.click(); // Simular clique para download
+            link.click();
 
-            document.body.removeChild(link); // Limpar
+            document.body.removeChild(link);
         });
 
+        // --- Lógica do Menu Lateral ---
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const overlay = document.getElementById('overlay');
+
+        // Abre o menu
+        function openSidebar() {
+            sidebar.classList.add('open');
+            overlay.style.display = 'block';
+        }
+
+        // Fecha o menu
+        function closeSidebar() {
+            sidebar.classList.remove('open');
+            overlay.style.display = 'none';
+        }
+
+        // Event listeners para abrir/fechar o menu
+        sidebarToggle.addEventListener('click', openSidebar);
+        overlay.addEventListener('click', closeSidebar); // Fecha ao clicar no overlay
+
+        // Fecha o menu se a janela for redimensionada para uma largura maior (opcional)
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768) { // Exemplo: fecha se a tela for maior que 768px
+                closeSidebar();
+            }
+        });
+
+        // Chamar filterCards() na carga da página para aplicar os filtros iniciais
+        document.addEventListener('DOMContentLoaded', filterCards);
     </script>
 </body>
 </html>
