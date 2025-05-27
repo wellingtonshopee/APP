@@ -6,7 +6,6 @@ feedparser
 openpyxl
 psycopg2-binary
 beautifulsoup4
-random 
 bs4
 BytesIO
 sqlalchemy 
