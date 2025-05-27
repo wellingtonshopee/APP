@@ -42,14 +42,12 @@
         }
         /* Cores dos Status */
         .status-em-fila { background-color: #e83108; } /* Vermelho para Em Fila / Aguardando Liberação (em_separacao = 0) */
-        .status-carregamento-liberado-normal { background-color: #22db11; } /* Verde para Carregamento Liberado (Normal ou No-Show, em_separacao = 1) */
-        .status-carregamento-concluido { background-color: #f39c12; } /* Laranja para Carregamento Concluído (em_separacao = 2) */
-        .status-aguardando-motorista { background-color: #22db11; } /* Azul para Aguardando Motorista (em_separacao = 3) */
+        .status-carregamento-liberado-normal { background-color: #faea05; } /* Amarelo para Em Separação (em_separacao = 1) */
+        .status-carregamento-concluido { background-color: #11db54; } /* Verde para Liberado para Carregar (em_separacao = 2) */
+        .status-aguardando-motorista { background-color: #11db54; } /* Verde para Carregamento Liberado (em_separacao = 3) */
+        .status-transferido { background-color: #6f42c1; } /* Roxo para Cancelado (No-Show original, em_separacao = 4) */
         .status-finalizado { background-color: #6c757d; } /* Cinza para Finalizado (finalizada = 1) */
-        .status-cancelado { background-color: #dc3545; } /* Vermelho para Cancelado */
-        .status-transferido { background-color: #6f42c1; } /* Roxo para Transferido (No-Show original, em_separacao = 4) */
         .status-nao-encontrado { background-color: #6c757d; } /* Cinza para Não Encontrado */
-
 
         .info-card {
             background-color: #e9ecef;
@@ -123,7 +121,7 @@
                 <p><span class="font-semibold">Rota:</span> <span id="rota"></span></p>
                 <p><span class="font-semibold">Tipo de Entrega:</span> <span id="tipo_entrega"></span></p>
                 <p><span class="font-semibold">Cidade de Entrega:</span> <span id="cidade_entrega"></span></p>
-                <p id="rua-paragraph"><span class="font-semibold">Rua:</span> <span id="rua"></span></p>
+                <p id="rua-paragraph" class="hidden"><span class="font-semibold">Rua:</span> <span id="rua"></span></p>
                 <p><span class="font-semibold">Rota de Entrega:</span> <span id="gaiola"></span></p>
                 <p><span class="font-semibold">Estação de Carregamento:</span> <span id="estacao"></span></p>
             </div>
@@ -134,14 +132,14 @@
         <div id="error-message" class="hidden text-red-500 mt-4"></div>
 
         <div id="no-active-record" class="hidden text-gray-600 mt-4">
-            Seu Carregamento foi finalizado ou registro não esta mais ativo.
+            Seu Carregamento foi finalizado ou registro não está mais ativo.
             <div id="no-record-status-display" class="status-card status-nao-encontrado mt-4">
                 Carregamento Finalizado
             </div>
         </div>
 
         <div class="mt-6">
-           
+            
         </div>
     </div>
 
@@ -150,6 +148,17 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const matricula = window.location.pathname.split('/').pop();
+            // <<-- ADICIONADO: Obtém o registro_id da URL -->>
+            const urlParams = new URLSearchParams(window.location.search);
+            const registroId = urlParams.get('registro_id');
+
+            // Se registro_id não for encontrado, exibe erro e para.
+            if (!registroId) {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('error-message').classList.remove('hidden');
+                document.getElementById('error-message').textContent = 'Erro: ID do registro não fornecido na URL.';
+                return; // Para a execução do script
+            }
 
             const loadingDiv = document.getElementById('loading');
             const statusInfoDiv = document.getElementById('status-info');
@@ -164,41 +173,49 @@
             const cidadeEntregaSpan = document.getElementById('cidade_entrega');
             const ruaParagraph = document.getElementById('rua-paragraph');
             const ruaSpan = document.getElementById('rua');
-            const gaiolaSpan = document.getElementById('gaiola');
+            const gaiolaSpan = document = document.getElementById('gaiola'); // Corrigido aqui
             const estacaoSpan = document.getElementById('estacao');
             const dataHoraLoginSpan = document.getElementById('data_hora_login');
 
             const notificationSound = document.getElementById('notification-sound');
             const enableSoundBtn = document.getElementById('enable-sound-btn');
 
-            let lastStatusText = null; // Mantido para lógica de notificação sonora
+            let lastStatusText = null; 
             let soundEnabled = false;
 
+            // Mapeamento de status para texto e classes CSS
+            const STATUS_MAP = {
+                0: { text: 'Em Fila - Aguardando Liberação', class: 'status-em-fila' },
+                1: { text: 'Em Separação', class: 'status-carregamento-liberado-normal' },
+                2: { text: 'Liberado para Carregar', class: 'status-carregamento-concluido' },
+                3: { text: 'Carregamento Liberado', class: 'status-aguardando-motorista' }, // Aguardando Motorista
+                4: { text: 'Cancelado', class: 'status-transferido' }, // No-Show original após transferência
+            };
+
             enableSoundBtn.addEventListener('click', () => {
-                // Toca o som para "desbloquear" no navegador e pausa imediatamente
                 notificationSound.play().then(() => {
                     notificationSound.pause();
                     notificationSound.currentTime = 0;
                     soundEnabled = true;
                     enableSoundBtn.style.display = 'none';
                 }).catch(() => {
-                    // Pode falhar se bloqueado, mantemos o botão visível
-                    alert('Não foi possível ativar o som automaticamente. Por favor, tente clicar novamente.');
+                    alert('Para ativar o som, interaja com a página primeiro (clique no botão novamente, por exemplo). Alguns navegadores exigem uma interação do usuário.');
                 });
             });
 
             function formatField(value) {
-                if (value === 'N/A' || value === null || value === undefined || value.toString().trim() === '') {
+                if (value === 'N/A' || value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) {
                     return 'Aguarde';
                 }
                 return value;
             }
 
             function formatarDataHora(isoString) {
-                if (!isoString || isoString === 'N/A' || isoString.toString().trim() === '') {
+                if (!isoString || isoString === 'N/A' || (typeof isoString === 'string' && isoString.trim() === '')) {
                     return 'Aguarde';
                 }
                 try {
+                    // Tenta parsear no formato 'YYYY-MM-DD - HH:MM' ou 'YYYY-MM-DD HH:MM'
                     const parts = isoString.split(' - ');
                     const datePart = parts[0];
                     const timePart = parts.length > 1 ? parts[1] : isoString.split(' ')[1];
@@ -217,130 +234,112 @@
 
                     return `${formattedDay}-${formattedMonth}-${formattedYear} ${formattedHours}:${formattedMinutes}`;
                 } catch (e) {
+                    console.error("Erro ao formatar data/hora:", e);
                     return 'Aguarde';
                 }
             }
 
+            // Função para atualizar os elementos da UI
+            const updateUI = (registro) => {
+                nomeSpan.textContent = formatField(registro.nome);
+                matriculaSpan.textContent = formatField(registro.matricula);
+                rotaSpan.textContent = formatField(registro.rota);
+                tipoEntregaSpan.textContent = formatField(registro.tipo_entrega);
+                cidadeEntregaSpan.textContent = formatField(registro.cidade_entrega);
+
+                // Oculta a rua por padrão e só exibe se for 'No-Show'
+                ruaParagraph.classList.add('hidden'); 
+                ruaSpan.textContent = ''; // Limpa o conteúdo
+                if (registro.tipo_entrega === 'No-Show') {
+                    ruaParagraph.classList.remove('hidden');
+                    ruaSpan.textContent = formatField(registro.rua);
+                }
+
+                gaiolaSpan.textContent = formatField(registro.gaiola);
+                estacaoSpan.textContent = formatField(registro.estacao);
+                dataHoraLoginSpan.textContent = formatarDataHora(registro.data_hora_login);
+            };
+
             async function fetchStatus() {
                 try {
-                    const response = await fetch(`/api/status_registro_by_matricula/${matricula}`);
+                    // <<-- ALTERADO: Inclui o registro_id na URL da API -->>
+                    const response = await fetch(`/api/status_registro_by_matricula/${matricula}?registro_id=${registroId}`);
                     const data = await response.json();
 
-                    loadingDiv.classList.add('hidden');
+                    loadingDiv.classList.add('hidden'); // Oculta o carregamento
 
                     if (response.ok) {
                         const registro = data;
 
-                        statusInfoDiv.classList.remove('hidden');
-                        noActiveRecordDiv.classList.add('hidden');
-                        errorDiv.classList.add('hidden');
+                        statusInfoDiv.classList.remove('hidden'); // Exibe as informações do status
+                        noActiveRecordDiv.classList.add('hidden'); // Oculta mensagem de registro não ativo
+                        errorDiv.classList.add('hidden'); // Oculta mensagens de erro
 
-                        nomeSpan.textContent = formatField(registro.nome);
-                        matriculaSpan.textContent = formatField(registro.matricula);
-                        rotaSpan.textContent = formatField(registro.rota);
-                        tipoEntregaSpan.textContent = formatField(registro.tipo_entrega);
-                        cidadeEntregaSpan.textContent = formatField(registro.cidade_entrega);
+                        updateUI(registro); // Atualiza os campos de informação
 
-                        if (registro.tipo_entrega === 'No-Show') {
-                            ruaParagraph.classList.remove('hidden');
-                            ruaSpan.textContent = formatField(registro.rua);
-                        } else {
-                            ruaParagraph.classList.add('hidden');
-                            ruaSpan.textContent = '';
-                        }
+                        let currentStatusText = 'Status Desconhecido';
+                        let currentStatusClass = 'bg-gray-500'; // Classe padrão cinza
 
-                        gaiolaSpan.textContent = formatField(registro.gaiola);
-                        estacaoSpan.textContent = formatField(registro.estacao);
-                        dataHoraLoginSpan.textContent = formatarDataHora(registro.data_hora_login);
-
-                        let currentStatusText = '';
-                        let currentStatusClass = 'bg-gray-500'; // Default fallback class
-
-                        // --- Lógica para determinar o texto e a classe com base em finalizada e em_separacao ---
                         if (registro.finalizada === 1) {
                             currentStatusText = 'Finalizado';
-                            currentStatusClass = 'status-finalizado'; // Cinza
-                        } else {
-                            // Se não está finalizado, use a lógica baseada em em_separacao
-                            switch (registro.em_separacao) {
-                                case 0:
-                                    currentStatusText = 'Em Fila - Aguardando Liberação';
-                                    currentStatusClass = 'status-em-fila'; // Vermelho
-                                    break;
-                                case 1:
-                                    currentStatusText = 'Carregamento Liberado';
-                                    // Cor verde para Carregamento Liberado (Normal ou No-Show)
-                                    currentStatusClass = 'status-carregamento-liberado-normal';
-                                    break;
-                                case 2:
-                                    currentStatusText = 'Carregamento Concluído';
-                                    currentStatusClass = 'status-carregamento-concluido'; // Laranja
-                                    break;
-                                case 3: // Status 3 para Aguardando Motorista (específico para No-Show antes da transferência)
-                                    currentStatusText = 'Carregamento Liberado';
-                                    currentStatusClass = 'status-aguardando-motorista'; // Azul
-                                    break;
-                                case 4: // Status 4 é usado para o registro No-Show original após transferência
-                                    currentStatusText = 'Transferido (No-Show)';
-                                    currentStatusClass = 'status-transferido'; // Roxo
-                                    break;
-                                default:
-                                    // Fallback para status text e class da API se em_separacao for inesperado
-                                    currentStatusText = registro.status_text || 'Status Desconhecido';
-                                    currentStatusClass = registro.status_class || 'bg-gray-500';
-                                    // Mapeamentos adicionais para status_text comuns como fallback
-                                     if (currentStatusText.toLowerCase().includes('aguardando motorista')) {
-                                          currentStatusClass = 'status-aguardando-motorista'; // Mantém azul para Aguardando Motorista
-                                     } else if (currentStatusText.toLowerCase().includes('em separação')) {
-                                          // Se o status text for 'Em Separação' e não foi pego pelo case 1
-                                          currentStatusClass = 'status-carregamento-liberado-normal'; // Verde
-                                     }
-                                    // Adicione mais mapeamentos aqui se necessário
+                            currentStatusClass = 'status-finalizado';
+                        } else if (STATUS_MAP[registro.em_separacao]) {
+                            // Mapeia pelo em_separacao
+                            currentStatusText = STATUS_MAP[registro.em_separacao].text;
+                            currentStatusClass = STATUS_MAP[registro.em_separacao].class;
+                        } else if (registro.estado) {
+                            // Fallback: se 'em_separacao' não mapear, tenta usar 'estado' da API
+                            currentStatusText = registro.estado;
+                            // Lógica para mapear texto de 'estado' para classes (se necessário)
+                            if (currentStatusText.toLowerCase().includes('aguardando carregamento')) {
+                                currentStatusClass = 'status-em-fila';
+                            } else if (currentStatusText.toLowerCase().includes('em separacao')) {
+                                currentStatusClass = 'status-carregamento-liberado-normal';
+                            } else if (currentStatusText.toLowerCase().includes('aguardando motorista')) {
+                                currentStatusClass = 'status-aguardando-motorista';
                             }
+                            // Adicione mais mapeamentos de 'estado' aqui, se existirem outros
                         }
-
 
                         statusDisplayDiv.textContent = currentStatusText;
                         statusDisplayDiv.className = 'status-card ' + currentStatusClass;
 
-                        // Se o status de TEXTO mudou, toca som e vibra, só se som estiver ativado
+                        // Toca som e vibra apenas se o status de TEXTO mudou E o som estiver ativado
                         if (lastStatusText !== null && lastStatusText !== currentStatusText && soundEnabled) {
-                             notificationSound.play().catch(() => {
-                                 console.warn("Failed to play sound."); // Log potential errors
-                             });
-                             if (navigator.vibrate) {
-                                 navigator.vibrate(200);
-                             }
-                         }
-
-                        lastStatusText = currentStatusText; // Atualiza o último texto de status VISTO
-
+                            notificationSound.play().catch(() => {
+                                console.warn("Falha ao reproduzir o som de notificação.");
+                            });
+                            if (navigator.vibrate) {
+                                navigator.vibrate(200);
+                            }
+                        }
+                        lastStatusText = currentStatusText; 
 
                     } else {
+                        // Se a resposta não for OK
                         statusInfoDiv.classList.add('hidden');
-                        errorDiv.classList.add('hidden');
+                        errorDiv.classList.add('hidden'); // Garante que esteja oculto antes de exibir
 
                         if (response.status === 404) {
                             noActiveRecordDiv.classList.remove('hidden');
                         } else {
                             errorDiv.classList.remove('hidden');
-                            errorDiv.textContent = data.message || 'Não foi possível carregar o status do registro.';
+                            errorDiv.textContent = data.message || 'Não foi possível carregar o status do registro. Tente novamente mais tarde.';
                         }
-                         // Limpa o último status text se não houver registro ativo
-                         lastStatusText = null;
+                        lastStatusText = null; 
                     }
                 } catch (fetchError) {
+                    // Em caso de erro na comunicação (rede, etc.)
                     loadingDiv.classList.add('hidden');
                     statusInfoDiv.classList.add('hidden');
                     noActiveRecordDiv.classList.add('hidden');
                     errorDiv.classList.remove('hidden');
-                    errorDiv.textContent = 'Erro na comunicação com o servidor.';
-                     // Limpa o último status text em caso de erro
-                    lastStatusText = null;
+                    errorDiv.textContent = 'Erro de comunicação com o servidor. Verifique sua conexão ou tente novamente.';
+                    lastStatusText = null; 
                 }
             }
 
-            fetchStatus();
+            fetchStatus(); // Chama a função na carga inicial
             setInterval(fetchStatus, 1000); // Atualiza a cada 1 segundo
         });
     </script>

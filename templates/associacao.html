@@ -2,237 +2,188 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Associação de Gaiola e Estação</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        /* ... seu CSS existente ... */
-        .pagina-associacao .cards-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 1.5rem;
+        /* Estilos base (mantidos para compatibilidade ou para serem substituídos por Tailwind) */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background-color: #f0f2f5; color: #333; }
+        .container { max-width: 1200px; /* Aumentado para melhor visualização dos cards em grid */ margin: 3rem auto 2rem auto; padding: 0 1rem; }
+        .banner { display: flex; align-items: center; justify-content: center; background-color: #f44336; color: white; padding: 1rem 2rem; flex-wrap: wrap; gap: 1rem; text-align: center; }
+        .banner img { height: 60px; max-width: 100%; flex-shrink: 0; border-radius: 12px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); margin: 0 auto; }
+        .banner h1 { flex: 1; font-size: 1.8rem; margin: 0 auto; min-width: 200px; word-break: break-word; }
+
+        /* Estilos para os cards */
+        .cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* Ajusta o número de colunas automaticamente */
+            gap: 1.5rem; /* Espaçamento entre os cards */
+            justify-content: center; /* Centraliza os cards no container */
+            margin-top: 1.5rem; /* Espaço acima dos cards */
         }
 
-        .pagina-associacao .form-associar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1rem;
-            align-items: flex-end;
-            margin-bottom: 1rem; /* Espaço antes dos botões de ação principais */
+        .card { 
+            width: 100%; /* Garante que o card ocupe o espaço disponível na coluna */
+            max-width: 500px; /* Limite de largura para cards individuais */
+            padding: 1.5rem; 
+            border-radius: 0.5rem; 
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); 
+            position: relative; 
+            background-color: #fff; 
+            transition: background-color 0.3s ease; 
+            margin: 0 auto; /* Centraliza o card individualmente dentro da sua coluna */
         }
-
-        .pagina-associacao .form-associar div {
-            flex: 0 0 auto; /* Para os campos de input e botão salvar */
-        }
-        .pagina-associacao .form-associar .checkbox-container {
-            flex-basis: 100%; /* Faz o checkbox ocupar a largura toda se necessário */
-            display: flex;
-            align-items: center;
-        }
+        .card p { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        .card strong { color: #555; }
+        /* Adiciona uma margem inferior para o último parágrafo antes dos botões/formulário */
+        .card p:last-of-type { margin-bottom: 1rem; }
 
 
-        .pagina-associacao input[name="gaiola"],
-        .pagina-associacao input[name="estacao"],
-        .pagina-associacao input[name="rua"] { /* Adicionado o input de rua */
-            width: 120px; /* Pode ajustar a largura conforme necessário */
-        }
-
-        .pagina-associacao .card {
-            width: 100%;
-            max-width: 500px;
-            padding: 1rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-            background-color: #fff;
-        }
-
-        .banner {
-            display: flex;
-            align-items: center;
-            justify-content: center; /* Centraliza os itens horizontalmente */
-            background-color: #f44336;
+        /* Estilos de status (para o label dentro do card) */
+        .status-label {
+            position: absolute; top: 0.75rem; right: 0.75rem;
+            padding: 0.4rem 0.8rem; /* Aumentado um pouco o padding */
+            border-radius: 9999px;
+            font-size: 0.85rem; /* Aumentado um pouco a fonte */
+            font-weight: bold; 
             color: white;
-            padding: 1rem 2rem;
-            flex-wrap: wrap;
-            gap: 1rem;
-            text-align: center; /* Centraliza o texto dentro do banner */
+            text-transform: uppercase;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25); /* Sombra um pouco maior para destacar */
+            letter-spacing: 0.05em; /* Espaçamento entre letras */
+            min-width: 120px; /* Garante uma largura mínima */
+            text-align: center; /* Centraliza o texto */
+        }
+        
+        /* Cores dos labels de status */
+        .em-fila-label { background-color: #3b82f6; /* blue-500 */ } /* Aguardando Carregamento */
+        .em-separacao-label { background-color: #ef4444; /* red-500 */ } /* Em Separação */
+        .carregamento-concluido-label { background-color: #f59e0b; /* amber-500 */ } /* Carregamento Concluído / Liberado */
+        .finalizado-label { background-color: #10b981; /* emerald-500 */ } /* Finalizado (Geral) */
+        .cancelado-label { background-color: #6b7280; /* gray-500 */ } /* Cancelado */
+
+        /* Cores de fundo para o CARD inteiro, de acordo com o status */
+        .card.status-aguardando { background-color: #e0f7fa; border: 1px solid #81d4fa; } /* light cyan */
+        .card.status-separacao { background-color: #ffebee; border: 1px solid #ef9a9a; } /* light red */
+        .card.status-liberado { background-color: #fff3e0; border: 1px solid #ffcc80; } /* light orange */
+        .card.status-finalizado { background-color: #e8f5e9; border: 1px solid #a5d6a7; } /* light green */
+        .card.status-cancelado { background-color: #eceff1; border: 1px solid #b0bec5; } /* light blue-gray */
+        .card.status-no-show { background-color: #fbe9e7; border: 1px solid #ffab91; } /* light deep-orange */
+
+
+        /* Estilos de formulário e botões (com classes Tailwind simuladas para consistência) */
+        .form-associar { 
+            display: flex; 
+            flex-direction: column; /* Coloca os campos em coluna por padrão */
+            gap: 1rem; 
+            margin-top: 1.5rem; 
+            align-items: stretch; /* Garante que os inputs ocupem a largura total */
         }
 
-        .banner img {
-            height: 60px;
-            max-width: 100%;
-            flex-shrink: 0;
-            border-radius: 12px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            margin: 0 auto; /* Centraliza a imagem se ela ocupar menos largura que o banner */
-        }
-
-        .banner h1 {
-            flex: 1;
-            font-size: 1.8rem;
-            margin: 0 auto; /* Centraliza o texto h1 */
-            min-width: 200px;
-            word-break: break-word;
-        }
-
-        .container {
-            max-width: 800px;
-            margin: 3rem auto 2rem auto;
-            padding: 0 1rem;
-        }
-
-        .paginacao {
-            margin-top: 2rem;
-            text-align: center;
-        }
-
-        .paginacao a {
-            margin: 0 5px;
-            text-decoration: none;
-            color: #ad6500;
-        }
-
-        .botoes-container {
+        /* NOVO ESTILO: Para colocar Gaiola e Estação na mesma linha */
+        .input-group-inline {
             display: flex;
-            justify-content: center; /* Centraliza os botões no container */
-            flex-wrap: wrap; /* Permite que os botões quebrem linha em telas menores */
-            gap: 10px;
-            margin-top: 1rem;
+            gap: 1rem; /* Espaçamento entre os campos Gaiola e Estação */
+            flex-wrap: wrap; /* Permite quebrar linha em telas muito pequenas */
+            justify-content: space-between; /* Distribui o espaço entre os campos */
+        }
+        
+        /* Ajuste para os divs que contêm label e input de Gaiola/Estação */
+        .input-group-inline > div {
+            flex: 1; /* Faz com que cada campo ocupe o mesmo espaço disponível */
+            min-width: 130px; /* Largura mínima para cada campo */
+            display: flex; /* Torna o div um container flex */
+            align-items: center; /* Alinha label e input verticalmente no centro */
+            gap: 0.25rem; /* Pequeno espaçamento entre label e input */
+        }
+
+        .form-associar div { 
+            width: 100%;
+        }
+        .form-associar label { 
+            /* Removido display: block para que fiquem inline com o input */
+            font-size: 0.875rem; 
+            font-weight: 500; 
+            color: #4b5563; 
+            margin-bottom: 0; /* Removido margem inferior para alinhamento inline */
+            white-space: nowrap; /* Evita que o texto da label quebre */
+        }
+        .form-associar input {
+            width: 100%; /* Ocupa 100% da largura da div pai */
+            padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+            flex-grow: 1; /* Permite que o input cresça dentro do seu container flex */
+        }
+        .form-associar input:focus { border-color: #3b82f6; ring: 2px; ring-color: #3b82f6; outline: none; }
+        .form-associar input:disabled { background-color: #e5e7eb; cursor: not-allowed; }
+
+        /* Contêiner de botões dentro do card - Adicionado para melhor organização */
+        .card-buttons-container { 
+            display: flex; 
+            flex-wrap: wrap; /* Permite que os botões quebrem a linha */
+            gap: 0.75rem; /* Espaçamento entre os botões */
+            margin-top: 1.5rem; 
+            justify-content: center; /* Centraliza os botões horizontalmente */
+            align-items: center; /* Alinha os botões verticalmente */
         }
 
         .botao-estilo-transparente {
-            padding: 10px 15px; /* Reduzi um pouco o padding para caberem melhor */
-            border: 2px solid #333;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 0.9rem; /* Ajustei o tamanho da fonte */
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            box-sizing: border-box;
-            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-            outline: none;
-            min-width: 120px; /* Largura mínima para os botões */
+            padding: 0.6rem 1rem; border-radius: 0.375rem;
+            font-weight: 600; font-size: 0.875rem; text-align: center;
+            text-decoration: none; display: inline-block;
+            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+            cursor: pointer; border: 1px solid transparent;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            color: white; /* Cor do texto padrão para botões coloridos */
+            flex-grow: 1; /* Permite que os botões cresçam para ocupar espaço */
+            min-width: 120px; /* Largura mínima para botões */
+            white-space: nowrap; /* Evita que o texto do botão quebre */
         }
+        
+        /* Cores dos botões (Tailwind classes em CSS puro) - Reafirmando para garantir */
+        .bg-gray-600 { background-color: #4b5563; }
+        .bg-gray-600:hover { background-color: #374151; }
+        .bg-blue-500 { background-color: #3b82f6; }
+        .bg-blue-500:hover { background-color: #2563eb; }
+        .bg-orange-500 { background-color: #f97316; }
+        .bg-orange-500:hover { background-color: #ea580c; }
+        .bg-green-500 { background-color: #22c55e; }
+        .bg-green-500:hover { background-color: #16a34a; }
+        .bg-red-500 { background-color: #ef4444; }
+        .bg-red-500:hover { background-color: #dc2626; }
+        .bg-yellow-500 { background-color: #eab308; }
+        .bg-yellow-500:hover { background-color: #d97706; }
 
-        .botao-estilo-transparente:hover {
-            background-color: rgba(0, 0, 0, 0.1);
-            color: #000;
-            border-color: #000;
-        }
+        /* Estilos de paginação (mantidos) */
+        .paginacao { margin-top: 2rem; text-align: center; }
+        .paginacao a, .paginacao strong { margin: 0 5px; text-decoration: none; color: #ad6500; font-weight: bold; }
+        .paginacao strong { color: #f44336; } /* Cor para a página atual */
 
-        body.pagina-associacao .botoes-container form {
-            margin: 0; /* Remove margens extras dos formulários dentro do container de botões */
-        }
+        /* Mensagens flash/alerta */
+        .flash-messages { margin-bottom: 1.5rem; }
+        .alert { padding: 1rem; border-radius: 0.375rem; margin-bottom: 1rem; }
+        .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
+        .alert-danger { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .alert-warning { background-color: #fff3cd; color: #664d03; border: 1px solid #ffecb5; }
+        .alert-info { background-color: #cfe2ff; color: #055160; border: 1px solid #b6effb; }
 
-        .status-bar {
-            text-align: center;
-            padding: 8px 0; /* Aumentei o padding vertical */
-            font-weight: bold;
-            font-size: 1.1rem;
-            color: rgb(247, 246, 246);
-            border-radius: 6px;
-            margin-bottom: 15px; /* Aumentei a margem inferior */
-        }
-        .status-pronto { background-color: #27ae60; } /* Verde para Pronto */
-        .status-em-separacao { background-color: #c0392b; } /* Vermelho para Em Separação */
-        .status-carregamento-finalizado-temp { background-color: #f39c12; } /* Laranja para status intermediário de finalização */
-        .status-finalizado-definitivo { background-color: #1e8449; } /* Verde escuro para finalizado definitivo (se fosse mostrar aqui) */
-
+        /* Mensagem de sucesso/erro no topo (js-controlled) */
+        #messageBox { display: none; padding: 0.75rem; margin-bottom: 1rem; border-radius: 0.375rem; }
+        #messageBox button { background: none; border: none; font-size: 1.25rem; cursor: pointer; }
     </style>
-    <script>
-        function setFormActionWithHash(form, id) {
-            // Não precisamos mais adicionar hash aqui se o redirect no backend já faz isso
-            // ou se a página simplesmente recarrega.
-            // const url = new URL(form.action);
-            // url.hash = 'registro-' + id;
-            // form.action = url.toString();
-        }
-
-        window.onload = function () {
-            const hash = window.location.hash;
-            if (hash) {
-                const el = document.querySelector(hash);
-                if (el) {
-                    el.scrollIntoView({ behavior: 'auto', block: 'center' });
-                    // Focar no primeiro input de texto não desabilitado dentro do card
-                    const firstTextInput = el.querySelector('input[type="text"]:not(:disabled)');
-                    if (firstTextInput) {
-                         firstTextInput.focus();
-                    }
-                }
-            } else {
-                 // Focar no primeiro input de texto não desabilitado na página (se não houver hash)
-                 const firstTextInput = document.querySelector('.card:not(.finalizado-definitivo) input[type="text"]:not(:disabled)');
-                 if (firstTextInput) {
-                      firstTextInput.focus();
-                 }
-            }
-
-            // Adiciona event listeners para controlar a navegação com Tab/Enter
-            document.querySelectorAll('.form-associar').forEach(form => {
-                const gaiolaInput = form.querySelector('input[name="gaiola"]');
-                const estacaoInput = form.querySelector('input[name="estacao"]');
-                const ruaInput = form.querySelector('input[name="rua"]'); // Captura o input de rua
-                const salvarButton = form.querySelector('button[type="submit"]'); // Botão de salvar do form de associação
-
-                // Melhoria na navegação: Tab/Enter do Gaiola vai para Estação, de Estação vai para Rua, de Rua vai para Salvar
-                if (gaiolaInput) {
-                    gaiolaInput.addEventListener('keydown', function (event) {
-                        if (event.key === 'Enter' || event.key === 'Tab') {
-                            event.preventDefault();
-                            if (estacaoInput) estacaoInput.focus();
-                        }
-                    });
-                }
-                if (estacaoInput) {
-                    estacaoInput.addEventListener('keydown', function (event) {
-                         if (event.key === 'Enter' || event.key === 'Tab') {
-                              event.preventDefault();
-                              // Navega para Rua SOMENTE se o tipo de entrega for No-Show e o campo Rua existir
-                              // Precisa encontrar o elemento que contém o tipo de entrega.
-                              // Uma forma robusta é subir na árvore DOM até o card e procurar o parágrafo correto.
-                              const cardElement = estacaoInput.closest('.card');
-                              let tipoEntrega = '';
-                              if (cardElement) {
-                                  // Procura pelo parágrafo que contém "Tipo de Entrega:"
-                                  const tipoEntregaElement = Array.from(cardElement.querySelectorAll('p')).find(p => p.querySelector('strong') && p.querySelector('strong').textContent.includes('Tipo de Entrega:'));
-                                  if (tipoEntregaElement) {
-                                      // Extrai o texto após o strong, removendo espaços em branco
-                                      tipoEntrega = tipoEntregaElement.textContent.replace('Tipo de Entrega:', '').trim();
-                                  }
-                              }
-
-                              if (tipoEntrega === 'No-Show' && ruaInput) {
-                                  ruaInput.focus(); // Vai para Rua
-                              } else if (salvarButton) {
-                                  salvarButton.focus(); // Vai direto para Salvar se não for No-Show
-                              }
-                         }
-                    });
-                }
-                 if (ruaInput) { // Nova navegação do Rua para Salvar
-                      ruaInput.addEventListener('keydown', function (event) {
-                           if (event.key === 'Enter' || event.key === 'Tab') {
-                                event.preventDefault();
-                                if (salvarButton) salvarButton.focus(); // Vai para Salvar
-                           }
-                      });
-                 }
-            });
-        }
-    </script>
 </head>
 <body class="pagina-associacao">
 
 <div class="banner">
     <img src="{{ url_for('static', filename='imagem/logop.png') }}" alt="Logo">
-    <h1>Associação de Gaiola e Estação - Sistema de Gerenciamento Operacional</h1>
+    <h1>Associação de Gaiola e Estação - Sistema de Gerenciamento Operacional --------------</h1>
 </div>
+<main class="container">
+    <div id="messageBox">
+        <span id="messageText"></span>
+        <button onclick="document.getElementById('messageBox').style.display='none'" class="float-right text-gray-600 hover:text-gray-900">&times;</button>
+    </div>
 
-<div class="container">
-    {# Exibe mensagens flash #}
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             <div class="flash-messages">
@@ -243,114 +194,156 @@
         {% endif %}
     {% endwith %}
 
+    <h1 class="text-2xl font-bold mb-6 text-center text-gray-800">
+    {% if filtro_id and registros %} {# Verifica se filtro_id existe E se há registros #}
+        Detalhes da Rota: {{ registros[0].rota }}
+    {% else %}
+        Registros Pendentes de Associação
+    {% endif %}
+</h1>
+
     <div class="cards-container">
         {% if registros %}
-            {% for registro in registros %}
-                {# Como a view python agora filtra por finalizada=0, não precisamos checar registro.finalizada aqui para estrutura do card #}
-                <div class="card {% if registro.em_separacao == 1 %}status-em-separacao-card{% elif registro.em_separacao == 2 %}status-finalizado-temp-card{% else %}status-normal-card{% endif %}" id="registro-{{ registro.id }}">
+            {% for r in registros %}
+            {# Adicionando classes dinâmicas ao card com base no status #}
+            {% set card_status_class = '' %}
+            {% if r.finalizada == 1 %}
+                {% set status_text = 'Finalizado' %}
+                {% set status_class = 'finalizado-label' %}
+                {% set card_status_class = 'status-finalizado' %}
+            {% elif r.cancelado == 1 %}
+                {% set status_text = 'Cancelado' %}
+                {% set status_class = 'cancelado-label' %}
+                {% set card_status_class = 'status-cancelado' %}
+            {% else %}
+                {% if r.em_separacao == 0 %}
+                    {% set status_text = 'Aguardando Carregamento' %}
+                    {% set status_class = 'em-fila-label' %}
+                    {% set card_status_class = 'status-aguardando' %}
+                {% elif r.em_separacao == 1 %}
+                    {% set status_text = 'Em Separação' %}
+                    {% set status_class = 'em-separacao-label' %}
+                    {% set card_status_class = 'status-separacao' %}
+                {% elif r.em_separacao == 2 %}
+                    {% set status_text = 'Carregamento Liberado' %}
+                    {% set status_class = 'carregamento-concluido-label' %}
+                    {% set card_status_class = 'status-liberado' %}
+                {% elif r.em_separacao == 3 %}
+                    {% set status_text = 'Finalizado (Transferido)' %}
+                    {% set status_class = 'finalizado-label' %}
+                    {% set card_status_class = 'status-finalizado' %}
+                {% else %}
+                    {% set status_text = 'Status Desconhecido' %}
+                    {% set status_class = 'em-fila-label' %}
+                    {% set card_status_class = 'status-aguardando' %}
+                {% endif %}
+            {% endif %}
+            {% if r.tipo_entrega == 'No-Show' %}
+                {% set status_text = status_text ~ ' (No-Show)' %}
+                {# No-Show tem uma cor de card específica, sobrescreve o status anterior #}
+                {% set card_status_class = 'status-no-show' %} 
+            {% endif %}
 
-                    <div class="status-bar
-                        {% if registro.em_separacao == 1 %}status-em-separacao
-                        {% elif registro.em_separacao == 2 %}status-carregamento-finalizado-temp
-                        {% else %}status-pronto{% endif %}">
-                        {% if registro.em_separacao == 1 %}
-                            Em Separação
-                        {% elif registro.em_separacao == 2 %}
-                            Carregamento Concluído (Aguardando Finalização)
-                        {% else %}
-                            Pronto para Expedição
-                        {% endif %}
-                    </div>
+            <div class="card {{ card_status_class }}" id="registro-{{ r.id }}">
+                {% if status_text %}
+                    <span class="status-label {{ status_class }}">{{ status_text }}</span>
+                {% endif %}
 
-                    <p><strong>Nome:</strong> {{ registro.nome }}</p>
-                    <p><strong>Matrícula:</strong> {{ registro.matricula }}</p>
-                    <p><strong>Rota:</strong> {{ registro.rota }}</p>
-                    <p><strong>Tipo de Entrega:</strong> {{ registro.tipo_entrega }}</p>
-                    <p><strong>Data / Hora Chegada:</strong> {{ registro.data_hora_login|formata_data_hora }}</p>
+                <p><strong>Nome:</strong> {{ r.nome }}</p>
+                <p><strong>Matrícula:</strong> {{ r.matricula }}</p>
+                <p><strong>Rota:</strong> {{ r.rota }}</p>
+                <p><strong>Tipo de Entrega:</strong> {{ r.tipo_entrega }}</p>
+                <p><strong>Cidade:</strong> {{ r.cidade_entrega }}</p>
+                <p><strong>Data/Hora Chegada:</strong> {{ r.data_hora_login|formata_data_hora }}</p>
+                <p><strong>Hora Finalização:</strong> {% if r.hora_finalizacao %}{{ r.hora_finalizacao|formata_data_hora }}{% else %}Não Finalizado{% endif %}</p>
 
-                    {# Formulário para associar/salvar gaiola, estação e rua #}
-                    {# Este formulário só faz sentido se não estiver 'em_separacao == 2' #}
-                    {# Se estiver 'em_separacao == 1', os campos devem ser readonly e apenas o botão de Finalizar deve aparecer #}
-                    {% if registro.em_separacao != 2 %}
-                    <form method="post" action="{{ url_for('associar_id', id=registro.id) }}" class="form-associar">
-                        <div>
-                            <label for="gaiola-{{registro.id}}">Gaiola:</label>
-                            <input type="text" id="gaiola-{{registro.id}}" name="gaiola" value="{{ registro.gaiola or '' }}" {% if registro.em_separacao == 1 %}readonly{% endif %}>
+                <form action="{{ url_for('associar_id', id=r.id) }}" method="POST" class="form-associar"
+                    {% if r.finalizada == 1 or r.cancelado == 1 %}onsubmit="return false;"{% endif %}>
+
+                    {# Se o status for 2 (Carregamento Liberado), eles são exibidos apenas como texto #}
+                    {% if r.em_separacao == 0 or r.em_separacao == 1 %}
+                        {# NOVO: Container para Gaiola e Estação na mesma linha #}
+                       <div class="input-group-inline">
+                            <div> {# Este div agora é flex para alinhar label e input #}
+                                <label for="gaiola_{{ r.id }}" class="text-sm font-medium text-gray-700 whitespace-nowrap">Gaiola:</label>
+                                <input type="text" id="gaiola_{{ r.id }}" name="gaiola" value="{{ r.gaiola or '' }}"
+                                    {% if r.finalizada == 1 or r.cancelado == 1 %}disabled{% endif %}
+                                    {% if not r.gaiola %}autofocus{% endif %}
+                                >
+                            </div>
+                            <div> {# Este div agora é flex para alinhar label e input #}
+                                <label for="estacao_{{ r.id }}" class="text-sm font-medium text-gray-700 whitespace-nowrap">Estação:</label>
+                                <input type="text" id="estacao_{{ r.id }}" name="estacao" value="{% if r.tipo_entrega == 'No-Show' and not r.estacao %}06{% else %}{{ r.estacao or '' }}{% endif %}"
+                                    {% if r.finalizada == 1 or r.cancelado == 1 %}disabled{% endif %}
+                                    {% if r.gaiola and not r.estacao %}autofocus{% endif %}
+                                >
+                            </div>
                         </div>
-                        <div>
-                            <label for="estacao-{{registro.id}}">Estação:</label>
-                            <input type="text" id="estacao-{{registro.id}}" name="estacao" value="{% if registro.tipo_entrega == 'No-Show' and not registro.estacao %}06{% else %}{{ registro.estacao or '' }}{% endif %}" {% if registro.em_separacao == 1 %}readonly{% endif %}>
-                        </div>
-                        {# CAMPO PARA RUA - EXIBIR APENAS SE FOR 'No-Show' #}
-                        {% if registro.tipo_entrega == 'No-Show' %}
-                        <div>
-                            <label for="rua-{{registro.id}}">Rua:</label>
-                            <input type="text" id="rua-{{registro.id}}" name="rua" value="{{ registro.rua or '' }}" {% if registro.em_separacao == 1 %}readonly{% endif %}>
-                        </div>
-                        {% endif %}
-                        {% if registro.em_separacao == 0 %} {# Mostrar botão Salvar apenas se não estiver em separação #}
-                        <div>
-                            <button type="submit" class="botao-estilo-transparente" style="background-color: #007bff; color: white; border-color: #007bff;">Salvar Associação</button>
-                        </div>
-                        {% endif %}
-                        <div class="checkbox-container">
-                            {# O checkbox para 'em_separacao' é tratado implicitamente pelo 'Salvar Associação' ou 'Não associado' #}
-                            {# Se precisar de um controle explícito, pode ser reavaliado. #}
-                            {# Por enquanto, a ação de salvar em associar_id define em_separacao=1 #}
-                        </div>
-                    </form>
-                    {% else %}
-                        {# Exibe os dados se o status for em_separacao == 2 #}
-                        <p><strong>Gaiola:</strong> {{ registro.gaiola or 'N/A' }}</p>
-                        <p><strong>Estação:</strong> {{ registro.estacao or 'N/A' }}</p>
-                        {# EXIBE O CAMPO RUA APENAS SE FOR 'No-Show' #}
-                        {% if registro.tipo_entrega == 'No-Show' %}
-                        <p><strong>Rua:</strong> {{ registro.rua or 'N/A' }}</p>
+                    {% elif r.em_separacao == 2 %}
+                        <p><strong>Gaiola:</strong> {{ r.gaiola or 'N/A' }}</p>
+                        <p><strong>Estação:</strong> {{ r.estacao or 'N/A' }}</p>
+                    {% endif %}
+
+                    {% if r.tipo_entrega == 'No-Show' %}
+                        {% if r.em_separacao == 0 or r.em_separacao == 1 %}
+                            <div>
+                                <label for="rua_{{ r.id }}" class="text-sm font-medium text-gray-700 whitespace-nowrap">Rua (No-Show):</label>
+                                <input type="text" id="rua_{{ r.id }}" name="rua" value="{{ r.rua or '' }}"
+                                    {% if r.finalizada == 1 or r.cancelado == 1 %}disabled{% endif %}
+                                    {% if r.tipo_entrega == 'No-Show' and r.gaiola and r.estacao and not r.rua %}autofocus{% endif %}
+                                >
+                            </div>
+                        {% elif r.em_separacao == 2 %}
+                            <p><strong>Rua:</strong> {{ r.rua or 'N/A' }}</p>
                         {% endif %}
                     {% endif %}
 
-
-                    <div class="botoes-container">
-                        <button onclick="window.location.href='{{ url_for('registros') }}#registro-{{ registro.id }}'" class="botao-estilo-transparente" style="background-color: #6c757d; color: white; border-color: #6c757d;">Ver Lista</button>
-
-                        {# Botão para Finalizar Definitivamente (marcar finalizada=1) #}
-                        {# Este botão chama a rota marcar_como_finalizado_id #}
-                        {% if registro.em_separacao == 1 or registro.em_separacao == 2 %}
-                            <form method="post" action="{{ url_for('marcar_como_finalizado_id', id=registro.id) }}" style="margin:0;">
-                                <button type="submit" class="botao-estilo-transparente" style="background-color: #28a745; color: white; border-color: #28a45;">
-                                    Finalizar Carreg.
+                   <div class="card-buttons-container"> {# Use a nova classe para organizar os botões #}
+                        {% if r.finalizada == 0 and r.em_separacao != 3 %}
+                            {# Botão Salvar Associação - Apenas se em_separacao for 0 ou 1 #}
+                            {% if r.em_separacao == 0 or r.em_separacao == 1 %}
+                                <button type="button" onclick="salvarAssociacao({{ r.id }})" class="botao-estilo-transparente bg-blue-500">
+                                    Salvar Associação
                                 </button>
-                            </form>
-                        {% endif %}
+                            {% endif %}
 
-                        {# Botão para Desassociar (volta em_separacao para 0) #}
-                        {# Este botão chama a rota desassociar_id #}
-                        {% if registro.em_separacao == 1 or registro.em_separacao == 2 %}
-                            <form method="post" action="{{ url_for('desassociar_id', id=registro.id) }}" style="margin:0;">
-                                <button type="submit" class="botao-estilo-transparente" style="background-color: #dc3545; color: white; border-color: #dc3545;">Desassociar</button>
-                            </form>
-                        {% endif %}
+                            {# Botão Desassociar - Para em_separacao 1 ou 2 #}
+                            {% if r.em_separacao == 1 or r.em_separacao == 2 %}
+                                <button type="button" onclick="desassociarRegistro({{ r.id }})" class="botao-estilo-transparente bg-yellow-500">
+                                    Desassociar
+                                </button>
+                            {% endif %}
 
-                        {# Botão para antigo "Finalizado Laranja" (em_separacao=2) - MOSTRAR APENAS SE TIPO_ENTREGA FOR 'No-Show' E STATUS FOR 1 #}
-                        {# Este botão chama a rota finalizar_carregamento_id_status_separacao #}
-                        {% if registro.em_separacao == 1 and registro.tipo_entrega == 'No-Show' %}
-                            <form method="post" action="{{ url_for('finalizar_carregamento_id_status_separacao', id=registro.id) }}" style="margin:0;">
-                                <button type="submit" class="botao-estilo-transparente" style="background-color: #f39c12; color: white; border-color: #f39c12;">Concluir Carreg.</button>
-                            </form>
+                            {# Botão Finalizar Entrega - Quando carregamento liberado (2) #}
+                            {% if r.em_separacao == 2 %}
+                                <button type="button" onclick="marcarComoFinalizado({{ r.id }})" class="botao-estilo-transparente bg-green-500">
+                                    Finalizar Entrega
+                                </button>
+                            {% endif %}
+
+                        {% else %}
+                                <p class="text-gray-600 mt-4">Registro {{ 'finalizado' if r.finalizada == 1 else 'cancelado' }}.</p>
+                        {% endif %}
+                        {# Adicionado botão de Cancelar aqui, com cor vermelha #}
+                        {% if r.finalizada == 0 and r.cancelado == 0 %} {# Só mostra se não estiver finalizado ou cancelado #}
+                            <button type="button" onclick="cancelarRegistro({{ r.id }})" class="botao-estilo-transparente bg-red-500">
+                                Cancelar Registro
+                            </button>
                         {% endif %}
                     </div>
-                </div>
+                </form>
+            </div>
             {% endfor %}
         {% else %}
-            <p style="text-align: center; font-size: 1.2rem; color: #555;">
+            <p class="text-center text-gray-600 mt-8 col-span-full">
                 {% if filtro_id %}
                     O registro com ID {{ filtro_id }} não foi encontrado ou já foi finalizado.
                 {% else %}
                     Nenhum registro pendente de associação encontrado para os filtros aplicados.
                 {% endif %}
                 <br><br>
-                <a href="{{ url_for('associacao') }}" class="botao-estilo-transparente" style="background-color: #007bff; color: white;">Ver Todos Pendentes</a>
-                <a href="{{ url_for('registros') }}" class="botao-estilo-transparente" style="background-color: #6c757d; color: white;">Ver Lista Completa</a>
+                <a href="{{ url_for('associacao') }}" class="botao-estilo-transparente bg-blue-500">Ver Todos Pendentes</a>
+                <a href="{{ url_for('registros') }}" class="botao-estilo-transparente bg-gray-600">Ver Lista Completa</a>
             </p>
         {% endif %}
     </div>
@@ -365,20 +358,255 @@
             {% for p in range(1, total_paginas + 1) %}
                 {% if p == pagina %}
                     <strong>{{ p }}</strong>
-                {% elif p >= pagina - 2 and p <= pagina + 2 %} {# Limita a exibição de números de página #}
+                {% elif p >= pagina - 2 and p <= pagina + 2 %}
                     <a href="{{ url_for('associacao', pagina=p, rota=rota, tipo_entrega=tipo_entrega) }}">{{ p }}</a>
-                {% elif p == 1 or p == total_paginas or (p == pagina - 3 and pagina > 4) or (p == pagina + 3 and pagina < total_paginas - 3) %}
-                    ... {# Adiciona reticências para saltos maiores #}
+                {% elif p == 1 or p == total_paginas %}
+                    <a href="{{ url_for('associacao', pagina=p, rota=rota, tipo_entrega=tipo_entrega) }}">{% if loop.first and pagina > 4 %}...{% elif loop.last and pagina < total_paginas - 3 %}...{% else %}{{ p }}{% endif %}</a>
                 {% endif %}
             {% endfor %}
             {% if pagina < total_paginas %}
                 <a href="{{ url_for('associacao', pagina=pagina+1, rota=rota, tipo_entrega=tipo_entrega) }}">Próxima</a>
             {% endif %}
-        {% elif registros and total_paginas == 1 %}
+        {% elif registros and total_paginas == 1 and not filtro_id %}
             <span>Página 1 de 1</span>
         {% endif %}
     </div>
-</div>
 
+    <div class="text-center mt-8">
+        <a href="{{ url_for('registros') }}" class="inline-block bg-gray-600 text-white px-6 py-3 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+            Ver Lista de Registros
+        </a>
+    </div>
+
+</main>
+
+<script>
+    // Função para exibir mensagens de feedback (sucesso/erro)
+    function showMessage(text, type) {
+        const messageBox = document.getElementById('messageBox');
+        const messageText = document.getElementById('messageText');
+        messageText.textContent = text;
+        messageBox.style.display = 'block';
+        if (type === 'success') {
+            messageBox.style.backgroundColor = '#d1e7dd';
+            messageBox.style.color = '#0f5132';
+            messageBox.style.border = '1px solid #badbcc';
+        } else if (type === 'error') {
+            messageBox.style.backgroundColor = '#f8d7da';
+            messageBox.style.color = '#721c24';
+            messageBox.style.border = '1px solid #f5c6cb';
+        } else {
+            messageBox.style.backgroundColor = '#e0f7fa';
+            messageBox.style.color = '#006064';
+            messageBox.style.border = '1px solid #b2ebf2';
+        }
+    }
+
+    // NOVA FUNÇÃO: Lida com o salvamento da associação
+    async function salvarAssociacao(id) {
+        const form = document.querySelector(`#registro-${id} .form-associar`);
+        if (!form) {
+            showMessage("Erro: Formulário não encontrado.", "error");
+            return;
+        }
+
+        const formData = new FormData(form);
+
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: formData // Envia os dados do formulário
+            });
+            const data = await response.json();
+
+            if (response.ok) {
+                showMessage(data.message, 'success');
+                // IMPORTANTE: Recarrega a página para exibir o card atualizado
+                setTimeout(() => { window.location.reload(); }, 1000);
+            } else {
+                showMessage(data.error || 'Erro ao salvar associação.', 'error');
+            }
+        } catch (error) {
+            console.error('Erro de rede ao salvar associação:', error);
+            showMessage('Erro de rede ao salvar associação.', 'error');
+        }
+    }
+
+    // Funções para os botões de ação (Finalizar, Desassociar, Carregar, etc.)
+    async function finalizarCarregamento(id) {
+        if (!confirm('Tem certeza que deseja marcar este registro como "Carregamento Concluído"?')) {
+            return;
+        }
+        try {
+            const response = await fetch(`/finalizar_carregamento_id_status_separacao/${id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+            const data = await response.json();
+            if (response.ok) {
+                showMessage(data.message, 'success');
+                setTimeout(() => { window.location.reload(); }, 1000);
+            } else {
+                showMessage(data.error || 'Erro ao finalizar carregamento.', 'error');
+            }
+        } catch (error) {
+            console.error('Erro de rede ao finalizar carregamento:', error);
+            showMessage('Erro de rede ao finalizar carregamento.', 'error');
+        }
+    }
+
+    async function desassociarRegistro(id) {
+        if (!confirm('Tem certeza que deseja desassociar este registro? Isso o moverá para o status "Aguardando Carregamento".')) {
+            return;
+        }
+        try {
+            const response = await fetch(`/desassociar_id/${id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+            const data = await response.json();
+            if (response.ok) {
+                showMessage(data.message, 'success');
+                setTimeout(() => { window.location.reload(); }, 1000);
+            } else {
+                showMessage(data.error || 'Erro ao desassociar registro.', 'error');
+            }
+        } catch (error) {
+            console.error('Erro de rede ao desassociar:', error);
+            showMessage('Erro de rede ao desassociar.', 'error');
+        }
+    }
+
+    async function marcarComoFinalizado(id) {
+        if (!confirm('Tem certeza que deseja FINALIZAR este registro? Esta ação é irreversível.')) {
+            return;
+        }
+        try {
+            const response = await fetch(`/marcar_como_finalizado_id/${id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+            const data = await response.json();
+            if (response.ok) {
+                showMessage(data.message, 'success');
+                setTimeout(() => { window.location.href = "{{ url_for('registros') }}"; }, 1500);
+            } else {
+                showMessage(data.error || 'Erro ao finalizar registro.', 'error');
+            }
+        } catch (error) {
+            console.error('Erro de rede ao finalizar:', error);
+            showMessage('Erro de rede ao finalizar.', 'error');
+        }
+    }
+
+
+    async function cancelarRegistro(id) {
+        if (!confirm('Tem certeza que deseja CANCELAR este registro? Esta ação é irreversível.')) {
+            return;
+        }
+        try {
+            const response = await fetch(`/cancelar_registro/${id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+            const data = await response.json();
+            if (response.ok) {
+                showMessage(data.message, 'success');
+                setTimeout(() => { window.location.reload(); }, 1500); // Recarrega para mostrar o status atualizado
+            } else {
+                showMessage(data.error || 'Erro ao cancelar registro.', 'error');
+            }
+        } catch (error) {
+            console.error('Erro de rede ao cancelar:', error);
+            showMessage('Erro de rede ao cancelar.', 'error');
+        }
+    }
+    // Esta função (carregarNoShow) não será mais usada pelo botão "Carregar (No-Show)"
+    // pois o "Salvar Associação" já fará a transição para status 2.
+    // É mantida aqui apenas como referência ou se você precisar dela para outra finalidade.
+    async function carregarNoShow(id) {
+        if (!confirm('Tem certeza que deseja marcar este registro No-Show como "Carregado"?')) {
+            return;
+        }
+        try {
+            const response = await fetch(`/carregar_no_show/${id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+            const data = await response.json();
+            if (response.ok) {
+                showMessage(data.message, 'success');
+                setTimeout(() => { window.location.reload(); }, 1000);
+            } else {
+                showMessage(data.error || 'Erro ao carregar No-Show.', 'error');
+            }
+        } catch (error) {
+            console.error('Erro de rede ao carregar No-Show:', error);
+            showMessage('Erro de rede ao carregar No-Show.', 'error');
+        }
+    }
+
+    // Lógica para focar nos campos 'gaiola' e 'estacao'
+    document.addEventListener('DOMContentLoaded', function() {
+        const firstEditableInput = document.querySelector('.card:not(.finalizado-card):not(.cancelado-card) input[type="text"]:not(:disabled):first-of-type');
+
+        if (firstEditableInput) {
+            firstEditableInput.focus();
+
+            document.querySelectorAll('.form-associar').forEach(form => {
+                const gaiolaInput = form.querySelector('input[name="gaiola"]');
+                const estacaoInput = form.querySelector('input[name="estacao"]');
+                const ruaInput = form.querySelector('input[name="rua"]');
+                // MUDANÇA: O botão salvar agora é type="button" e não type="submit"
+                const salvarButton = form.querySelector('button[onclick^="salvarAssociacao"]');
+
+                if (gaiolaInput) {
+                    gaiolaInput.addEventListener('keydown', function (event) {
+                        if (event.key === 'Enter' || event.key === 'Tab') {
+                            event.preventDefault();
+                            if (estacaoInput) estacaoInput.focus();
+                            else if (ruaInput) ruaInput.focus();
+                            else if (salvarButton) salvarButton.focus();
+                        }
+                    });
+                }
+                if (estacaoInput) {
+                    estacaoInput.addEventListener('keydown', function (event) {
+                        if (event.key === 'Enter' || event.key === 'Tab') {
+                            event.preventDefault();
+                            const cardElement = estacaoInput.closest('.card');
+                            let isNoShow = false;
+                            if (cardElement) {
+                                const tipoEntregaElement = Array.from(cardElement.querySelectorAll('p')).find(p => p.querySelector('strong') && p.querySelector('strong').textContent.includes('Tipo de Entrega:'));
+                                if (tipoEntregaElement && tipoEntregaElement.textContent.includes('No-Show')) {
+                                    isNoShow = true;
+                                }
+                            }
+                            
+                            if (isNoShow && ruaInput) {
+                                ruaInput.focus();
+                            } else if (salvarButton) {
+                                salvarButton.focus();
+                            }
+                        }
+                    });
+                }
+                if (ruaInput) {
+                    ruaInput.addEventListener('keydown', function (event) {
+                        if (event.key === 'Enter' || event.key === 'Tab') {
+                            event.preventDefault();
+                            if (salvarButton) salvarButton.focus();
+                        }
+                    });
+                }
+            });
+        }
+    });
+</script>
 </body>
 </html>

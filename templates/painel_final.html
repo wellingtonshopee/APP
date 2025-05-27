@@ -350,7 +350,7 @@
          <img src="{{ url_for('static', filename='imagem/tvs.png') }}" alt="SPX" class="ticker-logo"> {# <-- SUBSTITUA O CAMINHO E ALT PELA SUA LOGO #}
 
          {# O texto rolante #}
-         <div class="ticker-text" style="animation-duration: 25s;">{# Mantido em 25s para o inferior #}
+         <div class="ticker-text" style="animation-duration: 60s;">{# Mantido em 60s para o inferior #}
              Carregando informações...
          </div>
 
@@ -595,7 +595,7 @@
                                      // Exibir apenas a Rota e " - Liberada"
                                      col.innerHTML += `
                                          <div class="registro">
-                                             <div class="rotulo"><span>Rota:</span> ${record.rota || 'N/A'} - Liberada</div>
+                                             <div class="rotulo"><span>Rota:</span> ${record.gaiola || 'N/A'} - Liberada</div>
                                          </div>
                                      `;
                                  });
@@ -735,27 +735,31 @@
                        const data = await response.json();
                        console.log("DEBUG: Operational info received:", data.info);
 
-                       if (data.info) {
-                            bottomTickerText.textContent = data.info;
-                             // Ajusta a duração da animação com base no comprimento do texto
-                            const textLength = data.info.length;
-                            const duration = Math.max(30, textLength * 0.30); // Duração mínima de 30s, aumenta com o texto
-                            bottomTickerText.style.animationDuration = `${duration}s`;
-                       } else {
-                            bottomTickerText.textContent = "Nenhuma informação operacional disponível.";
-                             bottomTickerText.style.animationDuration = '20s'; // Duração padrão se não houver texto
-                       }
-
-                   } catch (error) {
-                       console.error('Erro ao buscar informações operacionais:', error);
-                       // Mensagem fallback se a API falhar
-                       const fallbackText = "HUB Muriaé Informa: Rotas No-Show já estão liberadas para carregamento imediato! Procure o Analista de Transporte para mais orientações. | Carregamento Mercadão! As rotas liberadas para Carregamento ja estão disponiveis, dirija-se até sua Estação.";
-                       bottomTickerText.textContent = fallbackText;
-                        // Ajusta a duração da animação para o texto fallback
-                       const textLength = fallbackText.length;
-                       const duration = Math.max(20, textLength * 0.30);
-                       bottomTickerText.style.animationDuration = `${duration}s`;
-                   }
+                       // Dentro da função fetchOperationalInfo
+if (data.info) {
+    bottomTickerText.textContent = data.info;
+    const textLength = data.info.length;
+    // Ajuste aqui: Defina a duração mínima para 180 segundos (3 minutos)
+    // O fator de multiplicação (0.30 no seu código) também pode ser ajustado se o texto for muito curto
+    // e você sentir que ele ainda está rápido. Um valor maior deixará ainda mais lento.
+    const duration = Math.max(180, textLength * 0.30); // Aumentado para 180 segundos
+    bottomTickerText.style.animationDuration = `${duration}s`;
+} else {
+    bottomTickerText.textContent = "Nenhuma informação operacional disponível.";
+    bottomTickerText.style.animationDuration = '180s'; // Garante 3 minutos mesmo sem info
+}
+// No bloco catch da função fetchOperationalInfo
+} catch (error) {
+    console.error('Erro ao buscar informações operacionais:', error);
+    const fallbackText = "HUB Muriaé Informa: Rotas No-Show já estão liberadas para carregamento imediato! Procure o Analista de Transporte para mais orientações. | Carregamento Mercadão! As rotas liberadas para Carregamento ja estão disponiveis, dirija-se até sua Estação.";
+    bottomTickerText.textContent = fallbackText;
+    const textLength = fallbackText.length;
+    // Ajuste aqui: Defina a duração mínima para 180 segundos (3 minutos)
+    // O fator de multiplicação (0.30 no seu código) pode ser ajustado para algo como 0.50 ou mais
+    // se o texto de fallback for curto e você ainda sentir que ele passa rápido demais.
+    const duration = Math.max(180, textLength * 0.50); // Aumentado para 180 segundos e fator ajustado
+    bottomTickerText.style.animationDuration = `${duration}s`;
+}
               }
              // --- FIM: Função para buscar informações operacionais ---
 

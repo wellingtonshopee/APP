@@ -271,25 +271,26 @@
             margin-top: 1rem; /* Space above action forms */
             border-top: 1px solid #e5e7eb; /* Tailwind gray-200 */
             padding-top: 1rem; /* Space inside border */
+            display: flex; /* Use flexbox */
+            flex-wrap: wrap; /* Allow wrapping */
+            gap: 0.75rem; /* Espaçamento entre os botões de ação */
+            justify-content: center; /* Centraliza os botões */
         }
 
         .card-actions form {
-            margin-bottom: 0.5rem; /* Space between forms */
+            margin-bottom: 0; /* No margin after the last form */
             display: flex; /* Use flex for form elements */
             flex-wrap: wrap; /* Allow wrapping */
             gap: 0.5rem; /* Space between form elements */
             align-items: center;
-        }
-
-        .card-actions form:last-child {
-            margin-bottom: 0; /* No margin after the last form */
+            /* Removido w-full aqui para que os botões tenham o tamanho fixo */
         }
 
         .card-actions form input[type="text"] {
             border: 1px solid #d1d5db; /* Tailwind gray-300 */
             border-radius: 0.25rem; /* Tailwind rounded */
-            padding: 0.25rem 0.5rem; /* Tailwind px-2 py-1 */
-            font-size: 0.75rem; /* Tailwind text-xs */
+            padding: 0.375rem 0.75rem; /* Increased padding */
+            font-size: 0.875rem; /* Tailwind text-sm */
             width: calc(50% - 0.25rem); /* Adjust width for two inputs per row */
             box-sizing: border-box;
         }
@@ -297,23 +298,24 @@
             margin-right: 0;
         }
 
-
+        /* AJUSTES AQUI para os botões dos cards */
         .card-actions form button {
-            background-color: #3b82f6; /* Tailwind blue-500 */
             color: white;
-            padding: 0.25rem 0.75rem; /* Tailwind px-3 py-1 */
+            padding: 0.5rem 1rem; /* Increased padding for larger buttons */
             border-radius: 0.25rem; /* Tailwind rounded */
-            font-size: 0.75rem; /* Tailwind text-xs */
+            font-size: 0.875rem; /* Tailwind text-sm (increased from text-xs) */
             font-weight: 500; /* Tailwind font-medium */
             transition: background-color 0.2s ease-in-out;
             cursor: pointer;
             border: none; /* Remove default button border */
-            flex-grow: 1; /* Allow button to grow */
+            width: 150px; /* Largura fixa para todos os botões */
+            box-sizing: border-box;
+            /* Removido flex-grow aqui para garantir largura fixa */
             text-align: center;
         }
 
         .card-actions form button:hover {
-            background-color: #2563eb; /* Tailwind blue-600 */
+            filter: brightness(90%); /* General hover effect for all buttons */
         }
 
         /* Specific button styles for actions */
@@ -326,16 +328,14 @@
             cursor: not-allowed;
             opacity: 0.6;
         }
-
-
-        .card-actions .btn-desassociar { background-color: #f97316; } /* Tailwind orange-500 */
-        .card-actions .btn-desassociar:hover { background-color: #ea580c; } /* Tailwind orange-600 */
+        .card-actions .btn-desassociar { background-color: #f59e0b; } /* Tailwind amber-500 */
+        .card-actions .btn-desassociar:hover { background-color: #d97706; } /* Tailwind amber-600 */
 
         .card-actions .btn-finalizar-carregamento { background-color: #6b7280; } /* Tailwind gray-500 */
         .card-actions .btn-finalizar-carregamento:hover { background-color: #4b5563; } /* Tailwind gray-600 */
 
-        .card-actions .btn-finalizar { background-color: #ea2102; } /* Tailwind teal-500 */
-        .card-actions .btn-finalizar:hover { background-color: #ea2102; } /* Tailwind teal-600 */
+        .card-actions .btn-finalizar { background-color: #02ea15; } /* Brighter Green */
+        .card-actions .btn-finalizar:hover { background-color: #01b00e; } /* Darker Green */
 
         .card-actions .btn-cancelar { background-color: #ef4444; } /* Tailwind red-500 */
         .card-actions .btn-cancelar:hover { background-color: #dc2626; } /* Tailwind red-600 */
@@ -346,14 +346,15 @@
         .btn-transferir {
             background-color: #3b82f6; /* Tailwind blue-500 */
             color: white;
-            padding: 0.25rem 0.75rem; /* Tailwind px-3 py-1 */
+            padding: 0.5rem 1rem; /* Increased padding */
             border-radius: 0.25rem; /* Tailwind rounded */
-            font-size: 0.75rem; /* Tailwind text-xs */
+            font-size: 0.875rem; /* Tailwind text-sm */
             font-weight: 500; /* Tailwind font-medium */
             transition: background-color 0.2s ease-in-out;
             cursor: pointer;
             border: none; /* Remove default button border */
-            flex-grow: 1; /* Allow button to grow */
+            width: 150px; /* Largura fixa para todos os botões */
+            box-sizing: border-box;
             text-align: center;
         }
 
@@ -365,21 +366,21 @@
         .btn-aguardando-entregador {
             background-color: #f59e0b; /* Tailwind amber-500 (matching status color) */
             color: white;
-            padding: 0.25rem 0.75rem;
+            padding: 0.5rem 1rem;
             border-radius: 0.25rem;
-            font-size: 0.75rem;
+            font-size: 0.875rem;
             font-weight: 500;
             transition: background-color 0.2s ease-in-out;
             cursor: pointer;
             border: none;
-            flex-grow: 1;
+            width: 150px; /* Largura fixa para todos os botões */
+            box-sizing: border-box;
             text-align: center;
         }
 
         .btn-aguardando-entregador:hover {
             background-color: #d97706; /* Tailwind amber-600 */
         }
-
 
         /* Styles for flash messages */
         .flashes {
@@ -453,15 +454,16 @@
                 margin: 0.5rem auto; /* Center cards and add vertical space */
             }
             .card-actions form input[type="text"] {
-                width: 100%; /* Full width for inputs in stacked forms */
+                width: 100%; /* Inputs de texto em largura total */
                 margin-right: 0;
             }
             .card-actions form button {
                 width: 100%; /* Full width for buttons in stacked forms */
+                /* Removido flex-grow: unset; pois width: 100% já garante isso */
             }
             .card-actions form {
                 flex-direction: column; /* Stack form elements vertically */
-                gap: 0.5rem; /* Space between stacked form elements */
+                gap: 0.5rem;
             }
         }
     </style>
@@ -470,14 +472,14 @@
     {# Menu Lateral #}
     <aside class="sidebar" id="sidebar">
         <ul>
-             <li><a href="{{ url_for('menu_principal') }}">Página Inicial</a></li>
-            <li><a href="{{ url_for('login') }}">Login Drive</a></li>
-            <li><a href="{{ url_for('cadastro') }}">Cadastro Drive</a></li>
-            <li><a href="{{ url_for('registros') }}">Painel do Operador</a></li> 
-            <li><a href="{{ url_for('registro_no_show') }}">Listar Registros No-Show</a></li>
-            <li><a href="{{ url_for('associacao_no_show') }}">Criar Registro No-Show</a></li>
-            <li><a href="{{ url_for('registros_finalizados') }}">Relatório de Registros</a></li>
-            <li><a href="{{ url_for('painel_final') }}">Painel de Atendimento</a></li>
+            <li><a href="{{ url_for('menu_principal') }}">Página Inicial</a></li>
+<li><a href="{{ url_for('login') }}">Login Drive</a></li>
+<li><a href="{{ url_for('cadastro') }}">Cadastro Drive</a></li>
+<li><a href="{{ url_for('registros') }}">Painel do Operador</a></li>
+<li><a href="{{ url_for('registro_no_show') }}">Listar Registros No-Show</a></li>
+<li><a href="{{ url_for('associacao_no_show') }}">Criar Registro No-Show</a></li>
+<li><a href="{{ url_for('registros_finalizados') }}">Relatório de Registros</a></li>
+
         </ul>
     </aside>
 
@@ -485,40 +487,36 @@
     <div class="overlay" id="overlay"></div>
 
     <div class="banner">
-        {# Logo is now a direct child of banner #}
-        <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" class="logo" alt="Logo Shopee">
-        {# Title is now a direct child of banner #}
-        <h1>Registros No Show - Sistema de Gerenciamento Operacional</h1>
-        {# Filtering form is also a direct child of banner #}
-        <form action="{{ url_for('registro_no_show') }}" method="GET" class="filters">
-            {# Botão para abrir/fechar o menu lateral - MOVIDO AQUI #}
-            <button type="button" class="sidebar-toggle" id="sidebarToggle">☰</button>
+    <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" class="logo" alt="Logo Shopee">
+    <h1>Registros No Show - Sistema de Gerenciamento Operacional</h1>
+    <form action="{{ url_for('registro_no_show') }}" method="GET" class="filters">
+        <button type="button" class="sidebar-toggle" id="sidebarToggle">☰</button>
 
-            <label for="data">Data:</label>
-            <input type="date" id="data" name="data" value="{{ data_filtro }}">
+        <label for="data">Data:</label>
+        <input type="date" id="data" name="data" value="{{ data_filtro or '' }}">
 
-            <label for="nome">Nome:</label>
-            <input type="text" id="nome" name="nome" placeholder="Nome" value="{{ nome_filtro }}">
+        <label for="nome">Nome:</label>
+        <input type="text" id="nome" name="nome" placeholder="Nome" value="{{ nome_filtro or '' }}">
 
-            <label for="matricula">Matrícula:</label>
-            <input type="text" id="matricula" name="matricula" placeholder="Matrícula" value="{{ matricula_filtro }}">
+        <label for="matricula">Matrícula:</label>
+        <input type="text" id="matricula" name="matricula" placeholder="Matrícula" value="{{ matricula_filtro or '' }}">
 
-            <label for="rota">Rota:</label>
-            <input type="text" id="rota" name="rota" placeholder="Rota" value="{{ rota_filtro }}">
+        <label for="rota">Rota:</label>
+        <input type="text" id="rota" name="rota" placeholder="Rota" value="{{ rota_filtro or '' }}">
 
-            {# Added Status filter #}
-            <label for="status">Status:</label>
-            <select id="status" name="status">
-                <option value="">Todos</option> {# Option to show all statuses #}
-                <option value="finalizado" {% if status_filtro == 'finalizado' %}selected{% endif %}>Finalizado</option>
-                <option value="transferido" {% if status_filtro == 'transferido' %}selected{% endif %}>Transferido</option>
-            </select>
+        <label for="status">Status:</label>
+        <select id="status" name="status">
+            <option value="">Todos</option>
+            <option value="finalizado" {% if status_filtro == 'finalizado' %}selected{% endif %}>Finalizado</option>
+            <option value="transferido" {% if status_filtro == 'transferido' %}selected{% endif %}>Transferido</option>
+            <option value="cancelado" {% if status_filtro == 'cancelado' %}selected{% endif %}>Cancelado</option>
+        </select>
 
-            <button type="submit">Filtrar</button>
-            {# Button to clear filters - navigates back to the base URL #}
-            <a href="{{ url_for('registro_no_show') }}" class="clear-filters">Limpar Filtros</a>
-        </form>
-    </div>
+        <button type="submit">Filtrar</button>
+        <a href="{{ url_for('registro_no_show') }}" class="clear-filters">Limpar Filtros</a>
+    </form>
+</div>
+
 
     <div class="container">
         {# Display flash messages #}
@@ -539,19 +537,18 @@
                     <div class="card" id="no-show-registro-{{ registro.id }}">
                         {# Status Label - This already correctly shows "Cancelado" and "Finalizado" #}
                         {% if registro.finalizada == 1 %}
-                            <span class="status-label status-finalizado">Finalizado</span>
-                        {% elif registro.cancelado == 1 %}
-                            <span class="status-label status-cancelado">Cancelado</span>
+                        <span class="status-label status-finalizado">Finalizado</span>
+                        {% elif registro.cancelado == 1 or registro.em_separacao == 3 %}
+                        <span class="status-label status-cancelado">Cancelado</span>
                         {% elif registro.em_separacao == 1 %}
-                            <span class="status-label status-separacao">Em Separação</span>
+                        <span class="status-label status-separacao">Em Separação</span>
                         {% elif registro.em_separacao == 2 %}
-                            <span class="status-label status-aguardando-entregador">Aguardando Entregador</span>
+                        <span class="status-label status-aguardando-entregador">Aguardando Entregador</span>
                         {% elif registro.em_separacao == 4 %} {# Novo status para Transferido #}
-                            <span class="status-label status-transferido">Transferido</span>
+                        <span class="status-label status-transferido">Transferido</span>
                         {% else %}
-                            <span class="status-label status-aguardando">Aguardando Motorista</span>
+                        <span class="status-label status-aguardando">Aguardando Motorista</span>
                         {% endif %}
-
                         {# BEGIN - Display fields in the desired order #}
                         <p><strong>Data/Hora:</strong> {{ registro.data_hora_login | formata_data_hora }}</p>
                         <p><strong>Nome:</strong> {{ registro.nome | default('N/A') }}</p>
@@ -565,7 +562,7 @@
                         <p><strong>Data \ Hora Fim:</strong>
                             {% if registro.finalizada == 1 %}
                                 {{ registro.hora_finalizacao|formata_data_hora }}
-                            {% elif registro.cancelado == 1 %}
+                            {% elif registro.cancelado == 1 or registro.em_separacao == 3 %}
                                 Cancelado
                             {% elif registro.em_separacao == 4 %} {# Adicionada condição para status Transferido #}
                                 {{ registro.hora_finalizacao|formata_data_hora }} {# Exibe a hora de finalização para Transferido #}
@@ -576,40 +573,38 @@
                         {# END - Display fields in the desired order #}
 
                         {# Action Forms Section - Display all actions regardless of status #}
-                        <div class="card-actions">
-                            {# Forms for active records #}
-                            {% if not registro.gaiola or not registro.estacao %}
-                                {# Form to Associate #}
-                                <form action="{{ url_for('associar_no_show_id', id=registro.id) }}" method="POST">
-                                    <input type="text" name="gaiola" placeholder="Rota:" required> {# Alterado: Placeholder para Rota #}
-                                    <input type="text" name="estacao" placeholder="Estação:" required>
-                                    <input type="text" name="rua" placeholder="Rua:" value="{{ registro.rua | default('') }}"> {# Adicionado campo para Rua #}
-                                    {# Adicionado o atributo 'disabled' e a classe 'js-disable-manual-associate' #}
-                                    <button type="submit" class="btn-associar js-disable-manual-associate" disabled>Associar</button>
-                                </form>
-                            {% else %}
-                                {# Form to Desassociate #}
-                                <form action="{{ url_for('desassociar_no_show_id', id=registro.id) }}" method="POST">
-                                    <button type="submit" class="btn-desassociar">Desassociar</button>
-                                </form>
-                                {# Form to Mark as Aguardando Entregador (formerly Finalizar Carregamento) #}
-                                {% if registro.em_separacao == 1 %}
-                                    <form action="{{ url_for('finalizar_carregamento_no_show_id_status_separacao', id=registro.id) }}" method="POST">
-                                        <button type="submit" class="btn-aguardando-entregador">Aguardando Entregador</button> {# Changed text and class #}
-                                    </form>
-                                {% endif %}
-                            {% endif %}
-
-                            {# Form to Finalizar #}
-                            <form action="{{ url_for('marcar_como_finalizado_no_show_id', id=registro.id) }}" method="POST">
-                                <button type="submit" class="btn-finalizar">Cancelar</button>
-                            </form>
-
-                            {# Form to Transfer #}
-                            <form action="{{ url_for('transferir_no_show_para_registro', no_show_id=registro.id) }}" method="POST">
-                                <button type="submit" class="btn-transferir">Transferir para Carregamento</button>
-                            </form>
-                        </div>
+    <div class="card-actions"> {# Removido flex flex-wrap gap-2 daqui para usar o CSS global #}
+        {# Forms for active records #}
+        {% if not registro.gaiola or not registro.estacao %}
+            {# Form to Associate #}
+            <form action="{{ url_for('associar_no_show_id', id=registro.id) }}" method="POST"> {# Removido class="w-full" #}
+                <input type="text" name="gaiola" placeholder="Rota:" required class="flex-grow rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                <input type="text" name="estacao" placeholder="Estação:" required class="flex-grow rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                <input type="text" name="rua" placeholder="Rua:" value="{% if registro.rua and registro.rua != 'None' %}{{ registro.rua }}{% endif %}" class="flex-grow rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                {# Removido 'disabled' e 'js-disable-manual-associate' #}
+                <button type="submit" class="btn-associar rounded-md shadow-sm text-white font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500" {% if registro.em_separacao == 4 or registro.em_separacao == 3 %}disabled{% endif %}>Associar</button>
+            </form>
+        {% else %}
+            {# Form to Desassociate #}
+            <form action="{{ url_for('dessociar_no_show', registro_id=registro.id, data=data_filtro, nome=nome_filtro, matricula=matricula_filtro, rota=rota_filtro, status=status_filtro) }}" method="POST"> {# Removido class="w-full flex justify-end" #}
+                <button type="submit" class="btn-desassociar text-white rounded-md hover:bg-orange-600" {% if registro.em_separacao == 4 or registro.em_separacao == 3 %}disabled{% endif %}>
+                    Desassociar
+                </button>
+            </form>
+        {% endif %}
+        <form action="{{ url_for('cancelar_no_show', id=registro.id, data=data_filtro, nome=nome_filtro, matricula=matricula_filtro, rota=rota_filtro, status=status_filtro) }}" method="POST" class="inline-block mr-2 cancelar-noshow-form" data-registro-id="{{ registro.id }}">
+            <button type="submit" class="btn-cancelar cancelar-noshow-btn" {% if registro.em_separacao == 4 or registro.em_separacao == 3 %}disabled{% endif %}>Cancelar</button>
+        </form>
+        <form action="{{ url_for('transferir_no_show_para_registro', no_show_id=registro.id, data=data_filtro, nome=nome_filtro, matricula=matricula_filtro, rota=rota_filtro, status=status_filtro) }}" method="POST" class="transferir-destaque">
+            <button type="submit" class="btn-transferir" {% if registro.em_separacao == 4 or registro.em_separacao == 3 %}disabled{% endif %}>Transferir para Carregamento</button>
+        </form>
+        {% if registro.em_separacao == 4 %}
+            {# Botão "Finalizar" só aparece após a transferência #}
+            <form action="{{ url_for('finalizar_no_show', id=registro.id) }}" method="POST">
+                <button type="submit" class="btn-finalizar">Finalizar</button>
+            </form>
+        {% endif %}
+    </div>
                     </div>
                 {% endfor %}
             {% else %}
@@ -639,8 +634,7 @@
             {% endif %}
         </div>
     </div>
-
-    <script>
+<script>
         document.addEventListener('DOMContentLoaded', (event) => {
             // Optional: Scroll to a specific record if an ID is in the URL fragment
             if (window.location.hash) {
@@ -742,6 +736,37 @@
                 if (window.innerWidth > 768) { // Exemplo: fecha se a tela for maior que 768px
                     closeSidebar();
                 }
+            });
+
+            const cancelarNoshowForms = document.querySelectorAll('.cancelar-noshow-form'); // Use a nova classe do formulário
+
+            cancelarNoshowForms.forEach(form => {
+                form.addEventListener('submit', function(event) {
+                    event.preventDefault();
+                    const registroId = this.dataset.registroId;
+                    fetch(`/cancelar_no_show/${registroId}`, { // Use a nova rota
+                        method: 'POST'
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            const card = document.getElementById(`no-show-registro-${registroId}`);
+                            if (card) {
+                                const statusLabel = card.querySelector('.status-label');
+                                if (statusLabel) {
+                                    statusLabel.textContent = 'Cancelado';
+                                    statusLabel.className = 'status-label status-cancelado';
+                                }
+                            }
+                            // Redireciona para a página de registros após o cancelamento
+                            window.location.href = '{{ url_for('registro_no_show') }}';
+                        } else {
+                            console.error('Erro ao cancelar o registro No-Show.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro na requisição de cancelamento:', error);
+                    });
+                });
             });
         });
     </script>

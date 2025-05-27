@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Criar Registro No Show</title>
+    <title>Criar Registro No Show - Sistema de Gerenciamento Operacional</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -13,23 +13,26 @@
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6; /* Tailwind gray-100 */
             margin: 0;
-            padding-top: 120px; /* Ajuste para acomodar o banner fixo */
-            transition: margin-left 0.3s ease; /* Adiciona transição para o conteúdo principal */
-            display: flex;
+            padding: 0;
+            /* Removido padding-top: 120px; daqui para ser controlado pelo main-content */
+            display: flex; /* Usa flexbox para layout principal */
             flex-direction: column; /* Stack banner and content vertically */
             min-height: 100vh;
         }
 
-        /* Estilo para o overlay quando o menu está aberto */
+        /* Estilos para o overlay */
         .overlay {
+            display: none; /* Esconde por padrão */
             position: fixed;
             top: 0;
             left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 999; /* Abaixo do sidebar, mas acima do conteúdo */
-            display: none; /* Inicialmente oculto */
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5); /* Fundo semi-transparente */
+            z-index: 999; /* Abaixo do sidebar (1000), mas acima do conteúdo (998) */
+        }
+        .overlay.active {
+            display: block; /* Mostra quando ativo */
         }
 
         /* Estilos para o menu lateral */
@@ -41,9 +44,9 @@
             height: 100%;
             background-color: #1f2937; /* Tailwind gray-800 */
             color: white;
-            transition: left 0.3s ease;
+            transition: left 0.3s ease; /* Transição para o 'left' */
             z-index: 1000; /* Acima de tudo */
-            padding-top: 60px; /* Espaço para o banner ou topo */
+            padding-top: 70px; /* Espaço para o banner fixo. Ajustei de 60px para 70px para garantir espaço */
             box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
             overflow-y: auto; /* Permite scroll se o conteúdo for longo */
         }
@@ -70,8 +73,8 @@
         .sidebar ul li a {
             color: white;
             text-decoration: none;
-            font-size: 0.95em; /* Fonte diminuída conforme solicitado */
-            display: block; /* Torna o link clicável em toda a área do li */
+            font-size: 0.95em;
+            display: block;
             transition: color 0.2s ease;
         }
 
@@ -97,78 +100,92 @@
             background-color: #3f3f3f; /* Tailwind emerald-600 */
         }
 
+        /* Estilo para o banner */
         .banner {
             background-color: #f30909; /* Tailwind red-700 */
-            padding: 0.75rem 1.25rem; /* Slightly reduced padding for height */
-            display: flex; /* Use flexbox */
-            align-items: center; /* Vertically align items */
-            justify-content: space-between; /* Put space between logo and title */
+            padding: 0.75rem 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             flex-wrap: wrap;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             position: fixed; /* Fixa o banner no topo */
             top: 0;
             left: 0;
             right: 0;
-            z-index: 998; /* Abaixo do sidebar, mas acima do conteúdo */
+            z-index: 998; /* Abaixo do sidebar (1000), mas acima do conteúdo */
         }
 
         .banner h1 {
             color: #fff;
-            font-size: 1.25rem; /* Slightly reduced font size for height */
+            font-size: 1.25rem;
             font-weight: 700;
-            margin: 0; /* Remove default margin */
-            text-align: right; /* Align text to the right within its space */
-            flex-grow: 1; /* Allow title to take available space */
+            margin: 0;
+            text-align: right;
+            flex-grow: 1;
         }
 
         .logo-banner {
-            height: 40px; /* Reduced logo height for banner */
+            height: 40px;
             width: auto;
-            margin-right: 1rem; /* Keep margin to the right of the logo */
-            /* Added Tailwind classes for rounded corners and shadow */
-            border-radius: 0.375rem; /* Tailwind rounded-md */
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Tailwind shadow-md */
+            margin-right: 1rem;
+            border-radius: 0.375rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
+
+        /* Estilo para o conteúdo principal */
+        .main-content-wrapper { /* Renomeado para evitar conflito e ser mais descritivo */
+            flex-grow: 1; /* Permite que o conteúdo ocupe o espaço restante */
+            display: flex;
+            flex-direction: column;
+            padding-top: 60px; /* Adiciona padding para o banner fixo. Usei 60px que é a altura aproximada do seu banner*/
+            transition: margin-left 0.3s ease; /* Adiciona transição para quando o menu se abre */
+            margin-left: 0; /* Por padrão, não há margem extra */
+        }
+        /* Quando o sidebar estiver aberto, empurre o conteúdo principal */
+        body.sidebar-open .main-content-wrapper {
+            margin-left: 250px; /* A largura do sidebar */
+        }
+
 
         .content-wrapper {
-            flex-grow: 1; /* Allow content to take remaining space */
+            flex-grow: 1;
             display: flex;
             justify-content: center;
-            align-items: flex-start; /* Align items to the top */
-            padding: 1rem; /* Added padding around the form container */
-            overflow-y: auto; /* Allow scrolling within this wrapper if form is too tall */
+            align-items: flex-start;
+            padding: 1rem;
+            overflow-y: auto;
         }
 
-
         .form-container {
-            background-color: #fff; /* White background */
-            border-radius: 0.5rem; /* Tailwind rounded-lg */
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Tailwind shadow-lg */
-            padding: 1.5rem; /* Reduced padding */
+            background-color: #fff;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            padding: 1.5rem;
             width: 100%;
-            max-width: 450px; /* Slightly reduced max width */
-            margin-top: 1rem; /* Add space below banner */
-            margin-bottom: 1rem; /* Add space above bottom */
-            box-sizing: border-box; /* Include padding and border in element's total width */
+            max-width: 450px;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            box-sizing: border-box;
         }
 
         .form-container h1 {
-            font-size: 1.5rem; /* Slightly reduced title size */
+            font-size: 1.5rem;
             font-weight: 700;
             color: #1f2937;
-            margin-bottom: 1rem; /* Reduced margin-bottom */
+            margin-bottom: 1rem;
             text-align: center;
         }
 
         .form-group {
-            margin-bottom: 0.75rem; /* Reduced margin-bottom */
+            margin-bottom: 0.75rem;
         }
 
         .form-group label {
             display: block;
             font-weight: 500;
             color: #374151;
-            margin-bottom: 0.3rem; /* Reduced margin-bottom */
+            margin-bottom: 0.3rem;
             font-size: 0.875rem;
         }
 
@@ -176,19 +193,18 @@
         .form-group input[type="date"],
         .form-group input[type="time"] {
             width: 100%;
-            padding: 0.5rem 0.75rem; /* Reduced padding */
+            padding: 0.5rem 0.75rem;
             border: 1px solid #d1d5db;
             border-radius: 0.375rem;
             box-sizing: border-box;
-            font-size: 0.9rem; /* Slightly reduced font size */
+            font-size: 0.9rem;
             color: #374151;
         }
 
-         .form-group input[type="text"]:disabled {
-             background-color: #e5e7eb; /* Tailwind gray-200 */
-             cursor: not-allowed;
-         }
-
+        .form-group input[type="text"]:disabled {
+            background-color: #e5e7eb; /* Tailwind gray-200 */
+            cursor: not-allowed;
+        }
 
         .form-group input:focus {
             outline: none;
@@ -254,50 +270,45 @@
             border-radius: 0.375rem;
             font-weight: 500;
             text-align: center;
-            /* display: none; Removido para que a div esteja sempre presente, mas vazia */
         }
 
         #response-message.success {
-             background-color: #d1fae5; /* Tailwind green-100 */
-             color: #065f46; /* Tailwind green-900 */
-             border: 1px solid #34d399; /* Tailwind green-400 */
+            background-color: #d1fae5; /* Tailwind green-100 */
+            color: #065f46; /* Tailwind green-900 */
+            border: 1px solid #34d399; /* Tailwind green-400 */
         }
 
         #response-message.error {
-             background-color: #fee2e2; /* Tailwind red-100 */
-             color: #991b1b; /* Tailwind red-900 */
-             border: 1px solid #f87171; /* Tailwind red-400 */
+            background-color: #fee2e2; /* Tailwind red-100 */
+            color: #991b1b; /* Tailwind red-900 */
+            border: 1px solid #f87171; /* Tailwind red-400 */
         }
 
         /* Responsive adjustments */
-        @media (max-width: 768px) { /* Adjusted breakpoint for consistency */
+        @media (max-width: 768px) {
             body {
-                padding-top: 180px; /* Ajusta padding do body para o banner maior em telas pequenas */
+                /* Removido padding-top fixo daqui, controlado pelo main-content-wrapper */
             }
             .banner {
                 flex-direction: column;
                 align-items: flex-start;
+                padding: 0.5rem 1rem; /* Ajuste para melhor visualização em telas pequenas */
             }
             .banner h1 {
-                font-size: 1rem; /* Adjust title size on smaller screens */
-                text-align: center; /* Center title when stacked */
-                width: 100%; /* Allow title to take full width if needed */
-                margin-top: 0.5rem; /* Add space above title if it wraps */
+                font-size: 1rem;
+                text-align: center;
+                width: 100%;
+                margin-top: 0.5rem;
             }
             .logo-banner {
                 height: 30px;
-                margin-right: 0.5rem; /* Reduce margin on small screens */
-            }
-            .banner {
-                padding: 0.5rem 1rem;
-                flex-direction: column; /* Stack logo and title vertically on small screens */
-                align-items: flex-start; /* Align items to the start when stacked */
+                margin-right: 0.5rem;
             }
             .content-wrapper {
-                padding: 0.5rem; /* Adjust padding for content wrapper */
+                padding: 0.5rem;
             }
             .form-container {
-                padding: 1rem; /* Further reduce padding on smaller screens */
+                padding: 1rem;
                 margin-top: 0.5rem;
                 margin-bottom: 0.5rem;
             }
@@ -318,14 +329,16 @@
                 padding: 0.4rem 0.6rem;
                 font-size: 0.85rem;
             }
-            .btn-submit { /* Adjusted margin for submit button */
+            .btn-submit {
                 padding: 0.6rem 1rem;
                 font-size: 0.9rem;
                 margin-top: 0.75rem;
             }
-            .sidebar-toggle { /* Ensure toggle button is full width on small screens */
-                width: 100%;
+            /* O botão sidebar-toggle deve se ajustar à largura completa do banner em telas pequenas */
+            .sidebar-toggle {
+                width: auto; /* Deixei auto para flexbox ajustar */
                 margin-right: 0;
+                order: -1; /* Coloca o botão no início do flex container em telas pequenas */
             }
         }
     </style>
@@ -333,15 +346,17 @@
 <body>
     {# Menu Lateral #}
     <aside class="sidebar" id="sidebar">
+        {# Adicione um título para o menu, melhora a usabilidade #}
+        <h2 style="color: #9ca3af; text-align: center; font-size: 1.25rem; margin-bottom: 1.5rem;">Menu de Navegação</h2>
         <ul>
             <li><a href="{{ url_for('menu_principal') }}">Página Inicial</a></li>
             <li><a href="{{ url_for('login') }}">Login Drive</a></li>
             <li><a href="{{ url_for('cadastro') }}">Cadastro Drive</a></li>
-            <li><a href="{{ url_for('registros') }}">Painel do Operador</a></li> 
+            <li><a href="{{ url_for('registros') }}">Painel do Operador</a></li>
             <li><a href="{{ url_for('registro_no_show') }}">Listar Registros No-Show</a></li>
             <li><a href="{{ url_for('associacao_no_show') }}">Criar Registro No-Show</a></li>
             <li><a href="{{ url_for('registros_finalizados') }}">Relatório de Registros</a></li>
-            <li><a href="{{ url_for('painel_final') }}">Painel de Atendimento</a></li>
+           
         </ul>
     </aside>
 
@@ -349,224 +364,359 @@
     <div class="overlay" id="overlay"></div>
 
     <div class="banner">
-        {# Botão para abrir/fechar o menu lateral - MOVIDO AQUI #}
+        {# Botão para abrir/fechar o menu lateral #}
         <button type="button" class="sidebar-toggle" id="sidebarToggle">☰</button>
-        {# Logo is now a direct child of banner #}
+        {# Logo e Título #}
         <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" class="logo-banner" alt="Logo Shopee">
-        {# Title is now a direct child of banner #}
         <h1>Criar Registro No Show - Sistema de Gerenciamento Operacional</h1>
     </div>
 
-    <div class="content-wrapper">
-        <div class="form-container">
-            {# Display flash messages (can be used for initial page load errors) #}
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    <ul class="flashes">
-                    {% for category, message in messages %}
-                        <li class="{{ category }}">{{ message }}</li>
-                    {% endfor %}
-                    </ul>
-                {% endif %}
-            {% endwith %}
+    {# Wrapper para o conteúdo principal, que será empurrado pelo sidebar #}
+    <div class="main-content-wrapper" id="mainContentWrapper">
+        <div class="content-wrapper">
+            <div class="form-container">
+                {# Display flash messages (can be used for initial page load errors) #}
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <ul class="flashes">
+                        {% for category, message in messages %}
+                            <li class="{{ category }}">{{ message }}</li>
+                        {% endfor %}
+                        </ul>
+                    {% endif %}
+                {% endwith %}
 
-            <form id="no-show-form" action="{{ url_for('criar_registro_no_show') }}" method="POST">
+                <form id="no-show-form" action="{{ url_for('criar_registro_no_show') }}" method="POST">
+                    <div class="form-group">
+                        <label for="nome">Nome:</label>
+                        <input type="text" id="nome" name="nome" value="Estação 6 No-Show" disabled>
+                        <input type="hidden" name="nome" value="Estação 6 No-Show"> {# Hidden field to send value #}
+                    </div>
 
-                <div class="form-group">
-                    <label for="nome">Nome:</label>
-                    <input type="text" id="nome" name="nome" value="Estação 6 No-Show" disabled>
-                    <input type="hidden" name="nome" value="Estação 6 No-Show"> {# Hidden field to send value #}
-                </div>
+                    <div class="form-group">
+                        <label for="matricula">Matrícula:</label>
+                        <input type="text" id="matricula" name="matricula" value="0001" disabled>
+                        <input type="hidden" name="matricula" value="0001"> {# Hidden field to send value #}
+                    </div>
 
-                <div class="form-group">
-                    <label for="matricula">Matrícula:</label>
-                    <input type="text" id="matricula" name="matricula" value="0001" disabled>
-                    <input type="hidden" name="matricula" value="0001"> {# Hidden field to send value #}
-                </div>
+                    <div class="form-group">
+                        <label for="cidade_entrega">Cidade:</label>
+                        <input type="text" id="cidade_entrega" name="cidade_entrega" value="Muriaé" disabled>
+                        <input type="hidden" name="cidade_entrega" value="Muriaé"> {# Hidden field to send value #}
+                    </div>
 
-                <div class="form-group">
-                    <label for="cidade_entrega">Cidade:</label>
-                    <input type="text" id="cidade_entrega" name="cidade_entrega" value="Muriaé" disabled>
-                    <input type="hidden" name="cidade_entrega" value="Muriaé"> {# Hidden field to send value #}
-                </div>
+                    <div class="form-group">
+                        <label for="tipo_entrega">Tipo Entrega:</label>
+                        <input type="text" id="tipo_entrega" name="tipo_entrega" value="No-Show" disabled>
+                        <input type="hidden" name="tipo_entrega" value="No-Show"> {# Hidden field to send value #}
+                    </div>
 
-                <div class="form-group">
-                    <label for="tipo_entrega">Tipo Entrega:</label>
-                    <input type="text" id="tipo_entrega" name="tipo_entrega" value="No-Show" disabled>
-                    <input type="hidden" name="tipo_entrega" value="No-Show"> {# Hidden field to send value #}
-                </div>
+                    <div class="form-group">
+                        <label for="rota">Rota:</label>
+                        <input type="text" id="rota" name="rota" required autofocus> {# Adicionado autofocus #}
+                    </div>
 
-                 <div class="form-group">
-                    <label for="rota">Rota:</label>
-                    <input type="text" id="rota" name="rota" required autofocus> {# Adicionado autofocus #}
-                 </div>
+                    <div class="form-group">
+                        <label for="estacao">Estação:</label>
+                        <input type="text" id="estacao" name="estacao" value="06" required> {# Adicionado valor padrão "06" e required #}
+                    </div>
 
-                 <div class="form-group">
-                    <label for="estacao">Estação:</label>
-                    <input type="text" id="estacao" name="estacao" value="06" required> {# Adicionado valor padrão "06" e required #}
-                 </div>
+                    <div class="form-group">
+                        <label for="rua">Rua:</label>
+                        <input type="text" id="rua" name="rua" required maxlength="1"> {# Adicionado maxlength="1" #}
+                        <p id="rua-error" class="text-red-500 text-sm mt-1" style="display:none;">Por favor, digite um dígito de 1 a 9.</p>
+                    </div>
 
-                 <div class="form-group">
-                    <label for="rua">Rua:</label>
-                    <input type="text" id="rua" name="rua" required maxlength="1"> {# Adicionado maxlength="1" #}
-                    <p id="rua-error" class="text-red-500 text-sm mt-1" style="display:none;">Por favor, digite um dígito de 1 a 9.</p>
-                 </div>
+                    {# Data/Hora Login will be captured automatically by the backend #}
+                    <button type="submit" class="btn-submit">Criar Registro</button>
+                </form>
 
-                {# Data/Hora Login will be captured automatically by the backend #}
-
-                <button type="submit" class="btn-submit">Criar Registro</button>
-            </form>
-
-            {# Área para exibir mensagens de resposta #}
-            <div id="response-message"></div>
-
-            {# Botão Novo Registro REMOVIDO #}
-
+                {# Área para exibir mensagens de resposta #}
+                <div id="response-message"></div>
+            </div>
         </div>
     </div>
 
-
     <script>
-        // Script para mover o foco após preencher os campos (usando Enter) e lidar com a submissão AJAX
-        document.addEventListener('DOMContentLoaded', (event) => {
-            const rotaInput = document.getElementById('rota');
-            const estacaoInput = document.getElementById('estacao');
-            const ruaInput = document.getElementById('rua');
-            const ruaError = document.getElementById('rua-error'); // Elemento para a mensagem de erro da Rua
-            const form = document.getElementById('no-show-form');
-            const responseMessageDiv = document.getElementById('response-message');
-
-            // Mover foco ao pressionar Enter
-            if (rotaInput && estacaoInput && ruaInput) {
-                rotaInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') { // Verifica se a tecla pressionada é Enter
-                        e.preventDefault(); // Previne a ação padrão (submissão do formulário)
-                        estacaoInput.focus(); // Move o foco para a Estação
-                    }
-                });
-
-                estacaoInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') { // Verifica se a tecla pressionada é Enter
-                           e.preventDefault(); // Previne a ação padrão
-                           ruaInput.focus(); // Move o foco para a Rua
-                       }
-                   });
-
-                   ruaInput.addEventListener('keypress', (e) => {
-                        if (e.key === 'Enter') { // Verifica se a tecla pressionada é Enter
-                            e.preventDefault(); // Previne a ação padrão
-                            // Optional: Submit the form automatically after Enter on Rua
-                            // A validação será feita no 'submit' do formulário
-                            form.dispatchEvent(new Event('submit'));
-                        }
-                    });
-            }
-
-            // Validação do campo Rua em tempo real
-            ruaInput.addEventListener('input', () => {
-                const value = ruaInput.value;
-                // Regex para aceitar apenas um dígito de 1 a 9
-                const isValid = /^[1-9]$/.test(value);
-
-                if (isValid) {
-                    ruaInput.setCustomValidity(''); // Remove a mensagem de erro de validação
-                    ruaError.style.display = 'none';
-                } else {
-                    ruaInput.setCustomValidity('Inválido'); // Define uma mensagem de erro genérica para o navegador
-                    ruaError.style.display = 'block';
-                }
-            });
-
-            // Lidar com a submissão do formulário via AJAX
-            if (form) {
-                form.addEventListener('submit', async (e) => {
-                    // Re-valida a Rua antes de enviar o formulário
-                    const value = ruaInput.value;
-                    const isValidRua = /^[1-9]$/.test(value);
-
-                    if (!isValidRua) {
-                        e.preventDefault(); // Previne a submissão
-                        ruaError.style.display = 'block';
-                        ruaInput.focus();
-                        return; // Sai da função
-                    }
-
-                    e.preventDefault(); // Previne a submissão padrão do formulário (que causaria o redirecionamento)
-
-                    // Clear previous messages before new submission attempt
-                    responseMessageDiv.textContent = '';
-                    responseMessageDiv.className = '';
-
-                    const formData = new FormData(form);
-                    const response = await fetch(form.action, {
-                        method: form.method,
-                        body: formData
-                    });
-
-                    const result = await response.json(); // Espera a resposta JSON do servidor
-
-
-                    if (response.ok) { // Verifica se a resposta HTTP foi bem-sucedida (status 2xx)
-                        if (result.success) {
-                            responseMessageDiv.textContent = result.message;
-                            responseMessageDiv.classList.add('success');
-
-                            // Clear form fields on success
-                            rotaInput.value = '';
-                            ruaInput.value = '';
-                            estacaoInput.value = '06'; // Reset to default
-                            rotaInput.focus(); // Set focus back
-
-                             // Clear flash messages as well if any are present on initial load
-                            const flashesList = document.querySelector('.flashes');
-                            if (flashesList) {
-                                flashesList.innerHTML = '';
-                            }
-
-                        } else {
-                            // Caso o servidor retorne sucesso=false (ex: matrícula não encontrada)
-                            responseMessageDiv.textContent = result.message || 'Ocorreu um erro ao criar o registro.';
-                            responseMessageDiv.classList.add('error');
-                        }
-                    } else { // Lida com erros HTTP (ex: status 4xx, 5xx)
-                        responseMessageDiv.textContent = result.message || `Erro na requisição: ${response.status} ${response.statusText}`;
-                        responseMessageDiv.classList.add('error');
-                    }
-                });
-            }
-
-            // --- Lógica do Menu Lateral ---
-            const sidebar = document.getElementById('sidebar');
+        document.addEventListener('DOMContentLoaded', function () {
+            // --- Script para o Menu Lateral (Início) ---
             const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('overlay');
+            const mainContentWrapper = document.getElementById('mainContentWrapper'); // O novo wrapper
 
-            // Abre o menu
-            function openSidebar() {
-                sidebar.classList.add('open');
-                overlay.style.display = 'block';
-            }
-
-            // Fecha o menu
-            function closeSidebar() {
-                sidebar.classList.remove('open');
-                overlay.style.display = 'none';
-            }
-
-            // Event listeners para abrir/fechar o menu
-            sidebarToggle.addEventListener('click', function(event) {
-                event.stopPropagation(); // Impede que o clique se propague para o overlay
-                openSidebar();
+            sidebarToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('open');
+                overlay.classList.toggle('active');
+                document.body.classList.toggle('sidebar-open'); // Adiciona/remove classe no body
             });
-            overlay.addEventListener('click', closeSidebar); // Fecha ao clicar no overlay
 
-            // Fecha o menu se a janela for redimensionada para uma largura maior (opcional)
-            window.addEventListener('resize', function() {
-                if (window.innerWidth > 768) { // Exemplo: fecha se a tela for maior que 768px
-                    closeSidebar();
+            overlay.addEventListener('click', () => {
+                sidebar.classList.remove('open');
+                overlay.classList.remove('active');
+                document.body.classList.remove('sidebar-open');
+            });
+
+            // Fecha o menu lateral ao clicar em um link (opcional, mas recomendado para UX)
+            const sidebarLinks = document.querySelectorAll('.sidebar a');
+            sidebarLinks.forEach(link => {
+                link.addEventListener('click', () => {
+                    sidebar.classList.remove('open');
+                    overlay.classList.remove('active');
+                    document.body.classList.remove('sidebar-open');
+                });
+            });
+
+            // --- Script para o Menu Lateral (Fim) ---
+
+            // --- Seu Código JavaScript Existente (Inicio) ---
+            const pathParts = window.location.pathname.split('/');
+            const matricula = pathParts[2];
+            const urlParams = new URLSearchParams(window.location.search);
+            const registroId = urlParams.get('registro_id');
+
+            // Estes elementos não existem no HTML que você enviou para esta página específica
+            // Se você precisa deles, adicione-os ao seu HTML ou remova as referências.
+            const loadingDiv = document.getElementById('loading');
+            const statusInfoDiv = document.getElementById('status-info');
+            const errorDiv = document.getElementById('error-message');
+            const statusDisplayDiv = document.getElementById('status-display');
+            const noActiveRecordDiv = document.getElementById('no-active-record');
+
+            const nomeSpan = document.getElementById('nome'); // Já existe como input, pode causar conflito de ID.
+                                                              // Se 'nomeSpan' for para exibir dados, precisa de outro ID.
+                                                              // Ajustei o HTML para usar o input direto.
+            const matriculaSpan = document.getElementById('matricula'); // Idem acima
+            const rotaSpan = document.getElementById('rota'); // Idem acima
+            const tipoEntregaSpan = document.getElementById('tipo_entrega'); // Idem acima
+            const cidadeEntregaSpan = document.getElementById('cidade_entrega'); // Idem acima
+            const ruaParagraph = document.getElementById('rua-paragraph'); // Este existe
+            const ruaSpan = document.getElementById('rua'); // Idem acima
+            // Os próximos provavelmente não existem nessa página (se forem para exibir status)
+            const gaiolaSpan = document.getElementById('gaiola');
+            const estacaoSpan = document.getElementById('estacao');
+            const dataHoraLoginSpan = document.getElementById('data_hora_login');
+
+            const notificationSound = document.getElementById('notification-sound'); // Este não existe
+            const enableSoundBtn = document.getElementById('enable-sound-btn'); // Este não existe
+
+            let lastStatusText = null;
+            let soundEnabled = false;
+
+            // Mapeamento de status para texto e classes CSS
+            const STATUS_MAP = {
+                0: { text: 'Em Fila - Aguardando Liberação', class: 'status-em-fila' },
+                1: { text: 'Em Separação', class: 'status-carregamento-liberado-normal' },
+                2: { text: 'Liberado para Carregar', class: 'status-carregamento-concluido' },
+                3: { text: 'Carregamento Liberado', class: 'status-aguardando-motorista' }, // Aguardando Motorista
+                4: { text: 'Cancelado', class: 'status-transferido' }, // No-Show original após transferência
+            };
+
+            // Condicionalmente adicionar o event listener para enableSoundBtn se ele existir
+            if (enableSoundBtn) {
+                enableSoundBtn.addEventListener('click', () => {
+                    notificationSound.play().then(() => {
+                        notificationSound.pause();
+                        notificationSound.currentTime = 0;
+                        soundEnabled = true;
+                        enableSoundBtn.style.display = 'none';
+                    }).catch(() => {
+                        alert('Para ativar o som, interaja com a página primeiro (clique no botão novamente, por exemplo). Alguns navegadores exigem uma interação do usuário.');
+                    });
+                });
+            }
+
+            function formatField(value) {
+                if (value === 'N/A' || value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) {
+                    return 'Aguarde';
+                }
+                return value;
+            }
+
+            function formatarDataHora(isoString) {
+                if (!isoString || isoString === 'N/A' || (typeof isoString === 'string' && isoString.trim() === '')) {
+                    return 'Aguarde';
+                }
+                try {
+                    const parts = isoString.split(' - ');
+                    const datePart = parts[0];
+                    const timePart = parts.length > 1 ? parts[1] : isoString.split(' ')[1];
+
+                    const [year, month, day] = datePart.split('-').map(Number);
+                    const [hours, minutes] = timePart.split(':').map(Number);
+
+                    const date = new Date(year, month - 1, day, hours, minutes);
+                    if (isNaN(date.getTime())) throw new Error('Data inválida');
+
+                    const formattedDay = String(date.getDate()).padStart(2, '0');
+                    const formattedMonth = String(date.getMonth() + 1).padStart(2, '0');
+                    const formattedYear = date.getFullYear();
+                    const formattedHours = String(date.getHours()).padStart(2, '0');
+                    const formattedMinutes = String(date.getMinutes()).padStart(2, '0');
+
+                    return `${formattedDay}-${formattedMonth}-${formattedYear} ${formattedHours}:${formattedMinutes}`;
+                } catch (e) {
+                    console.error("Erro ao formatar data/hora:", e);
+                    return 'Aguarde';
+                }
+            }
+
+            // Função para atualizar os elementos da UI
+            // Esta função foi adaptada para o contexto desta página (formulário)
+            // Em vez de atualizar spans de exibição, ela preencherá os inputs (se não disabled)
+            const updateUI = (registro) => {
+                // Para esta página, os campos nome, matricula, cidade, tipo_entrega já estão preenchidos e disabled
+                // e são enviados via hidden inputs.
+                // Se o objetivo é exibir dados *recebidos* da API em outros elementos,
+                // você precisaria de spans ou divs separados para isso, não os inputs do formulário.
+
+                // Exemplo se você tivesse spans para exibir:
+                // document.getElementById('display-nome').textContent = formatField(registro.nome);
+                // document.getElementById('display-matricula').textContent = formatField(registro.matricula);
+
+                // No contexto atual, esta função updateUI com fetchStatus parece ser para outra página
+                // (como um painel de operador). Se for para esta página, os elementos
+                // 'status-info', 'status-display', 'no-active-record', 'error-message', etc.,
+                // precisam existir no HTML desta página.
+                console.log("Chamada a updateUI, mas esta página é um formulário.");
+                console.log("Dados recebidos (se houver):", registro);
+            };
+
+
+            async function fetchStatus() {
+                // Esta função parece ser de uma página de "Painel do Operador"
+                // ou "Listar Registros No-Show" onde você exibe o status de um registro específico.
+                // Na página de "Criar Registro No Show", essa lógica de fetchStatus
+                // geralmente não seria necessária a menos que você queira exibir
+                // o status de um registro *recém-criado* imediatamente após a submissão.
+                // No entanto, o `registroId` não estaria disponível na carga inicial da página de criação.
+
+                // Se o objetivo é apenas garantir que não haja erros de JS,
+                // e se esta página não precisa de um painel de status em tempo real,
+                // você pode remover esta função e o setInterval dela.
+                // Ou, se precisar, adicione os elementos HTML (`loading`, `status-info`, etc.)
+                // e adapte o `registroId` para vir de um registro *recém-criado* após o POST.
+
+                // Vou manter o código aqui para evitar quebrar, mas com um aviso.
+                if (!registroId) {
+                    console.warn("fetchStatus: registroId não encontrado. Esta função pode não ser aplicável a esta página de formulário.");
+                    // Pode esconder elementos de status se eles não forem usados
+                    if (loadingDiv) loadingDiv.classList.add('hidden');
+                    if (statusInfoDiv) statusInfoDiv.classList.add('hidden');
+                    if (errorDiv) errorDiv.classList.add('hidden');
+                    if (noActiveRecordDiv) noActiveRecordDiv.classList.remove('hidden'); // Exibir mensagem "não há registro ativo"
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/status_registro/${registroId}`);
+                    const data = await response.json();
+
+                    if (loadingDiv) loadingDiv.classList.add('hidden');
+
+                    if (response.ok) {
+                        const registro = data;
+                        if (statusInfoDiv) statusInfoDiv.classList.remove('hidden');
+                        if (noActiveRecordDiv) noActiveRecordDiv.classList.add('hidden');
+                        if (errorDiv) errorDiv.classList.add('hidden');
+
+                        updateUI(registro);
+
+                        let currentStatusText = 'Status Desconhecido';
+                        let currentStatusClass = 'bg-gray-500';
+
+                        if (registro.finalizada === 1) {
+                            currentStatusText = 'Finalizado';
+                            currentStatusClass = 'status-finalizado';
+                        } else if (STATUS_MAP[registro.em_separacao]) {
+                            currentStatusText = STATUS_MAP[registro.em_separacao].text;
+                            currentStatusClass = STATUS_MAP[registro.em_separacao].class;
+                        } else if (registro.estado) {
+                            currentStatusText = registro.estado;
+                            if (currentStatusText.toLowerCase().includes('aguardando carregamento')) {
+                                currentStatusClass = 'status-em-fila';
+                            } else if (currentStatusText.toLowerCase().includes('em separacao')) {
+                                currentStatusClass = 'status-carregamento-liberado-normal';
+                            } else if (currentStatusText.toLowerCase().includes('aguardando motorista')) {
+                                currentStatusClass = 'status-aguardando-motorista';
+                            }
+                        }
+
+                        if (statusDisplayDiv) {
+                            statusDisplayDiv.textContent = currentStatusText;
+                            statusDisplayDiv.className = 'status-card ' + currentStatusClass;
+                        }
+
+                        if (lastStatusText !== null && lastStatusText !== currentStatusText && soundEnabled) {
+                            if (notificationSound) {
+                                notificationSound.play().catch(() => {
+                                    console.warn("Falha ao reproduzir o som de notificação.");
+                                });
+                            }
+                            if (navigator.vibrate) {
+                                navigator.vibrate(200);
+                            }
+                        }
+                        lastStatusText = currentStatusText;
+
+                    } else {
+                        if (statusInfoDiv) statusInfoDiv.classList.add('hidden');
+                        if (errorDiv) errorDiv.classList.add('hidden');
+
+                        if (response.status === 404) {
+                            if (noActiveRecordDiv) noActiveRecordDiv.classList.remove('hidden');
+                        } else {
+                            if (errorDiv) {
+                                errorDiv.classList.remove('hidden');
+                                errorDiv.textContent = data.message || 'Não foi possível carregar o status do registro. Tente novamente mais tarde.';
+                            }
+                        }
+                        lastStatusText = null;
+                    }
+                } catch (fetchError) {
+                    if (loadingDiv) loadingDiv.classList.add('hidden');
+                    if (statusInfoDiv) statusInfoDiv.classList.add('hidden');
+                    if (noActiveRecordDiv) noActiveRecordDiv.classList.add('hidden');
+                    if (errorDiv) {
+                        errorDiv.classList.remove('hidden');
+                        errorDiv.textContent = 'Erro de comunicação com o servidor. Verifique sua conexão ou tente novamente.';
+                    }
+                    lastStatusText = null;
+                }
+            }
+
+            // A chamada a fetchStatus e setInterval deve ser feita apenas se esta página
+            // realmente pretende exibir um status dinâmico.
+            // Para uma página de criação de formulário, geralmente não é o caso.
+            // Se for para criar o registro, a resposta é geralmente um redirecionamento ou uma mensagem de sucesso.
+            // Por enquanto, vou manter o código, mas com a observação.
+            // fetchStatus(); // Removido para evitar erros se elementos não existirem na página de criação
+            // setInterval(fetchStatus, 1000); // Removido
+            // --- Seu Código JavaScript Existente (Fim) ---
+
+            // Validação para o campo "Rua"
+            const ruaInput = document.getElementById('rua');
+            const ruaError = document.getElementById('rua-error');
+
+            ruaInput.addEventListener('input', function() {
+                const value = this.value;
+                if (value.length > 1 || (value.length === 1 && (value < '1' || value > '9'))) {
+                    ruaError.style.display = 'block';
+                } else {
+                    ruaError.style.display = 'none';
                 }
             });
+
+            // Adiciona validação ao submit do formulário
+            document.getElementById('no-show-form').addEventListener('submit', function(event) {
+                const ruaValue = ruaInput.value;
+                if (ruaValue.length > 1 || (ruaValue.length === 1 && (ruaValue < '1' || ruaValue > '9'))) {
+                    ruaError.style.display = 'block';
+                    event.preventDefault(); // Impede o envio do formulário
+                }
+            });
+
         });
     </script>
-
 </body>
 </html>
