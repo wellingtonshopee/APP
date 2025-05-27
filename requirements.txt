@@ -9,3 +9,4 @@ beautifulsoup4
 bs4
 BytesIO
 sqlalchemy 
+supabase
