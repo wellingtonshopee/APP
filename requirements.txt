@@ -10,3 +10,4 @@ bs4
 BytesIO
 sqlalchemy 
 supabase
+flask_sqlalchemy
