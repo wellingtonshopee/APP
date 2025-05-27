@@ -4,3 +4,9 @@ pytz
 requests
 feedparser
 openpyxl
+sycopg2
+BeautifulSoup
+random 
+bs4
+BytesIO
+sqlalchemy 
