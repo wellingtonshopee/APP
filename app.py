@@ -1386,12 +1386,14 @@ def painel_final_page():
 @app.route('/api/registros/em-separacao')
 def get_registros_em_separacao():
     try:
-        # Busca registros com 'em_separacao' igual a 1 (Em Separação)
-        # e que não estão finalizados nem cancelados
+        # Busca registros com 'em_separacao' igual a 2 (Em Separação),
+        # que não estão finalizados nem cancelados,
+        # E O CAMPO 'rota' NÃO É NULO.
         registros_em_separacao = Registro.query.filter(
             Registro.em_separacao == 2,
             Registro.finalizada == 0,
-            Registro.cancelado == 0
+            Registro.cancelado == 0,
+            Registro.gaiola.isnot(None) # Adiciona esta condição para filtrar rotas não nulas
         ).order_by(Registro.data_hora_login.asc()).all() # Ordena do mais antigo para o mais novo
 
         registros_json = []
@@ -1411,8 +1413,10 @@ def get_registros_em_separacao():
             })
         return jsonify(registros_json)
     except Exception as e:
-        app.logger.error(f"Erro ao buscar registros 'Em Separação': {e}")
+        # app.logger.error(f"Erro ao buscar registros 'Em Separação': {e}") # Descomente se tiver app.logger configurado
+        print(f"Erro ao buscar registros 'Em Separação': {e}") # Para depuração simples
         return jsonify({"error": "Erro interno do servidor ao buscar registros 'Em Separação'."}), 500
+
 
 # --- Rota da API para Rotas No-Show (Quadro 2) ---
 @app.route('/api/noshow/aguardando-motorista')
