@@ -578,6 +578,55 @@ def api_registros_data():
         'total_registros': pagination.total
     })
 
+
+@app.route('/api/current_active_records')
+def api_current_active_records():
+    """
+    Retorna todos os registros considerados 'ativos' (não finalizados ou cancelados).
+    Esta rota é usada para atualizações incrementais no frontend e não aplica
+    filtros de data ou paginação.
+    """
+    try:
+        # Filtra os registros que não foram finalizados (finalizada = 0)
+        # e que não foram cancelados (cancelado = 0).
+        # Você pode ajustar esses filtros conforme sua definição de "ativo".
+        query = Registro.query.filter(
+            Registro.finalizada == 0,
+            Registro.cancelado == 0
+        )
+        
+        # Opcional: Ordenar os registros para garantir uma ordem consistente no frontend
+        # Por exemplo, por data de login, do mais antigo para o mais novo
+        query = query.order_by(Registro.data_hora_login.asc()) 
+
+        active_registros = query.all()
+
+        registros_json = []
+        for reg in active_registros:
+            registros_json.append({
+                'id': reg.id,
+                'data_hora_login': reg.data_hora_login.strftime('%Y-%m-%d %H:%M:%S') if reg.data_hora_login else None,
+                'nome': reg.nome,
+                'matricula': reg.matricula,
+                'rota': reg.rota,
+                'tipo_entrega': reg.tipo_entrega,
+                'cidade_entrega': reg.cidade_entrega,
+                'hora_finalizacao': reg.hora_finalizacao.strftime('%Y-%m-%d %H:%M:%S') if reg.hora_finalizacao else None,
+                'em_separacao': reg.em_separacao,
+                'finalizada': reg.finalizada,
+                'cancelado': reg.cancelado
+                # Não é necessário incluir 'updated_at' aqui, pois ele é para controle interno do BD
+            })
+        
+        return jsonify(registros_json)
+    
+    except Exception as e:
+        # Registra o erro no console do servidor para depuração
+        print(f"Erro ao buscar registros ativos: {e}")
+        # Retorna um erro 500 (Internal Server Error) para o frontend
+        return jsonify({"error": "Erro interno do servidor ao buscar registros ativos."}), 500
+
+
 #Fim da Rota Registros#
 @app.route('/boas_vindas')
 def boas_vindas():
@@ -859,15 +908,36 @@ def registro_no_show():
     nome_filtro = request.args.get('nome')
     matricula_filtro = request.args.get('matricula')
     rota_filtro = request.args.get('rota')
-    status_filtro_str = request.args.get('status')
+    status_filtro_str = request.args.get('status') # Pega o valor do filtro de status
     pagina = request.args.get('pagina', 1, type=int)
     por_pagina = 10
 
     query = NoShow.query
 
+    # --- NOVO AJUSTE: Filtra registros não finalizados por padrão ---
+    # Somente se o filtro de status NÃO for 'finalizado',
+    # adicionamos a condição de que o registro não deve ser finalizado.
+    if status_filtro_str != 'finalizado':
+        query = query.filter(NoShow.finalizada == 0) # Adiciona filtro para não finalizados
+
     if data_filtro_str:
         try:
             data_inicio = datetime.strptime(data_filtro_str, '%Y-%m-%d')
+            # Para garantir que a data fim cubra o dia inteiro, use timezone-aware se estiver usando UTC
+            # e converta para a data local para o cálculo do dia.
+            # Se data_hora_login for UTC, ajuste data_fim para o final do dia UTC correspondente.
+            # Exemplo (se data_hora_login está em UTC no DB):
+            # TZ_BRASILIA = pytz.timezone('America/Sao_Paulo')
+            # data_inicio_local = TZ_BRASILIA.localize(data_inicio)
+            # data_fim_local = data_inicio_local + timedelta(days=1) - timedelta(microseconds=1)
+            # data_inicio_utc = data_inicio_local.astimezone(pytz.utc).replace(tzinfo=None) # Remova tzinfo se DB é WITHOUT TIME ZONE
+            # data_fim_utc = data_fim_local.astimezone(pytz.utc).replace(tzinfo=None) # Remova tzinfo se DB é WITHOUT TIME ZONE
+            # query = query.filter(NoShow.data_hora_login.between(data_inicio_utc, data_fim_utc))
+            #
+            # No seu caso atual, se você está salvando em UTC e o DB é WITHOUT TIME ZONE,
+            # sua lógica atual com `data_inicio = datetime.strptime(data_filtro_str, '%Y-%m-%d')`
+            # e `data_fim = data_inicio + timedelta(days=1) - timedelta(microseconds=1)` funcionará,
+            # pois estará filtrando em UTC sem problemas de conversão de fuso horário.
             data_fim = data_inicio + timedelta(days=1) - timedelta(microseconds=1)
             query = query.filter(NoShow.data_hora_login.between(data_inicio, data_fim))
         except ValueError:
@@ -883,23 +953,27 @@ def registro_no_show():
     if rota_filtro:
         query = query.filter(NoShow.gaiola.ilike(f'%{rota_filtro}%'))
 
+    # --- Lógica de filtro de status existente, permanece a mesma ---
     if status_filtro_str:
         if status_filtro_str == 'aguardando_motorista':
             query = query.filter(NoShow.em_separacao == STATUS_EM_SEPARACAO['AGUARDANDO_MOTORISTA'])
         elif status_filtro_str == 'separacao':
             query = query.filter(NoShow.em_separacao == STATUS_EM_SEPARACAO['SEPARACAO'])
         elif status_filtro_str == 'finalizado':
+            # Quando 'finalizado' é solicitado, EXCLUÍMOS a condição padrão de 'finalizada == 0'
+            # e buscamos especificamente os finalizados/cancelados.
             query = query.filter(or_(
-                NoShow.em_separacao == STATUS_EM_SEPARACAO['FINALIZADO'],
+                NoShow.em_separacao == STATUS_EM_SEPARACAO['FINALIZADO'], # Se você usa um valor numérico para 'FINALIZADO'
                 NoShow.finalizada == 1
             ))
         elif status_filtro_str == 'cancelado':
             query = query.filter(or_(
-                NoShow.em_separacao == STATUS_EM_SEPARACAO['CANCELADO'],
+                NoShow.em_separacao == STATUS_EM_SEPARACAO['CANCELADO'], # Se você usa um valor numérico para 'CANCELADO'
                 NoShow.cancelado == 1
             ))
         elif status_filtro_str == 'transferido':
             query = query.filter(NoShow.em_separacao == STATUS_EM_SEPARACAO['TRANSFERIDO'])
+        # Adicione outros filtros de status conforme necessário
 
     query = query.order_by(NoShow.data_hora_login.desc())
 
@@ -913,12 +987,11 @@ def registro_no_show():
                            nome_filtro=nome_filtro,
                            matricula_filtro=matricula_filtro,
                            rota_filtro=rota_filtro,
-                           status_filtro=status_filtro_str,
+                           status_filtro=status_filtro_str, # Passa o status_filtro para o template
                            pagina=pagina,
                            total_paginas=total_paginas,
                            get_status_text=get_status_text,
-                           # ESTA É A LINHA CORRETA:
-                           STATUS_EM_SEPARACAO=STATUS_EM_SEPARACAO # <-- Esta é a forma correta!
+                           STATUS_EM_SEPARACAO=STATUS_EM_SEPARACAO
                            )
 
 
@@ -1285,6 +1358,10 @@ def associacao_no_show():
 
 @app.route('/criar_registro_no_show', methods=['POST'])
 def criar_registro_no_show():
+    from pytz import timezone
+    fuso_brasil = timezone('America/Sao_Paulo')
+    agora = datetime.now(fuso_brasil)
+
     nome = capitalize_words(request.form.get('nome'))
     data = request.form
 
@@ -1306,7 +1383,7 @@ def criar_registro_no_show():
 
     try:
         novo_registro = NoShow(
-            data_hora_login=datetime.now(),
+            data_hora_login=datetime.now(pytz.timezone('America/Sao_Paulo')),
             nome=nome,
             matricula=matricula,
             gaiola=rota,
@@ -1351,7 +1428,7 @@ def transferir_para_carregamento_no_show(registro_id):
             db.session.add(registro_principal)
 
             no_show_original.em_separacao = STATUS_EM_SEPARACAO['TRANSFERIDO']
-            no_show_original.hora_finalizacao = datetime.now()
+            no_show_original.hora_finalizacao = datetime.now(pytz.timezone('America/Sao_Paulo'))
             db.session.add(no_show_original)
 
             db.session.commit()
@@ -1374,8 +1451,9 @@ def finalizar_no_show(id):
     no_show_original = NoShow.query.get_or_404(id)
 
     try:
+        fuso_brasil = pytz.timezone('America/Sao_Paulo')
         no_show_original.finalizada = 1
-        no_show_original.hora_finalizacao = datetime.now()
+        no_show_original.hora_finalizacao = datetime.now(fuso_brasil)
         db.session.add(no_show_original)
 
         # Buscar o registro correspondente na tabela 'Registros'
@@ -1387,7 +1465,7 @@ def finalizar_no_show(id):
 
         if registro_principal_correspondente:
             registro_principal_correspondente.finalizada = 1
-            registro_principal_correspondente.hora_finalizacao = datetime.now()
+            registro_principal_correspondente.hora_finalizacao = datetime.now(fuso_brasil)
             db.session.add(registro_principal_correspondente)
 
         db.session.commit()
@@ -1557,17 +1635,14 @@ def get_operational_info():
         "Atenção motoristas: Verifiquem documentação antes de se dirigir aos pátios de carregamento. | Prioridade de carregamento para veículos com agendamento prévio. Mantenha-se informado via rádio.",
         "Atenção: Nova Rota disponível. Várias cidades para atendimento . | HUB Muriaé: Todos os motoristas devem realizar o check-in na entrada.",
         "Atenção logística: Motorista só movimente o veículo após a liberação. | Informamos: Acompanhe seu carregamento através da página de Status de Carregamento.",
-        "Segurança em primeiro lugar: Use sempre EPIs nas áreas de carregamento. | HUB Muriaé Informa: Acompanhe a Fila de Carregamento pela TV ou diretamente em seu celular." |
-        "HUB Muriaé: Verifique o quadro de avisos para informações importantes. | Atenção motoristas: Utilize sempre os equipamentos de segurança."  |
-        "Atenção motoristas: Utilize sempre os equipamentos de segurança. | Comunique-se com a equipe para otimizar seu carregamento."  |
+        "Segurança em primeiro lugar: Use sempre EPIs nas áreas de carregamento. | HUB Muriaé Informa: Acompanhe a Fila de Carregamento pela TV ou diretamente em seu celular.", # O '|' aqui agora está dentro da string, não como um operador no final.
+        "HUB Muriaé: Verifique o quadro de avisos para informações importantes. | Atenção motoristas: Utilize sempre os equipamentos de segurança.",   # O '|' aqui agora está dentro da string, não como um operador no final.
+        "Atenção motoristas: Utilize sempre os equipamentos de segurança. | Comunique-se com a equipe para otimizar seu carregamento.",   # O '|' aqui agora está dentro da string, não como um operador no final.
         "Previsão do tempo: Fique atento às condições climáticas."
     ]
-    
+
     # Retornamos a lista completa de informações.
-    # O random.choice foi removido, pois queremos todas as informações.
     return jsonify({"info": operational_texts})
-
-
 
 # -------- FIM DA ROTA PAINEL --------
 
