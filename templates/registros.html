@@ -464,416 +464,550 @@
     </div>
 
     <script>
-        // Variáveis globais para manter o estado da paginação e filtros
-        let currentPage = {{ pagina | default(1) }};
-        let totalPages = {{ total_paginas | default(1) }};
-        // PER_PAGE deve corresponder ao valor definido no backend Flask (app.py)
-        const PER_PAGE = 10; 
+    // Variáveis globais para manter o estado da paginação e filtros
+    let currentPage = {{ pagina | default(1) }};
+    let totalPages = {{ total_paginas | default(1) }};
+    // PER_PAGE deve corresponder ao valor definido no backend Flask (app.py)
+    const PER_PAGE = 10; 
 
-        // Função para exibir uma mensagem personalizada (substitui alert)
-        function showMessage(message) {
-            const messageBox = document.getElementById('messageBox');
-            const messageText = document.getElementById('messageText');
-            if (messageBox && messageText) {
-                messageText.innerText = message;
-                messageBox.style.display = 'block';
-                setTimeout(() => {
-                    messageBox.style.display = 'none';
-                }, 5000); // Esconde após 5 segundos
-            } else {
-                alert(message); // Fallback caso os elementos não existam
-            }
+    // Função para exibir uma mensagem personalizada (substitui alert)
+    function showMessage(message) {
+        const messageBox = document.getElementById('messageBox');
+        const messageText = document.getElementById('messageText');
+        if (messageBox && messageText) {
+            messageText.innerText = message;
+            messageBox.style.display = 'block';
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, 5000); // Esconde após 5 segundos
+        } else {
+            alert(message); // Fallback caso os elementos não existam
         }
+    }
+// Recarrega após 8 segundos
+  setTimeout(function() {
+    location.reload(true);
+  }, 8000);
+    // Função para formatar data e hora (mantida)
+    function formatarDataHora(isoString) {
+        if (!isoString || isoString === 'N/A' || isoString.toString().trim() === '') {
+            return 'Não Finalizado';
+        }
+        try {
+            let date = new Date(isoString);
 
-        // Função para formatar data e hora (mantida)
-        function formatarDataHora(isoString) {
-            if (!isoString || isoString === 'N/A' || isoString.toString().trim() === '') {
-                return 'Não Finalizado';
-            }
-            try {
-                let date = new Date(isoString);
-
+            if (isNaN(date.getTime())) {
+                // Tenta parsear formatos "YYYY-MM-DD HH:MM:SS" (JSON do Flask)
+                let cleanedIsoString = isoString.replace(' - ', ' ');
+                const parts = cleanedIsoString.split(' ');
+                if (parts.length === 2) {
+                    const dateParts = parts[0].split('-');
+                    const timeParts = parts[1].split(':');
+                    if (dateParts.length === 3 && timeParts.length >= 2) {
+                        const year = parseInt(dateParts[0]);
+                        const month = parseInt(dateParts[1]) - 1; // Mês é 0-indexado
+                        const day = parseInt(dateParts[2]);
+                        const hours = parseInt(timeParts[0]);
+                        const minutes = parseInt(timeParts[1]);
+                        const seconds = timeParts.length > 2 ? parseInt(timeParts[2]) : 0;
+                        date = new Date(year, month, day, hours, minutes, seconds);
+                    }
+                }
                 if (isNaN(date.getTime())) {
-                    // Tenta parsear formatos "YYYY-MM-DD HH:MM:SS" (JSON do Flask)
-                    let cleanedIsoString = isoString.replace(' - ', ' ');
-                    const parts = cleanedIsoString.split(' ');
-                    if (parts.length === 2) {
-                        const dateParts = parts[0].split('-');
-                        const timeParts = parts[1].split(':');
-                        if (dateParts.length === 3 && timeParts.length >= 2) {
-                            const year = parseInt(dateParts[0]);
-                            const month = parseInt(dateParts[1]) - 1; // Mês é 0-indexado
-                            const day = parseInt(dateParts[2]);
-                            const hours = parseInt(timeParts[0]);
-                            const minutes = parseInt(timeParts[1]);
-                            const seconds = timeParts.length > 2 ? parseInt(timeParts[2]) : 0;
+                    // Tenta parsear o formato "DD-MM-YYYY HH:MM:SS" ou "DD-MM-YYYY HH:MM"
+                    const partsDMY = isoString.split(' ');
+                    if (partsDMY.length >= 2) {
+                        const datePartsDMY = partsDMY[0].split('-');
+                        const timePartsDMY = partsDMY[1].split(':');
+                        if (datePartsDMY.length === 3 && timePartsDMY.length >= 2) {
+                            const day = parseInt(datePartsDMY[0]);
+                            const month = parseInt(datePartsDMY[1]) - 1;
+                            const year = parseInt(datePartsDMY[2]);
+                            const hours = parseInt(timePartsDMY[0]);
+                            const minutes = parseInt(timePartsDMY[1]);
+                            const seconds = timePartsDMY.length > 2 ? parseInt(timePartsDMY[2]) : 0;
                             date = new Date(year, month, day, hours, minutes, seconds);
                         }
                     }
                     if (isNaN(date.getTime())) {
-                        // Tenta parsear o formato "DD-MM-YYYY HH:MM:SS" ou "DD-MM-YYYY HH:MM"
-                        const partsDMY = isoString.split(' ');
-                        if (partsDMY.length >= 2) {
-                            const datePartsDMY = partsDMY[0].split('-');
-                            const timePartsDMY = partsDMY[1].split(':');
-                            if (datePartsDMY.length === 3 && timePartsDMY.length >= 2) {
-                                const day = parseInt(datePartsDMY[0]);
-                                const month = parseInt(datePartsDMY[1]) - 1;
-                                const year = parseInt(datePartsDMY[2]);
-                                const hours = parseInt(timePartsDMY[0]);
-                                const minutes = parseInt(timePartsDMY[1]);
-                                const seconds = timePartsDMY.length > 2 ? parseInt(timePartsDMY[2]) : 0;
-                                date = new Date(year, month, day, hours, minutes, seconds);
-                            }
-                        }
-                        if (isNaN(date.getTime())) {
-                            console.warn(`Could not parse date string: ${isoString}`);
-                            return 'Formato Inválido';
-                        }
+                        console.warn(`Could not parse date string: ${isoString}`);
+                        return 'Formato Inválido';
                     }
                 }
-
-                const formattedDay = String(date.getDate()).padStart(2, '0');
-                const formattedMonth = String(date.getMonth() + 1).padStart(2, '0');
-                const formattedYear = date.getFullYear();
-                const formattedHours = String(date.getHours()).padStart(2, '0');
-                const formattedMinutes = String(date.getMinutes()).padStart(2, '0');
-                const formattedSeconds = String(date.getSeconds()).padStart(2, '0');
-
-                return `${formattedDay}/${formattedMonth}/${formattedYear} ${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
-            } catch (e) {
-                console.error("Erro ao formatar data/hora:", e);
-                return 'Formato Inválido';
             }
+
+            const formattedDay = String(date.getDate()).padStart(2, '0');
+            const formattedMonth = String(date.getMonth() + 1).padStart(2, '0');
+            const formattedYear = date.getFullYear();
+            const formattedHours = String(date.getHours()).padStart(2, '0');
+            const formattedMinutes = String(date.getMinutes()).padStart(2, '0');
+            const formattedSeconds = String(date.getSeconds()).padStart(2, '0');
+
+            return `${formattedDay}/${formattedMonth}/${formattedYear} ${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
+        } catch (e) {
+            console.error("Erro ao formatar data/hora:", e);
+            return 'Formato Inválido';
         }
+    }
 
-        // --- NOVA FUNÇÃO: Renderiza um único card a partir de um objeto de registro JSON ---
-        function renderCard(r) {
-            let cardClasses = 'card';
-            let statusText = '';
-            let statusClass = '';
+    // --- FUNÇÃO ORIGINAL: Renderiza um único card a partir de um objeto de registro JSON ---
+    // Ajustado para adicionar os data-attributes necessários para a atualização incremental
+    function renderCard(r) {
+        let cardClasses = 'card';
+        let statusText = '';
+        let statusClass = '';
 
-            // Lógica para determinar as classes do card e o status label
-            if (r.finalizada === 1) {
-                cardClasses += ' finalizado';
-                statusText = 'Finalizado';
+        // Lógica para determinar as classes do card e o status label
+        if (r.finalizada === 1) {
+            cardClasses += ' finalizado';
+            statusText = 'Finalizado';
+            statusClass = 'finalizado-label';
+        } else if (r.cancelado === 1) {
+            statusText = 'Cancelado';
+            statusClass = 'cancelado-label';
+        } else {
+            if (r.em_separacao === 0) {
+                cardClasses += ' aguardando-carregamento';
+                statusText = 'Aguardando Carregar';
+                statusClass = 'em-fila-label';
+            } else if (r.em_separacao === 1) {
+                cardClasses += ' separado';
+                statusText = 'Em Separação';
+                statusClass = 'em-separacao-label';
+            } else if (r.em_separacao === 2) {
+                cardClasses += ' aguardando-finalizacao';
+                statusText = 'Aguardando Transferência';
+                statusClass = 'carregamento-concluido-label';
+            } else if (r.em_separacao === 3) { // Este caso deve ser raro se finalizada=1 for prioritário
+                statusText = 'Finalizado (Transferido)';
                 statusClass = 'finalizado-label';
-            } else if (r.cancelado === 1) {
-                statusText = 'Cancelado';
-                statusClass = 'cancelado-label';
             } else {
-                if (r.em_separacao === 0) {
-                    cardClasses += ' aguardando-carregamento';
-                    statusText = 'Aguardando Carregar';
-                    statusClass = 'em-fila-label';
-                } else if (r.em_separacao === 1) {
-                    cardClasses += ' separado';
-                    statusText = 'Em Separação';
-                    statusClass = 'em-separacao-label';
-                } else if (r.em_separacao === 2) {
-                    cardClasses += ' aguardando-finalizacao';
-                    statusText = 'Aguardando Transferência';
-                    statusClass = 'carregamento-concluido-label';
-                } else if (r.em_separacao === 3) { // Este caso deve ser raro se finalizada=1 for prioritário
-                    statusText = 'Finalizado (Transferido)';
-                    statusClass = 'finalizado-label';
+                statusText = 'Status Desconhecido';
+                statusClass = 'aguardando-carregamento-label'; // Fallback
+            }
+        }
+
+        if (r.tipo_entrega && r.tipo_entrega.toLowerCase() === 'no-show') {
+            statusText = statusText + ' (No-Show)';
+            cardClasses += ' noshow-card'; // Adiciona classe para estilo No-Show no card
+        }
+
+        const horaFinalizacaoText = formatarDataHora(r.hora_finalizacao);
+
+        // Retorna o HTML do card
+        // ATENÇÃO: Adicionados data-attributes para 'finalizada', 'em_separacao' e 'cancelado'
+        // Estes são essenciais para a função updateCardsIncrementally comparar e atualizar cards.
+        return `
+            <div class="${cardClasses}"
+                ondblclick="handleCardDoubleClick(${r.id}, ${r.finalizada}, ${r.em_separacao}, '${(r.tipo_entrega || '').toLowerCase()}')"
+                data-id="${r.id}"
+                data-rota="${(r.rota || '').toLowerCase()}"
+                data-cidade="${(r.cidade_entrega || '').toLowerCase()}"
+                data-entrega="${(r.tipo_entrega || '').toLowerCase()}"
+                data-separacao="${r.em_separacao}"
+                data-finalizado="${r.finalizada}"
+                data-cancelado="${r.cancelado}"> <p><strong>Data\\Hora:</strong> ${formatarDataHora(r.data_hora_login)}</p>
+                <p><strong>Nome:</strong> ${r.nome || ''}</p>
+                <p><strong>Matrícula:</strong> ${r.matricula || ''}</p>
+                <p><strong>Rota:</strong> <em>${r.rota || ''}</em></p>
+                <p><strong>Tipo de Entrega:</strong> <em>${r.tipo_entrega || ''}</em></p>
+                <p><strong>Cidade:</strong> <em>${r.cidade_entrega || ''}</em></p>
+                <p><strong>Hora Finalização:</strong> ${horaFinalizacaoText}</p>
+                ${statusText ? `<span class="status-label ${statusClass}">${statusText}</span>` : ''}
+            </div>
+        `;
+    }
+
+    // --- FUNÇÃO NOVA: Atualiza os links de paginação (mantida) ---
+    function updatePagination(paginaAtual, totalPaginas) {
+        const paginationContainer = document.getElementById('paginationContainer');
+        if (!paginationContainer) return;
+
+        let paginationHTML = '';
+        if (totalPaginas > 1) {
+            paginationHTML += `<span>Página ${paginaAtual} de ${totalPaginas}</span><br>`;
+            if (paginaAtual > 1) {
+                paginationHTML += `<a href="#" onclick="changePage(${paginaAtual - 1}); return false;">Anterior</a>`;
+            }
+            // Lógica de exibição de páginas (limita para não sobrecarregar)
+            const maxPagesToShow = 5; // Total de páginas a mostrar ao redor da página atual
+            let startPage = Math.max(1, paginaAtual - Math.floor(maxPagesToShow / 2));
+            let endPage = Math.min(totalPaginas, startPage + maxPagesToShow - 1);
+
+            // Ajusta startPage e endPage se estiver perto dos limites
+            if (endPage - startPage + 1 < maxPagesToShow) {
+                startPage = Math.max(1, endPage - maxPagesToShow + 1);
+            }
+
+            if (startPage > 1) {
+                paginationHTML += `<a href="#" onclick="changePage(1); return false;">1</a>`;
+                if (startPage > 2) {
+                    paginationHTML += `...`;
+                }
+            }
+
+            for (let p = startPage; p <= endPage; p++) {
+                if (p === paginaAtual) {
+                    paginationHTML += `<strong>${p}</strong>`;
                 } else {
-                    statusText = 'Status Desconhecido';
-                    statusClass = 'aguardando-carregamento-label'; // Fallback
+                    paginationHTML += `<a href="#" onclick="changePage(${p}); return false;">${p}</a>`;
                 }
             }
 
-            if (r.tipo_entrega && r.tipo_entrega.toLowerCase() === 'no-show') {
-                statusText = statusText + ' (No-Show)';
-                cardClasses += ' noshow-card'; // Adiciona classe para estilo No-Show no card
+            if (endPage < totalPaginas) {
+                if (endPage < totalPaginas - 1) {
+                    paginationHTML += `...`;
+                }
+                paginationHTML += `<a href="#" onclick="changePage(${totalPaginas}); return false;">${totalPaginas}</a>`;
             }
-
-            const horaFinalizacaoText = formatarDataHora(r.hora_finalizacao);
-
-            // Retorna o HTML do card
-            return `
-                <div class="${cardClasses}"
-                    ondblclick="handleCardDoubleClick(${r.id}, ${r.finalizada}, ${r.em_separacao}, '${(r.tipo_entrega || '').toLowerCase()}')"
-                    data-id="${r.id}"
-                    data-rota="${(r.rota || '').toLowerCase()}"
-                    data-cidade="${(r.cidade_entrega || '').toLowerCase()}"
-                    data-entrega="${(r.tipo_entrega || '').toLowerCase()}"
-                    data-separacao="${r.em_separacao}"
-                    data-finalizado="${r.finalizada}">
-                    <p><strong>Data\\Hora:</strong> ${formatarDataHora(r.data_hora_login)}</p>
-                    <p><strong>Nome:</strong> ${r.nome || ''}</p>
-                    <p><strong>Matrícula:</strong> ${r.matricula || ''}</p>
-                    <p><strong>Rota:</strong> <em>${r.rota || ''}</em></p>
-                    <p><strong>Tipo de Entrega:</strong> <em>${r.tipo_entrega || ''}</em></p>
-                    <p><strong>Cidade:</strong> <em>${r.cidade_entrega || ''}</em></p>
-                    <p><strong>Hora Finalização:</strong> ${horaFinalizacaoText}</p>
-                    ${statusText ? `<span class="status-label ${statusClass}">${statusText}</span>` : ''}
-                </div>
-            `;
-        }
-
-        // --- NOVA FUNÇÃO: Atualiza os links de paginação ---
-        function updatePagination(paginaAtual, totalPaginas) {
-            const paginationContainer = document.getElementById('paginationContainer');
-            if (!paginationContainer) return;
-
-            let paginationHTML = '';
-            if (totalPaginas > 1) {
-                paginationHTML += `<span>Página ${paginaAtual} de ${totalPaginas}</span><br>`;
-                if (paginaAtual > 1) {
-                    paginationHTML += `<a href="#" onclick="changePage(${paginaAtual - 1}); return false;">Anterior</a>`;
-                }
-                // Lógica de exibição de páginas (limita para não sobrecarregar)
-                const maxPagesToShow = 5; // Total de páginas a mostrar ao redor da página atual
-                let startPage = Math.max(1, paginaAtual - Math.floor(maxPagesToShow / 2));
-                let endPage = Math.min(totalPaginas, startPage + maxPagesToShow - 1);
-
-                // Ajusta startPage e endPage se estiver perto dos limites
-                if (endPage - startPage + 1 < maxPagesToShow) {
-                    startPage = Math.max(1, endPage - maxPagesToShow + 1);
-                }
-
-                if (startPage > 1) {
-                    paginationHTML += `<a href="#" onclick="changePage(1); return false;">1</a>`;
-                    if (startPage > 2) {
-                        paginationHTML += `...`;
-                    }
-                }
-
-                for (let p = startPage; p <= endPage; p++) {
-                    if (p === paginaAtual) {
-                        paginationHTML += `<strong>${p}</strong>`;
-                    } else {
-                        paginationHTML += `<a href="#" onclick="changePage(${p}); return false;">${p}</a>`;
-                    }
-                }
-
-                if (endPage < totalPaginas) {
-                    if (endPage < totalPaginas - 1) {
-                        paginationHTML += `...`;
-                    }
-                    paginationHTML += `<a href="#" onclick="changePage(${totalPaginas}); return false;">${totalPaginas}</a>`;
-                }
-                
-                if (paginaAtual < totalPaginas) {
-                    paginationHTML += `<a href="#" onclick="changePage(${paginaAtual + 1}); return false;">Próxima</a>`;
-                }
-            } else if (totalPaginas === 1 && currentPage === 1) {
-                paginationHTML += `<span>Página 1 de 1</span>`;
-            }
-
-            paginationContainer.innerHTML = paginationHTML;
-        }
-
-        // Função para mudar a página
-        function changePage(newPage) {
-            currentPage = newPage;
-            fetchAndUpdateRecords();
-        }
-
-        // --- FUNÇÃO PRINCIPAL: Busca e atualiza os registros via AJAX ---
-        async function fetchAndUpdateRecords() {
-            console.log('Iniciando atualização de registros...', new Date().toLocaleTimeString()); // Feedback no console
-
-            const dataInicio = document.getElementById('dataInicio').value;
-            const dataFim = document.getElementById('dataFim').value;
-            const rotaFiltro = document.getElementById('filtroRota').value;
-            const cidadeFiltro = document.getElementById('filtroCidade').value;
-            const entregaFiltro = document.getElementById('filtroEntrega').value;
-            const separacaoFiltro = document.getElementById('filtroSeparacao').value;
-
-            const params = new URLSearchParams();
-            params.append('pagina', currentPage);
-            if (dataInicio) params.append('data_inicio', dataInicio);
-            if (dataFim) params.append('data_fim', dataFim);
-            if (rotaFiltro) params.append('rota', rotaFiltro);
-            if (cidadeFiltro) params.append('cidade', cidadeFiltro);
-            if (entregaFiltro) params.append('tipo_entrega', entregaFiltro);
-            if (separacaoFiltro) params.append('em_separacao', separacaoFiltro);
-
-            const url = `/api/registros_data?${params.toString()}`;
-            const cardsContainer = document.getElementById('cardsContainer');
             
-            // Adiciona um indicador de carregamento
-            cardsContainer.innerHTML = '<p class="text-center text-gray-600 mt-8">Atualizando registros...</p>';
+            if (paginaAtual < totalPaginas) {
+                paginationHTML += `<a href="#" onclick="changePage(${paginaAtual + 1}); return false;">Próxima</a>`;
+            }
+        } else if (totalPaginas === 1 && currentPage === 1) {
+            paginationHTML += `<span>Página 1 de 1</span>`;
+        }
+
+        paginationContainer.innerHTML = paginationHTML;
+    }
+
+    // Função para mudar a página (mantida)
+    function changePage(newPage) {
+        currentPage = newPage;
+        fetchAndUpdateRecords();
+    }
+
+    // --- FUNÇÃO PRINCIPAL: Busca e atualiza os registros via AJAX (mantida) ---
+    // Esta função é para carga inicial, aplicação de filtros e mudança de página.
+    // Ela SEMPRE limpa e recria os cards.
+    async function fetchAndUpdateRecords() {
+        console.log('Iniciando atualização de registros (completa)...', new Date().toLocaleTimeString()); // Feedback no console
+
+        const dataInicio = document.getElementById('dataInicio').value;
+        const dataFim = document.getElementById('dataFim').value;
+        const rotaFiltro = document.getElementById('filtroRota').value;
+        const cidadeFiltro = document.getElementById('filtroCidade').value;
+        const entregaFiltro = document.getElementById('filtroEntrega').value;
+        const separacaoFiltro = document.getElementById('filtroSeparacao').value;
+
+        const params = new URLSearchParams();
+        params.append('pagina', currentPage);
+        if (dataInicio) params.append('data_inicio', dataInicio);
+        if (dataFim) params.append('data_fim', dataFim);
+        if (rotaFiltro) params.append('rota', rotaFiltro);
+        if (cidadeFiltro) params.append('cidade', cidadeFiltro);
+        if (entregaFiltro) params.append('tipo_entrega', entregaFiltro);
+        if (separacaoFiltro) params.append('em_separacao', separacaoFiltro);
+
+        const url = `/api/registros_data?${params.toString()}`;
+        const cardsContainer = document.getElementById('cardsContainer');
+        
+        // Adiciona um indicador de carregamento
+        cardsContainer.innerHTML = '<p class="text-center text-gray-600 mt-8">Atualizando registros...</p>';
 
 
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+
+            cardsContainer.innerHTML = ''; // Limpa os cards existentes
+
+            if (data.records && data.records.length > 0) {
+                data.records.forEach(record => {
+                    cardsContainer.innerHTML += renderCard(record);
+                });
+            } else {
+                cardsContainer.innerHTML = '<p class="text-center text-gray-600 mt-8">Nenhum registro encontrado com os filtros selecionados.</p>';
+            }
+
+            // Atualiza as variáveis globais de paginação
+            currentPage = data.pagina;
+            totalPages = data.total_paginas;
+            updatePagination(currentPage, totalPages);
+
+            console.log('Registros atualizados com sucesso (completa).'); // Feedback no console
+
+        } catch (error) {
+            console.error('Erro ao buscar e atualizar registros (completa):', error);
+            document.getElementById('cardsContainer').innerHTML = '<p class="text-center text-red-500 mt-8">Erro ao carregar registros.</p>';
+            // Opcional: showMessage('Erro ao carregar registros. Verifique a conexão ou o console para detalhes.');
+        }
+    }
+
+    // --- NOVA FUNÇÃO: Atualiza os cards de forma INCREMENTAL e inteligente ---
+    // Esta função é para ser usada com setInterval para atualizações em tempo real
+    async function updateCardsIncrementally() {
+    // 1. Condição para ignorar a atualização incremental se houver filtros ativos ou paginação
+    const dataInicio = document.getElementById('dataInicio').value;
+    const dataFim = document.getElementById('dataFim').value;
+    const rotaFiltro = document.getElementById('filtroRota').value;
+    const cidadeFiltro = document.getElementById('filtroCidade').value;
+    const entregaFiltro = document.getElementById('filtroEntrega').value;
+    const separacaoFiltro = document.getElementById('filtroSeparacao').value;
+
+    const hasActiveFilters = dataInicio || dataFim || rotaFiltro || cidadeFiltro || entregaFiltro || separacaoFiltro;
+
+    if (hasActiveFilters || currentPage !== 1) { 
+        // console.log('Atualização incremental ignorada devido a filtros ativos ou paginação.');
+        return; 
+    }
+
+    console.log('Iniciando atualização incremental de registros...', new Date().toLocaleTimeString());
+
+    try {
+        // 2. Chama a nova rota no Flask para obter SOMENTE os registros ATIVOS (sem paginação/filtros)
+        const response = await fetch('/api/current_active_records', {
+            cache: 'no-store' // <--- ADICIONE ESTA LINHA!
+        }); 
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const activeRecords = await response.json(); // Lista de todos os registros ativos do BD
+
+        const cardsContainer = document.getElementById('cardsContainer');
+        if (!cardsContainer) {
+            console.error('Elemento #cardsContainer não encontrado para atualização incremental.');
+            return;
+        }
+
+        // Mapeia os cards atualmente visíveis na página para fácil acesso
+        const existingCards = Array.from(cardsContainer.children).map(card => {
+            return {
+                id: parseInt(card.dataset.id), 
+                element: card
+            };
+        });
+
+        const currentActiveIds = new Set(activeRecords.map(record => record.id));
+        
+        let anyChange = false; 
+
+        // 1. REMOVER cards que não estão mais ativos no banco de dados
+        for (const card of existingCards) {
+            if (!currentActiveIds.has(card.id)) {
+                card.element.remove();
+                anyChange = true;
+                console.log(`Card ID ${card.id} removido.`);
+            }
+        }
+
+        // 2. Adicionar/Atualizar cards que pertencem à PRIMEIRA PÁGINA
+        const recordsForCurrentPage = activeRecords.slice(0, PER_PAGE); 
+        
+        for (const newRecord of recordsForCurrentPage) {
+            const existingCardElement = cardsContainer.querySelector(`.card[data-id="${newRecord.id}"]`);
+
+            if (existingCardElement) {
+                // O card já existe, vamos verificar se algum status ou dado relevante mudou
+                const oldEmSeparacao = parseInt(existingCardElement.dataset.separacao); 
+                const oldFinalizada = parseInt(existingCardElement.dataset.finalizado); 
+                const oldCancelado = parseInt(existingCardElement.dataset.cancelado);
+
+                // Verifique outros campos que podem mudar e precisam de atualização visual
+                const oldRota = existingCardElement.dataset.rota;
+                const oldCidade = existingCardElement.dataset.cidade;
+                const oldEntrega = existingCardElement.dataset.entrega;
+                const oldNome = existingCardElement.querySelector('p strong:nth-child(2)').nextSibling.textContent.trim(); // Exemplo: Pegar o nome atual
+
+                // Se houver qualquer mudança nos status ou outros campos importantes, re-renderiza o card
+                if (oldEmSeparacao !== newRecord.em_separacao ||
+                    oldFinalizada !== newRecord.finalizada ||
+                    oldCancelado !== newRecord.cancelado ||
+                    oldRota !== (newRecord.rota || '').toLowerCase() ||
+                    oldCidade !== (newRecord.cidade_entrega || '').toLowerCase() ||
+                    oldEntrega !== (newRecord.tipo_entrega || '').toLowerCase() ||
+                    oldNome !== newRecord.nome // Comparar o nome se ele puder mudar
+                    ) {
+                    
+                    const newCardHTML = renderCard(newRecord);
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = newCardHTML;
+                    const updatedCardElement = tempDiv.firstElementChild; 
+                    cardsContainer.replaceChild(updatedCardElement, existingCardElement); 
+                    anyChange = true;
+                    console.log(`Card ID ${newRecord.id} atualizado.`);
+                }
+            } else {
+                // O card não existe na UI, precisa ser ADICIONADO
+                // Para garantir que novos cards apareçam na ordem correta, a melhor abordagem
+                // é realmente limpar e re-renderizar o container se houver novas adições.
+                // OU, uma lógica de inserção mais complexa (inserir em posição específica).
+                // Por enquanto, vamos manter o innerHTML +=, mas se a ordem for problema, considere a recarga completa.
+                cardsContainer.innerHTML += renderCard(newRecord); 
+                anyChange = true;
+                console.log(`Card ID ${newRecord.id} adicionado.`);
+            }
+        }
+
+        // Opcional: Se a ordem dos cards é crucial e houve adições/remoções que podem
+        // bagunçar a ordem visual, force uma recarga completa. Isso causa um "flicker".
+        // Use com cautela, pois anula parte do benefício da atualização incremental.
+        // Se a quantidade de cards na tela não corresponde ao esperado pela API para a página 1,
+        // pode ser um sinal de que a ordem foi comprometida ou faltam/sobraram cards.
+        if (anyChange && cardsContainer.children.length !== recordsForCurrentPage.length) {
+            console.log("Detectadas grandes mudanças ou inconsistência na contagem de cards. Forçando recarga completa para garantir a ordem.");
+            fetchAndUpdateRecords(); // Chama a função que faz a recarga completa
+        }
+
+
+    } catch (error) {
+        console.error('Erro ao buscar atualizações incrementais:', error);
+    }
+}
+    // Modifica a função aplicarFiltros para não recarregar a página (mantida)
+    function aplicarFiltros() {
+        // Salva os valores dos filtros no localStorage
+        localStorage.setItem('dataInicioFiltro', document.getElementById('dataInicio').value);
+        localStorage.setItem('dataFimFiltro', document.getElementById('dataFim').value);
+        localStorage.setItem('rotaFiltro', document.getElementById('filtroRota').value);
+        localStorage.setItem('cidadeFiltro', document.getElementById('filtroCidade').value);
+        localStorage.setItem('entregaFiltro', document.getElementById('filtroEntrega').value);
+        localStorage.setItem('separacaoFiltro', document.getElementById('filtroSeparacao').value);
+
+        // Redefine a página para 1 ao aplicar novos filtros
+        currentPage = 1;
+        fetchAndUpdateRecords(); // Chama a função para buscar e atualizar os cards
+    }
+
+    // Modifica a função limparFiltro para não recarregar a página (mantida)
+    function limparFiltro() {
+        // Limpa os valores dos filtros do localStorage
+        localStorage.removeItem('dataInicioFiltro');
+        localStorage.removeItem('dataFimFiltro');
+        localStorage.removeItem('rotaFiltro');
+        localStorage.removeItem('cidadeFiltro');
+        localStorage.removeItem('entregaFiltro');
+        localStorage.removeItem('separacaoFiltro');
+
+        // Limpa os campos do formulário
+        document.getElementById('dataInicio').value = '';
+        document.getElementById('dataFim').value = '';
+        document.getElementById('filtroRota').value = '';
+        document.getElementById('filtroCidade').value = '';
+        document.getElementById('filtroEntrega').value = '';
+        document.getElementById('filtroSeparacao').value = '';
+
+        // Redefine a página para 1 e busca os registros
+        currentPage = 1;
+        fetchAndUpdateRecords();
+    }
+
+    // --- Lógica do Menu Lateral (mantida) ---
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const overlay = document.getElementById('overlay');
+
+    function openSidebar() {
+        sidebar.classList.add('open');
+        overlay.style.display = 'block';
+    }
+
+    function closeSidebar() {
+        sidebar.classList.remove('open');
+        overlay.style.display = 'none';
+    }
+
+    sidebarToggle.addEventListener('click', openSidebar);
+    overlay.addEventListener('click', closeSidebar);
+
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 768) {
+            closeSidebar();
+        }
+    });
+
+    // Carrega os filtros salvos ao carregar a página e aplica os filtros DOM
+    document.addEventListener('DOMContentLoaded', function() {
+        const rotaFiltroSalvo = localStorage.getItem('rotaFiltro');
+        const cidadeFiltroSalvo = localStorage.getItem('cidadeFiltro');
+        const entregaFiltroSalvo = localStorage.getItem('entregaFiltro');
+        const separacaoFiltroSalvo = localStorage.getItem('separacaoFiltro');
+        const dataInicioFiltroSalvo = localStorage.getItem('dataInicioFiltro');
+        const dataFimFiltroSalvo = localStorage.getItem('dataFimFiltro');
+
+        if (rotaFiltroSalvo) document.getElementById('filtroRota').value = rotaFiltroSalvo;
+        if (cidadeFiltroSalvo) document.getElementById('filtroCidade').value = cidadeFiltroSalvo;
+        if (entregaFiltroSalvo) document.getElementById('filtroEntrega').value = entregaFiltroSalvo;
+        if (separacaoFiltroSalvo) document.getElementById('filtroSeparacao').value = separacaoFiltroSalvo;
+
+        // Se os campos de data já foram preenchidos pelo Jinja na primeira carga,
+        // eles têm prioridade sobre o localStorage para evitar duplicidade.
+        if (dataInicioFiltroSalvo && !document.getElementById('dataInicio').value) {
+            document.getElementById('dataInicio').value = dataInicioFiltroSalvo;
+        }
+        if (dataFimFiltroSalvo && !document.getElementById('dataFim').value) {
+            document.getElementById('dataFim').value = dataFimFiltroSalvo;
+        }
+
+        // Inicia o fetch inicial dos registros (completa)
+        fetchAndUpdateRecords();
+
+        // ATENÇÃO: Agora o setInterval chama a função de atualização INCREMENTAL
+        // Esta função é otimizada para atualizar SOMENTE o que mudou na UI,
+        // mas só funciona na PRIMEIRA PÁGINA e SEM FILTROS ativos.
+        setInterval(updateCardsIncrementally, 8000); 
+    });
+
+    // --- FUNÇÃO ORIGINAL handleCardDoubleClick (mantida e compatibilizada) ---
+    async function handleCardDoubleClick(id, isFinalizada, emSeparacao, tipoEntrega) {
+        console.log(`Duplo clique no registro ID: ${id}, Finalizado: ${isFinalizada}, Em Separação: ${emSeparacao}, Tipo de Entrega: ${tipoEntrega}`);
+
+        if (isFinalizada === 1) {
+            showMessage('Este registro já está finalizado e não pode ser alterado.');
+            return;
+        }
+
+        if (emSeparacao === 2 && tipoEntrega === 'no-show') {
+            showMessage('Este registro está aguardando transferência e não pode ser editado.');
+            return;
+        }
+        
+        // Se já estiver "Em Separação" (1) ou "Aguardando Transferência" (2),
+        // apenas redireciona para a página de associação.
+        if (emSeparacao === 1 || emSeparacao === 2) {
+            console.log(`Registro ID: ${id} já está em separação (${emSeparacao}). Redirecionando para associacao...`);
+            window.location.href = `/associacao?id=${id}`;
+            return;
+        }
+
+        // Se emSeparacao for 0 (Aguardando Carregamento), tenta mudar para 1 (Em Separação)
+        if (emSeparacao === 0) {
             try {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
+                const response = await fetch(`/api/update_separacao_status/${id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ em_separacao_status: 1 }) // Envia o novo status 1 (Em Separação)
+                });
 
-                cardsContainer.innerHTML = ''; // Limpa os cards existentes
-
-                if (data.records && data.records.length > 0) {
-                    data.records.forEach(record => {
-                        cardsContainer.innerHTML += renderCard(record);
-                    });
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Status atualizado com sucesso:', data);
+                    showMessage(`Status do registro ${id} atualizado para "Em Separação"!`);
+                    // Após a atualização bem-sucedida, atualize os cards e redirecione.
+                    // Em vez de fetchAndUpdateRecords() que recarrega TUDO,
+                    // uma atualização incremental seria melhor aqui, mas para garantir
+                    // a consistência após uma ação do usuário, fetchAndUpdateRecords é aceitável.
+                    fetchAndUpdateRecords(); 
+                    window.location.href = `/associacao?id=${id}`; // Redireciona para associação
                 } else {
-                    cardsContainer.innerHTML = '<p class="text-center text-gray-600 mt-8">Nenhum registro encontrado com os filtros selecionados.</p>';
+                    const errorData = await response.json();
+                    showMessage(`Erro ao atualizar status: ${errorData.error || response.statusText}`);
+                    console.error('Erro na resposta da API:', errorData);
                 }
-
-                // Atualiza as variáveis globais de paginação
-                currentPage = data.pagina;
-                totalPages = data.total_paginas;
-                updatePagination(currentPage, totalPages);
-
-                console.log('Registros atualizados com sucesso.'); // Feedback no console
-
             } catch (error) {
-                console.error('Erro ao buscar e atualizar registros:', error);
-                document.getElementById('cardsContainer').innerHTML = '<p class="text-center text-red-500 mt-8">Erro ao carregar registros.</p>';
-                // Opcional: showMessage('Erro ao carregar registros. Verifique a conexão ou o console para detalhes.');
+                console.error('Erro na requisição fetch:', error);
+                showMessage('Erro de rede ou interno ao tentar atualizar o status. Verifique o console para mais detalhes.');
             }
+        } else {
+            console.warn(`Estado de separação desconhecido ou não tratável para clique: ${emSeparacao}. Redirecionando mesmo assim.`);
+            window.location.href = `/associacao?id=${id}`;
         }
-
-        // Modifica a função aplicarFiltros para não recarregar a página
-        function aplicarFiltros() {
-            // Salva os valores dos filtros no localStorage
-            localStorage.setItem('dataInicioFiltro', document.getElementById('dataInicio').value);
-            localStorage.setItem('dataFimFiltro', document.getElementById('dataFim').value);
-            localStorage.setItem('rotaFiltro', document.getElementById('filtroRota').value);
-            localStorage.setItem('cidadeFiltro', document.getElementById('filtroCidade').value);
-            localStorage.setItem('entregaFiltro', document.getElementById('filtroEntrega').value);
-            localStorage.setItem('separacaoFiltro', document.getElementById('filtroSeparacao').value);
-
-            // Redefine a página para 1 ao aplicar novos filtros
-            currentPage = 1;
-            fetchAndUpdateRecords(); // Chama a função para buscar e atualizar os cards
-        }
-
-        // Modifica a função limparFiltro para não recarregar a página
-        function limparFiltro() {
-            // Limpa os valores dos filtros do localStorage
-            localStorage.removeItem('dataInicioFiltro');
-            localStorage.removeItem('dataFimFiltro');
-            localStorage.removeItem('rotaFiltro');
-            localStorage.removeItem('cidadeFiltro');
-            localStorage.removeItem('entregaFiltro');
-            localStorage.removeItem('separacaoFiltro');
-
-            // Limpa os campos do formulário
-            document.getElementById('dataInicio').value = '';
-            document.getElementById('dataFim').value = '';
-            document.getElementById('filtroRota').value = '';
-            document.getElementById('filtroCidade').value = '';
-            document.getElementById('filtroEntrega').value = '';
-            document.getElementById('filtroSeparacao').value = '';
-
-            // Redefine a página para 1 e busca os registros
-            currentPage = 1;
-            fetchAndUpdateRecords();
-        }
-
-        // --- Lógica do Menu Lateral (mantida) ---
-        const sidebar = document.getElementById('sidebar');
-        const sidebarToggle = document.getElementById('sidebarToggle');
-        const overlay = document.getElementById('overlay');
-
-        function openSidebar() {
-            sidebar.classList.add('open');
-            overlay.style.display = 'block';
-        }
-
-        function closeSidebar() {
-            sidebar.classList.remove('open');
-            overlay.style.display = 'none';
-        }
-
-        sidebarToggle.addEventListener('click', openSidebar);
-        overlay.addEventListener('click', closeSidebar);
-
-        window.addEventListener('resize', function() {
-            if (window.innerWidth > 768) {
-                closeSidebar();
-            }
-        });
-
-        // Carrega os filtros salvos ao carregar a página e aplica os filtros DOM
-        document.addEventListener('DOMContentLoaded', function() {
-            const rotaFiltroSalvo = localStorage.getItem('rotaFiltro');
-            const cidadeFiltroSalvo = localStorage.getItem('cidadeFiltro');
-            const entregaFiltroSalvo = localStorage.getItem('entregaFiltro');
-            const separacaoFiltroSalvo = localStorage.getItem('separacaoFiltro');
-            const dataInicioFiltroSalvo = localStorage.getItem('dataInicioFiltro');
-            const dataFimFiltroSalvo = localStorage.getItem('dataFimFiltro');
-
-            if (rotaFiltroSalvo) document.getElementById('filtroRota').value = rotaFiltroSalvo;
-            if (cidadeFiltroSalvo) document.getElementById('filtroCidade').value = cidadeFiltroSalvo;
-            if (entregaFiltroSalvo) document.getElementById('filtroEntrega').value = entregaFiltroSalvo;
-            if (separacaoFiltroSalvo) document.getElementById('filtroSeparacao').value = separacaoFiltroSalvo;
-
-            // Se os campos de data já foram preenchidos pelo Jinja na primeira carga,
-            // eles têm prioridade sobre o localStorage para evitar duplicidade.
-            if (dataInicioFiltroSalvo && !document.getElementById('dataInicio').value) {
-                document.getElementById('dataInicio').value = dataInicioFiltroSalvo;
-            }
-            if (dataFimFiltroSalvo && !document.getElementById('dataFim').value) {
-                document.getElementById('dataFim').value = dataFimFiltroSalvo;
-            }
-
-            // Inicia o fetch inicial dos registros e as atualizações automáticas
-            fetchAndUpdateRecords();
-            // Atualiza a cada 8 segundos (8000 milissegundos)
-            setInterval(fetchAndUpdateRecords, 8000); 
-        });
-
-        // --- FUNÇÃO ORIGINAL handleCardDoubleClick (mantida e compatibilizada) ---
-        async function handleCardDoubleClick(id, isFinalizada, emSeparacao, tipoEntrega) {
-            console.log(`Duplo clique no registro ID: ${id}, Finalizado: ${isFinalizada}, Em Separação: ${emSeparacao}, Tipo de Entrega: ${tipoEntrega}`);
-
-            if (isFinalizada === 1) {
-                showMessage('Este registro já está finalizado e não pode ser alterado.');
-                return;
-            }
-
-            if (emSeparacao === 2 && tipoEntrega === 'no-show') {
-                showMessage('Este registro está aguardando transferência e não pode ser editado.');
-                return;
-            }
-            
-            // Se já estiver "Em Separação" (1) ou "Aguardando Transferência" (2),
-            // apenas redireciona para a página de associação.
-            if (emSeparacao === 1 || emSeparacao === 2) {
-                console.log(`Registro ID: ${id} já está em separação (${emSeparacao}). Redirecionando para associacao...`);
-                window.location.href = `/associacao?id=${id}`;
-                return;
-            }
-
-            // Se emSeparacao for 0 (Aguardando Carregamento), tenta mudar para 1 (Em Separação)
-            if (emSeparacao === 0) {
-                try {
-                    const response = await fetch(`/api/update_separacao_status/${id}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ em_separacao_status: 1 }) // Envia o novo status 1 (Em Separação)
-                    });
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        console.log('Status atualizado com sucesso:', data);
-                        showMessage(`Status do registro ${id} atualizado para "Em Separação"!`);
-                        // Após a atualização bem-sucedida, atualize os cards e redirecione.
-                        fetchAndUpdateRecords(); // Atualiza os cards imediatamente
-                        window.location.href = `/associacao?id=${id}`; // Redireciona para associação
-                    } else {
-                        const errorData = await response.json();
-                        showMessage(`Erro ao atualizar status: ${errorData.error || response.statusText}`);
-                        console.error('Erro na resposta da API:', errorData);
-                    }
-                } catch (error) {
-                    console.error('Erro na requisição fetch:', error);
-                    showMessage('Erro de rede ou interno ao tentar atualizar o status. Verifique o console para mais detalhes.');
-                }
-            } else {
-                console.warn(`Estado de separação desconhecido ou não tratável para clique: ${emSeparacao}. Redirecionando mesmo assim.`);
-                window.location.href = `/associacao?id=${id}`;
-            }
-        }
-    </script>
+    }
+</script>
 </body>
 </html>

@@ -596,7 +596,7 @@
             <button type="submit" class="btn-cancelar cancelar-noshow-btn" {% if registro.em_separacao == 4 or registro.em_separacao == 3 %}disabled{% endif %}>Cancelar</button>
         </form>
         <form action="{{ url_for('transferir_no_show_para_registro', no_show_id=registro.id, data=data_filtro, nome=nome_filtro, matricula=matricula_filtro, rota=rota_filtro, status=status_filtro) }}" method="POST" class="transferir-destaque">
-            <button type="submit" class="btn-transferir" {% if registro.em_separacao == 4 or registro.em_separacao == 3 %}disabled{% endif %}>Transferir para Carregamento</button>
+            <button type="submit" class="btn-transferir" {% if registro.em_separacao == 4 or registro.em_separacao == 3 %}disabled{% endif %}>Transferir</button>
         </form>
         {% if registro.em_separacao == 4 %}
             {# Botão "Finalizar" só aparece após a transferência #}
