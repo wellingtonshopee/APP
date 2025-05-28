@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Registros</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            padding-top: 120px; /* Altura do banner + filtros */
+            transition: margin-left 0.3s ease;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -250px;
+            width: 250px;
+            height: 100%;
+            background-color: #1f2937;
+            color: white;
+            transition: left 0.3s ease;
+            z-index: 1000;
+            padding-top: 60px;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
+            overflow-y: auto;
+        }
+
+        .sidebar.open {
+            left: 0;
+        }
+
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar ul li {
+            padding: 15px 20px;
+            border-bottom: 1px solid #374151;
+        }
+
+        .sidebar ul li:last-child {
+            border-bottom: none;
+        }
+
+        .sidebar ul li a {
+            color: white;
+            text-decoration: none;
+            font-size: 0.95em;
+            display: block;
+            transition: color 0.2s ease;
+        }
+
+        .sidebar ul li a:hover {
+            color: #9ca3af;
+        }
+
+        .sidebar-toggle {
+            background-color: #10b981;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1.2em;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.2s ease;
+            margin-right: 10px;
+        }
+
+        .sidebar-toggle:hover {
+            background-color: #059669;
+        }
+
+        .banner {
+            background-color: #f44336;
+            color: #fff;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: auto;
+            flex-wrap: wrap;
+            box-sizing: border-box;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 998;
+        }
+
+        .logo-banner {
+            display: flex;
+            align-items: center;
+            margin-right: 20px;
+            margin-bottom: 10px;
+        }
+
+        .logo-banner img {
+            max-height: 30px;
+        }
+
+        .banner-title {
+            margin: 0;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+
+        .filter-container {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+            width: 100%;
+            justify-content: flex-start;
+        }
+
+        .filter-container label {
+            font-size: 0.9em;
+        }
+
+        .filter-container input[type="date"],
+        .filter-container select,
+        .filter-container input[type="text"] {
+            padding: 6px;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .filter-container button {
+            padding: 6px 10px;
+            border: none;
+            border-radius: 4px;
+            background-color: #555;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-size: 0.8em;
+        }
+
+        #export-xls-button {
+            background-color: #28a745;
+        }
+
+        #export-xls-button:hover {
+            background-color: #218838;
+        }
+
+        .filter-container button:hover {
+            background-color: #777;
+        }
+
+        .card-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 20px;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .card {
+            background-color: #d3d7d4;
+            border-radius: 6px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            padding: 8px;
+            transition: transform 0.3s ease;
+            font-size: 0.8em;
+            width: calc(33% - 20px);
+            min-width: 200px;
+            box-sizing: border-box;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+        }
+
+        .card-title {
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-bottom: 3px;
+            color: #333;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .card-info {
+            margin-bottom: 2px;
+            color: #555;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            font-size: 0.8em;
+        }
+
+        .card-finalizado {
+            font-weight: bold;
+            color: #c6cec8;
+            margin-top: 3px;
+            text-align: right;
+            font-size: 0.7em;
+        }
+
+        @media screen and (max-width: 768px) {
+            body {
+                padding-top: 180px;
+            }
+            .card {
+                width: calc(50% - 20px);
+            }
+            .banner {
+                height: auto;
+            }
+            .banner-content {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                height: auto;
+                padding-bottom: 10px;
+            }
+            .banner h1 {
+                text-align: center;
+                margin-left: 0;
+                margin-top: 10px;
+            }
+            .banner .logo {
+                margin-right: 0;
+            }
+            .filter-container {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 5px;
+            }
+            .filter-container input,
+            .filter-container select,
+            .filter-container button {
+                width: 100%;
+                box-sizing: border-box;
+                min-width: auto;
+            }
+            .sidebar {
+                width: 200px;
+                left: -200px;
+            }
+            .sidebar.open {
+                left: 0;
+            }
+            .sidebar-toggle {
+                position: static;
+                margin-left: auto;
+                top: auto;
+                left: auto;
+                z-index: auto;
+            }
+        }
+
+        @media screen and (max-width: 480px) {
+            .card {
+                width: 100%;
+            }
+            .banner {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .filter-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    {# Menu Lateral #}
+    <aside class="sidebar" id="sidebar">
+        <ul>
+            <li><a href="{{ url_for('menu_principal') }}">Página Inicial</a></li>
+<li><a href="{{ url_for('login') }}">Login Drive</a></li>
+<li><a href="{{ url_for('cadastro') }}">Cadastro Drive</a></li>
+<li><a href="{{ url_for('registros') }}">Painel do Operador</a></li>
+<li><a href="{{ url_for('registro_no_show') }}">Listar Registros No-Show</a></li>
+<li><a href="{{ url_for('associacao_no_show') }}">Criar Registro No-Show</a></li>
+<li><a href="{{ url_for('registros_finalizados') }}">Relatório de Registros</a></li>
+        </ul>
+    </aside>
+
+    {# Overlay para fechar o menu ao clicar fora #}
+    <div class="overlay" id="overlay"></div>
+
+    <div class="banner">
+        <div class="logo-banner">
+            <img src="{{ url_for('static', filename='imagem/logop.png') }}" alt="shopee">
+        </div>
+        {# Título dinâmico para mostrar qual DB está sendo exibido #}
+        <h1 class="banner-title">Relatório de {{ display_db_name }} - Sistema de Gerenciamento Operacional</h1>
+        <div class="filter-container">
+            {# Botão para abrir/fechar o menu lateral #}
+            <button class="sidebar-toggle" id="sidebarToggle">☰</button>
+
+            {# SELETOR DE BANCO DE DADOS #}
+            <label for="db-selector">Pesquisar em:</label>
+            <select id="db-selector">
+                <option value="all" {% if db_name == 'all' %}selected{% endif %}>Todos os Registros</option>
+                <option value="registros" {% if db_name == 'registros' %}selected{% endif %}>Registros Principais</option>
+                <option value="no_show" {% if db_name == 'no_show' %}selected{% endif %}>Registros de No-Show</option>
+            </select>
+            {# FIM DO SELETOR #}
+
+            <label for="start-date-filter">De:</label>
+            <input type="date" id="start-date-filter" value="{{ data }}">
+
+            <label for="end-date-filter">Até:</label>
+            <input type="date" id="end-date-filter">
+
+            <label for="tipo-entrega-filter"></label>
+            <select id="tipo-entrega-filter">
+                <option value="">Todos</option>
+                <option value="Normal" {% if tipo_entrega == 'Normal' %}selected{% endif %}>Normal</option>
+                <option value="No-Show" {% if tipo_entrega == 'No-Show' %}selected{% endif %}>No-Show</option>
+            </select>
+
+            <label for="rota-filter"></label>
+            <input type="text" id="rota-filter" placeholder="Digite a rota" value="{{ rota }}">
+
+            {# FILTRO DE STATUS FINALIZADO #}
+            <label for="finalizado-filter"></label>
+            <select id="finalizado-filter">
+                <option value="" {% if finalizado == '' %}selected{% endif %}>Todos</option>
+                <option value="1" {% if finalizado == '1' %}selected{% endif %}>Finalizados</option>
+                <option value="0" {% if finalizado == '0' %}selected{% endif %}>Não Finalizados</option>
+            </select>
+            {# FIM DO FILTRO #}
+
+            <button id="limpar-filtro">Limpar Filtros</button>
+            <button id="export-xls-button">Exportar XLS</button>
+        </div>
+    </div>
+    <div class="card-container">
+        {% for registro in registros %}
+        <div class="card"
+             data-data-hora-login="{{ registro.data_hora_login.strftime('%Y-%m-%d %H:%M:%S') }}"
+             data-tipo-entrega="{{ registro.tipo_entrega }}"
+             data-rota="{{ registro.rota if registro.__tablename__ == 'registros' else (registro.gaiola if registro.gaiola is not none else '') }}" {# Rota ou Gaiola, com fallback para vazio #}
+             data-matricula="{{ registro.matricula }}"
+             data-nome="{{ registro.nome }}"
+             data-cidade-entrega="{{ registro.cidade_entrega if registro.__tablename__ == 'registros' else '' }}"
+             data-gaiola-rua="{{ registro.gaiola if registro.__tablename__ == 'registros' else (registro.rua if registro.rua is not none else '') }}" {# Gaiola ou Rua, com fallback para vazio #}
+             data-estacao="{{ registro.estacao }}"
+             data-hora-finalizacao="{{ registro.hora_finalizacao.strftime('%Y-%m-%d %H:%M:%S') if registro.hora_finalizacao else '' }}"
+             data-finalizado="{{ registro.finalizada }}">
+
+            <p><strong>Tipo de Registro:</strong> {% if registro.__tablename__ == 'registros' %}Principal{% else %}No-Show{% endif %}</p>
+            {# DEBUG: Exibe o nome da tabela para cada registro #}
+            <p style="font-size: 0.7em; color: #888;">(Tabela: {{ registro.__tablename__ }})</p>
+
+            <p><strong>Data / Hora Chegada:</strong> {{ registro.data_hora_login|formata_data_hora }}</p>
+            <p><strong>Matrícula:</strong> {{ registro.matricula }}</p>
+            <p><strong>Nome:</strong> {{ registro.nome }}</p>
+            
+            {# Exibe Cidade de Entrega apenas para registros da tabela 'registros' #}
+            {% if registro.__tablename__ == 'registros' %}
+                <p><strong>Cidade:</strong> {{ registro.cidade_entrega }}</p>
+            {% endif %}
+
+            {# Rota (para Registro) ou Gaiola (para NoShow) #}
+            <p><strong>Rota:</strong> {{ registro.rota if registro.__tablename__ == 'registros' else (registro.gaiola if registro.gaiola is not none else 'N/A') }}</p>
+            
+            <p><strong>Tipo de Entrega:</strong> {{ registro.tipo_entrega }}</p>
+            <p><strong>Estação:</strong> {{ registro.estacao }}</p>
+            
+            {# Gaiola (para Registro) ou Rua (para NoShow) #}
+            <p><strong>Gaiola / Rua:</strong> {{ registro.gaiola if registro.__tablename__ == 'registros' else (registro.rua if registro.rua is not none else 'N/A') }}</p>
+
+            <p><strong>Data / Hora Finalização:</strong> {{ registro.hora_finalizacao|formata_data_hora }}</p>
+            <p><strong>Finalizado:</strong> {% if registro.finalizada == 1 %}Sim{% else %}Não{% endif %}</p>
+        </div>
+        {% else %}
+        <p>Nenhum registro encontrado com os filtros selecionados.</p>
+        {% endfor %}
+    </div>
+    <div class="paginacao" style="text-align: center; margin-top: 20px;">
+        {% if total_paginas > 1 %}
+            <span>Página {{ pagina }} de {{ total_paginas }}</span><br>
+            {# Links de paginação atualizados para incluir db_name #}
+            {% if pagina > 1 %}
+                <a href="{{ url_for('registros_finalizados', pagina=pagina-1, data=data, tipo_entrega=tipo_entrega, rota=rota, finalizado=finalizado, db_name=db_name) }}">Anterior</a>
+            {% endif %}
+            {% for p in range(1, total_paginas + 1) %}
+                {% if p == pagina %}
+                    <strong>{{ p }}</strong>
+                {% else %}
+                    <a href="{{ url_for('registros_finalizados', pagina=p, data=data, tipo_entrega=tipo_entrega, rota=rota, finalizado=finalizado, db_name=db_name) }}">{{ p }}</a>
+                {% endif %}
+            {% endfor %}
+            {% if pagina < total_paginas %}
+                <a href="{{ url_for('registros_finalizados', pagina=pagina+1, data=data, tipo_entrega=tipo_entrega, rota=rota, finalizado=finalizado, db_name=db_name) }}">Próxima</a>
+            {% endif %}
+        {% elif total_paginas == 1 %}
+            <span>Página 1 de 1</span>
+        {% endif %}
+    </div>
+    <script>
+        const startDateFilterInput = document.getElementById('start-date-filter');
+        const endDateFilterInput = document.getElementById('end-date-filter');
+        const tipoEntregaFilterSelect = document.getElementById('tipo-entrega-filter');
+        const rotaFilterInput = document.getElementById('rota-filter');
+        const finalizadoFilterSelect = document.getElementById('finalizado-filter');
+        const limparFiltroButton = document.getElementById('limpar-filtro');
+        const exportXlsButton = document.getElementById('export-xls-button');
+        const cards = document.querySelectorAll('.card');
+        const dbSelector = document.getElementById('db-selector'); // Referência ao novo seletor de DB
+
+        function applyFiltersAndNavigate() {
+            const startDateValue = startDateFilterInput.value;
+            const endDateValue = endDateFilterInput.value;
+            const tipoEntregaFilterValue = tipoEntregaFilterSelect.value;
+            const rotaFilterValue = rotaFilterInput.value;
+            const finalizadoFilterValue = finalizadoFilterSelect.value;
+            const dbNameValue = dbSelector.value; // Pega o valor do seletor de DB
+            
+            const params = new URLSearchParams();
+            if (startDateValue) params.append('data', startDateValue);
+            if (tipoEntregaFilterValue) params.append('tipo_entrega', tipoEntregaFilterValue);
+            if (rotaFilterValue) params.append('rota', rotaFilterValue);
+            if (finalizadoFilterValue !== '') params.append('finalizado', finalizadoFilterValue);
+            params.append('db_name', dbNameValue); // Adiciona o parâmetro db_name
+
+            window.location.href = `/registros_finalizados?${params.toString()}`;
+        }
+
+        // Adicionar event listeners para os filtros
+        startDateFilterInput.addEventListener('change', applyFiltersAndNavigate);
+        endDateFilterInput.addEventListener('change', applyFiltersAndNavigate);
+        tipoEntregaFilterSelect.addEventListener('change', applyFiltersAndNavigate);
+        rotaFilterInput.addEventListener('input', applyFiltersAndNavigate);
+        finalizadoFilterSelect.addEventListener('change', applyFiltersAndNavigate);
+        dbSelector.addEventListener('change', applyFiltersAndNavigate); // NOVO: Event listener para o seletor de DB
+
+        limparFiltroButton.addEventListener('click', function() {
+            // Ao limpar, também reseta a seleção do DB para o padrão 'all'
+            window.location.href = '/registros_finalizados?db_name=all';
+        });
+
+        // Função para exportar para XLS (CSV) - esta função exporta os dados PAGINADOS
+        // Para exportar TODOS os dados filtrados (não apenas a página atual),
+        // seria necessário fazer uma nova requisição ao backend sem paginação.
+        exportXlsButton.addEventListener('click', function() {
+            let csvContent = "data:text/csv;charset=utf-8,";
+
+            // Adicionar cabeçalhos (baseado nos data-attributes)
+            const headers = [
+                "Tipo de Registro", "Data/Hora Chegada", "Matrícula", "Nome", "Cidade", "Rota",
+                "Tipo de Entrega", "Gaiola / Rua", "Estação", "Data/Hora Finalização", "Finalizado"
+            ];
+            csvContent += headers.join(";") + "\r\n";
+
+            // Adicionar dados dos cards visíveis
+            cards.forEach(card => {
+                // Determine o tipo de registro para a exportação
+                // Heurística baseada na presença de cidade_entrega ou na coluna 'rua'
+                const tipoRegistro = card.dataset.cidadeEntrega ? 'Principal' : 'No-Show';
+                const rotaValue = card.dataset.rota; // Já pega o valor correto (rota ou gaiola)
+                const cidadeValue = card.dataset.cidadeEntrega; // Pode ser vazio para No-Show
+                const gaiolaRuaValue = card.dataset.gaiolaRua; // Já pega o valor correto (gaiola ou rua)
+
+                const row = [
+                    `"${tipoRegistro}"`,
+                    `"${card.dataset.dataHoraLogin}"`,
+                    `"${card.dataset.matricula}"`,
+                    `"${card.dataset.nome}"`,
+                    `"${cidadeValue}"`,
+                    `"${rotaValue}"`,
+                    `"${card.dataset.tipoEntrega}"`,
+                    `"${gaiolaRuaValue}"`,
+                    `"${card.dataset.estacao}"`,
+                    `"${card.dataset.horaFinalizacao}"`,
+                    `"${card.dataset.finalizado}"`
+                ];
+                csvContent += row.join(";") + "\r\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "registros_combinados.csv"); // Nome do arquivo alterado
+            document.body.appendChild(link);
+
+            link.click();
+
+            document.body.removeChild(link);
+        });
+
+        // --- Lógica do Menu Lateral ---
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const overlay = document.getElementById('overlay');
+
+        // Abre o menu
+        function openSidebar() {
+            sidebar.classList.add('open');
+            overlay.style.display = 'block';
+        }
+
+        // Fecha o menu
+        function closeSidebar() {
+            sidebar.classList.remove('open');
+            overlay.style.display = 'none';
+        }
+
+        // Event listeners para abrir/fechar o menu
+        sidebarToggle.addEventListener('click', openSidebar);
+        overlay.addEventListener('click', closeSidebar);
+
+        // Fecha o menu se a janela for redimensionada para uma largura maior (opcional)
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768) {
+                closeSidebar();
+            }
+        });
+
+        // Preenche o filtro de data final com a data atual se estiver vazio
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!endDateFilterInput.value) {
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                endDateFilterInput.value = `${year}-${month}-${day}`;
+            }
+        });
+    </script>
+</body>
+</html>

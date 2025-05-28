@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Todos os Registros</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <img src="{{ url_for('static', filename='logo.png') }}" class="logo">
+    <h2>Todos os Registros</h2>
+    <div class="cards cards-row">
+      {% for r in registros %}
+      <div class="card">
+        <p><strong>Data/Hora:</strong> {{ r.data_hora_login }}</p>
+        <p><strong>Nome:</strong> {{ r.nome }}</p>
+        <p><strong>Matrícula:</strong> {{ r.matricula }}</p>
+        <p><strong>Rota:</strong> {{ r.rota }}</p>
+        <p><strong>Estação:</strong> {{ r.estacao }}</p>
+        <p><strong>Entrega:</strong> {{ r.tipo_entrega }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</body>
+</html>

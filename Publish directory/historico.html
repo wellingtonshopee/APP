@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Histórico de Ações</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <h1>Histórico de Ações</h1>
+  <table>
+    <tr>
+      <th>ID</th>
+      <th>Registro ID</th>
+      <th>Ação</th>
+      <th>Gaiola</th>
+      <th>Estação</th>
+      <th>Data/Hora</th>
+    </tr>
+    {% for h in historico %}
+    <tr>
+      <td>{{ h[0] }}</td>
+      <td>{{ h[1] }}</td>
+      <td>{{ h[2] }}</td>
+      <td>{{ h[3] }}</td>
+      <td>{{ h[4] }}</td>
+      <td>{{ h[5] }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</body>
+</html>

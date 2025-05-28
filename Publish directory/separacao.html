@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Separação</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .banner {
+      display: flex;
+      align-items: center;
+      background-color: #f7452e;
+      padding: 15px 20px;
+      border-bottom: 2px solid #900;
+      color: white;
+    }
+
+    .logo img {
+      height: 60px;
+      margin-right: 20px;
+    }
+
+    .banner-text h1 {
+      font-size: 26px;
+      margin: 0;
+    }
+
+    .card-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .card {
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 10px;
+      width: 300px;
+      background-color: #fff;
+      transition: background-color 0.3s;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .card.em-separacao {
+      background-color: #ffcccc;
+      border-color: #cc0000;
+    }
+
+    .card-footer {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid #ccc;
+      font-weight: bold;
+      color: red;
+      display: none;
+    }
+
+    .card.em-separacao .card-footer {
+      display: block;
+    }
+
+    .card-header {
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .title {
+      font-weight: normal;
+      color: #555;
+    }
+
+    .nome {
+      color: blue;
+    }
+
+    .rota {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="banner">
+    <div class="logo">
+      <img src="{{ url_for('static', filename='imagens/1.jpg') }}" alt="Logo">
+    </div>
+    <div class="banner-text">
+      <h1>Entregadores - Sistema de Gerenciamento</h1>
+    </div>
+  </header>
+
+  <div class="card-container">
+    {% for r in registros %}
+      <div class="card {% if r['em_separacao'] %}em-separacao{% endif %}" data-id="{{ r['id'] }}" id="card_{{ r['id'] }}" ondblclick="toggleSeparacao(this)">
+        <div class="card-header">
+          <strong id="status_{{ r['id'] }}">Aguardando Carregamento</strong>
+        </div>
+        <div class="card-body">
+          <p><span class="title">Nome:</span> <strong class="nome">{{ r['nome'] }}</strong></p>
+          <p><span class="title">Matrícula:</span> <strong>{{ r['matricula'] }}</strong></p>
+          <p><span class="title">Rota:</span> <strong class="rota">{{ r['rota'] }}</strong></p>
+          <p><span class="title">Data e Hora:</span> <strong>{{ r['dataHora'] }}</strong></p>
+        </div>
+        <div class="card-footer" id="footer_{{ r['id'] }}">
+          Em Separação
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <script>
+    function toggleSeparacao(card) {
+      const id = card.dataset.id;
+
+      fetch(`/separar/${id}`, { method: 'POST' })
+        .then(response => {
+          if (response.ok) {
+            card.classList.toggle('em-separacao');
+          } else {
+            alert('Erro ao atualizar o status de separação.');
+          }
+        });
+    }
+
+    setInterval(() => {
+      location.reload();
+    }, 30000);
+  </script>
+
+</body>
+</html>

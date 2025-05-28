@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="refresh" content="60">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Associação</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    .delete-btn {
+      background-color: red;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+    .delete-btn:hover {
+      background-color: rgb(235, 8, 8);
+    }
+    .edit-btn, .save-btn {
+      padding: 6px 12px;
+      margin-right: 6px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .edit-btn {
+      background-color: #007bff;
+      color: white;
+    }
+    .edit-btn:hover {
+      background-color: #0056b3;
+    }
+    .save-btn {
+      background-color: #28a745;
+      color: white;
+      display: none;
+    }
+    .save-btn:hover {
+      background-color: #3d0bb3;
+    }
+    .play-btn {
+      padding: 10px 20px;
+      background-color: #ffcc00;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .play-btn:hover {
+      background-color: #e6b800;
+    }
+  </style>
+  <script>
+    function tocarAudio(cardId) {
+      const audio = document.getElementById("audio_" + cardId);
+      if (audio) {
+        audio.play();
+      }
+    }
+
+    function habilitarEdicao(id) {
+      document.getElementById('gaiola_' + id).disabled = false;
+      document.getElementById('posicao_' + id).disabled = false;
+      document.getElementById('editar_' + id).style.display = 'none';
+      document.getElementById('salvar_' + id).style.display = 'inline-block';
+      document.getElementById('gaiola_' + id).focus();
+    }
+
+    function verificarCampos(id) {
+      const gaiola = document.getElementById('gaiola_' + id);
+      const posicao = document.getElementById('posicao_' + id);
+      const salvarBtn = document.getElementById('salvar_' + id);
+      const card = document.getElementById('card_' + id);
+
+      if (gaiola.value.trim() === '' || posicao.value.trim() === '') {
+        salvarBtn.disabled = true;
+        gaiola.style.backgroundColor = '';
+        posicao.style.backgroundColor = '';
+        card.style.backgroundColor = '';
+      } else {
+        salvarBtn.disabled = false;
+        gaiola.style.backgroundColor = '#e4ebe4';
+        posicao.style.backgroundColor = '#e4ebe4';
+        card.style.backgroundColor = '#e4ebe4b6';
+      }
+    }
+
+    function confirmarExclusao(id) {
+      if (confirm('Tem certeza que deseja excluir este registro?')) {
+        document.getElementById('form_excluir_' + id).submit();
+      }
+    }
+
+    function focusNext(id) {
+      const gaiola = document.getElementById('gaiola_' + id).value;
+      if (gaiola.trim() !== '') {
+        document.getElementById('posicao_' + id).focus();
+      }
+    }
+  </script>
+</head>
+<body>
+  <header class="banner">
+    <div class="logo">
+      <img src="{{ url_for('static', filename='imagens/1.jpg') }}" alt="Logo" />
+    </div>
+    <div class="banner-text">
+      <h1>Associação de Carga - Sistema de Gerenciamento</h1>
+    </div>
+  </header>
+
+  <div class="container">
+    {% for r in registros %}
+      <div class="card" id="card_{{ r[0] }}" {% if r['gaiola'] and r['posicao'] %} style="background-color: #e4ebe4b6;" {% endif %}>
+        <div class="card-header">
+          <strong>Em Carregamento</strong>
+        </div>
+        <div class="card-body">
+          <p><span style="font-weight: normal; color: blue;">Nome:</span> <strong>{{ r[1] }}</strong></p>
+          <p><span style="font-weight: normal;">Matrícula:</span> <strong>{{ r[2] }}</strong></p>
+          <p><span style="font-weight: normal; color: red;">Rota:</span> <strong>{{ r[3] }}</strong></p>
+          <p><span style="font-weight: normal;">Data e Hora:</span> <strong>{{ r[4] }}</strong></p>
+
+          <form method="POST" action="/atualizar" id="form_{{ r[0] }}">
+            <label for="gaiola">Gaiola:</label>
+            <input type="text" name="gaiola" id="gaiola_{{ r[0] }}" value="{{ r['gaiola'] or '' }}" 
+              {% if r['gaiola'] and r['posicao'] %} disabled {% endif %}
+              oninput="verificarCampos({{ r[0] }})" onblur="focusNext({{ r[0] }})">
+
+            <label for="posicao">Posição:</label>
+            <input type="text" name="posicao" id="posicao_{{ r[0] }}" value="{{ r['posicao'] or '' }}" 
+              {% if r['gaiola'] and r['posicao'] %} disabled {% endif %}
+              oninput="verificarCampos({{ r[0] }})">
+
+            <input type="hidden" name="id" value="{{ r[0] }}">
+
+            <button type="button" id="editar_{{ r[0] }}" class="edit-btn" onclick="habilitarEdicao({{ r[0] }})">Editar</button>
+            <button type="submit" id="salvar_{{ r[0] }}" class="save-btn" disabled>Salvar</button>
+          </form>
+
+          <form method="POST" action="/excluir" id="form_excluir_{{ r[0] }}" style="display:inline;">
+            <input type="hidden" name="id" value="{{ r[0] }}">
+            <button type="button" class="delete-btn" onclick="confirmarExclusao({{ r[0] }})">Excluir</button>
+          </form>
+
+          <button class="play-btn" onclick="tocarAudio({{ r[0] }})">Tocar Áudio</button>
+          <audio id="audio_{{ r[0] }}" src="{{ url_for('static', filename='audio/handbell-81953.mp3') }}" preload="auto"></audio>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</body>
+</html>

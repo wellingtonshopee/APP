@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entre para Carregar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            background-color: #111;
+            color: #eee;
+        }
+        .container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 1.5rem;
+            background-color: #222;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Estilo para o contêiner dos registros para usar Flexbox */
+        #registros-container {
+            display: flex;
+            flex-wrap: wrap; /* Permite que os itens quebrem para a próxima linha */
+            gap: 1rem; /* Espaço entre os cards */
+            justify-content: flex-start; /* Alinha os itens ao início */
+        }
+
+        .registro-item {
+            background-color: #2a2a2a;
+            border-radius: 0.25rem;
+            padding: 0.5rem; /* Padding reduzido para diminuir o tamanho visual */
+            border: 1px solid #444;
+            box-sizing: border-box; /* Inclui padding e borda no cálculo da largura */
+            /* Define a largura para 2 itens por linha, considerando o gap */
+            width: calc(50% - 0.5rem); /* 50% menos metade do gap */
+            margin-bottom: 0; /* Remove a margem inferior, já que o gap horizontal lida com o espaçamento */
+        }
+
+         /* Ajuste para telas menores para empilhar os cards */
+        @media (max-width: 600px) {
+            .registro-item {
+                width: 100%; /* Ocupa a largura total em telas pequenas */
+                margin-bottom: 1rem; /* Adiciona margem inferior quando empilhado */
+            }
+             #registros-container {
+                 gap: 0; /* Remove o gap horizontal quando empilhado */
+             }
+        }
+
+
+        .registro-item p {
+            margin-bottom: 0.4rem; /* Espaço menor entre as linhas */
+            font-size: 0.9rem; /* Mantido o tamanho da fonte um pouco maior */
+        }
+        .registro-item p:last-child {
+            margin-bottom: 0;
+        }
+        .loading-indicator {
+            text-align: center;
+            margin-top: 1rem;
+            color: #ccc;
+            width: 100%; /* Garante que o indicador ocupe a largura total quando sozinho */
+        }
+         .no-records-message {
+            text-align: center;
+            margin-top: 1rem;
+            color: #ccc;
+            width: 100%; /* Garante que a mensagem ocupe a largura total quando sozinha */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-2xl font-bold text-purple-400 mb-6 text-center">⚠️ Entre para Carregar ⚠️</h1>
+
+        <div id="registros-container">
+            <div class="loading-indicator">Carregando registros...</div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const registrosContainer = document.getElementById('registros-container');
+
+            function fetchAndDisplayRegistros() {
+                registrosContainer.innerHTML = '<div class="loading-indicator">Carregando registros...</div>'; // Mostrar indicador de carregamento
+
+                // Esta rota no Flask busca registros com em_separacao = 1 e finalizada = 0
+                fetch('/registros_em_separacao')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        registrosContainer.innerHTML = ''; // Limpa o indicador de carregamento
+
+                        if (data.length === 0) {
+                            registrosContainer.innerHTML = '<div class="no-records-message">Não há registros em separação no momento.</div>';
+                            return;
+                        }
+
+                        data.forEach(registro => {
+                            const registroItem = document.createElement('div');
+                            registroItem.className = 'registro-item';
+                            registroItem.innerHTML = `
+                                <p class="text-white text-sm"><strong>Nome:</strong> ${registro.nome || 'N/A'}</p>
+                                <p class="text-white text-sm"><strong>Matrícula:</strong> ${registro.matricula || 'N/A'}</p>
+                                <p class="text-white text-sm"><strong>Rota:</strong> ${registro.rota || 'N/A'}</p>
+                                <p class="text-white text-sm"><strong>Tipo de Entrega:</strong> ${registro.tipo_entrega || 'N/A'}</p>
+                                <p class="text-white text-sm"><strong>Rua:</strong> ${registro.gaiola || 'N/A'} | <strong>Estação:</strong> ${registro.estacao || 'N/A'}</p> `;
+                            registrosContainer.appendChild(registroItem);
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Erro ao buscar registros:', error);
+                        registrosContainer.innerHTML = `<div class="no-records-message text-red-500">Erro ao carregar registros: ${error.message}</div>`;
+                    });
+            }
+
+            // Carregar registros ao carregar a página
+            fetchAndDisplayRegistros();
+
+            // Opcional: Atualizar registros periodicamente (a cada 10 segundos, por exemplo)
+            // setInterval(fetchAndDisplayRegistros, 10000);
+        });
+    </script>
+</body>
+</html>
