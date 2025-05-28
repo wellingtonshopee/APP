@@ -455,7 +455,7 @@ def registros():
             data_fim_str = '' # Limpa para não preencher o campo no template
 
     # Ordena os resultados (ex: mais recentes primeiro)
-    query = query.order_by(Registro.data_hora_login.desc())
+    query = query.order_by(Registro.data_hora_login.asc()) # Alterado para ordem ascendente (mais antigos primeiro)
 
     # Paginação
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
@@ -500,8 +500,16 @@ def api_registros_data():
     if cidade:
         query = query.filter(Registro.cidade_entrega.ilike(f'%{cidade}%'))
 
-    # Lógica de filtro para em_separacao baseada nos valores enviados pelo JS:
-    if em_separacao_filtro_str:
+    # --- INÍCIO DA LÓGICA DE FILTRO DE STATUS ATUALIZADA ---
+    # Se em_separacao_filtro_str NÃO FOI FORNECIDO (ou é uma string vazia),
+    # filtramos para NÃO mostrar os registros finalizados nem cancelados por padrão.
+    if not em_separacao_filtro_str:
+        query = query.filter(
+            Registro.finalizada == 0,
+            Registro.cancelado == 0
+        )
+    else:
+        # Se um filtro de status foi fornecido, aplicamos a lógica específica para cada valor
         if em_separacao_filtro_str == '0': # Aguardando Carregar
             query = query.filter(
                 Registro.em_separacao == 0,
@@ -514,17 +522,18 @@ def api_registros_data():
                 Registro.finalizada == 0,
                 Registro.cancelado == 0
             )
-        elif em_separacao_filtro_str == '2': # AGUARDANDO TRANSFERÊNCIA - ADICIONADO AQUI
+        elif em_separacao_filtro_str == '2': # AGUARDANDO TRANSFERÊNCIA
             query = query.filter(
-            Registro.em_separacao == 2,
-            Registro.finalizada == 0,
-            Registro.cancelado == 0
+                Registro.em_separacao == 2,
+                Registro.finalizada == 0,
+                Registro.cancelado == 0
             )
         elif em_separacao_filtro_str == '3': # Finalizado (corresponde a finalizada = 1)
             query = query.filter(Registro.finalizada == 1)
         elif em_separacao_filtro_str == '4': # Cancelado (corresponde a cancelado = 1)
             query = query.filter(Registro.cancelado == 1)
-    
+    # --- FIM DA LÓGICA DE FILTRO DE STATUS ATUALIZADA ---
+
     # Filtro por data
     if data_inicio_str:
         try:
@@ -540,13 +549,12 @@ def api_registros_data():
         except ValueError:
             pass # Ignora
 
-    query = query.order_by(Registro.data_hora_login.desc())
+    query = query.order_by(Registro.data_hora_login.asc()) # Alterado para ordem ascendente (mais antigos primeiro)
 
     # Paginação usando o paginate do SQLAlchemy
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
     # Converte os objetos Registro para um formato serializável em JSON
-    # Isso é essencial para enviar os dados para o frontend.
     registros_json = []
     for reg in pagination.items:
         registros_json.append({
@@ -569,7 +577,6 @@ def api_registros_data():
         'total_paginas': pagination.pages,
         'total_registros': pagination.total
     })
-
 
 #Fim da Rota Registros#
 @app.route('/boas_vindas')
@@ -1113,13 +1120,13 @@ def finalizar_carregamento_no_show_id_status_separacao(id):
 @app.route('/registros', methods=['GET', 'POST'])
 def criar_registro_principal():
     if request.method == 'POST':
+        # Lógica para criar um novo registro (mantida do seu código original)
         print(f"DEBUG_REG_CRIAR: [Passo 1] Rota de criação acessada via POST!")
         print(f"DEBUG_REG_CRIAR: [Passo 1.1] Conteúdo do formulário: {request.form}")
 
         nome = request.form.get('nome')
         matricula = request.form.get('matricula')
-        # >>> MUDANÇA AQUI: use data_hora_login para o argumento
-        data_hora_login_agora = datetime.now() # Renomeado para evitar confusão
+        data_hora_login_agora = datetime.now()
 
         rota_input = request.form.get('rota')
         tipo_entrega = request.form.get('tipo_entrega')
@@ -1128,8 +1135,7 @@ def criar_registro_principal():
         novo_registro = Registro(
             nome=nome,
             matricula=matricula,
-            # >>> MUDANÇA AQUI: Passe para data_hora_login
-            data_hora_login=data_hora_login_agora, # <--- Corrigido aqui!
+            data_hora_login=data_hora_login_agora,
             rota=rota_input,
             tipo_entrega=tipo_entrega,
             cidade_entrega=cidade_entrega,
@@ -1156,7 +1162,7 @@ def criar_registro_principal():
                 novo_registro.status = STATUS_REGISTRO_PRINCIPAL['CARREGAMENTO_LIBERADO']
                 novo_registro.em_separacao = no_show_encontrado.em_separacao
 
-                flash(f"Registro criado! Rota '{rota_input}' do tipo No-Show associado a um carregamento liberado.", 'success')
+                # flash(f"Registro criado! Rota '{rota_input}' do tipo No-Show associado a um carregamento liberado.", 'success') # Descomente se usar flash
 
                 # Atualiza o NoShow encontrado para evitar duplicidade
                 no_show_encontrado.em_separacao = STATUS_EM_SEPARACAO['AGUARDANDO_ENTREGADOR']
@@ -1164,7 +1170,7 @@ def criar_registro_principal():
 
             else:
                 print(f"DEBUG_REG_CRIAR: [Passo 3] FALHA! Nenhum NoShow correspondente encontrado para Rota '{rota_input}' com status 'SEPARACAO'.")
-                flash(f"Registro criado! Rota '{rota_input}' do tipo No-Show aguardando associação de carregamento.", 'warning')
+                # flash(f"Registro criado! Rota '{rota_input}' do tipo No-Show aguardando associação de carregamento.", 'warning') # Descomente se usar flash
                 novo_registro.status = STATUS_REGISTRO_PRINCIPAL['AGUARDANDO_CARREGAMENTO']
                 novo_registro.em_separacao = None
         else:
@@ -1174,13 +1180,49 @@ def criar_registro_principal():
 
         db.session.add(novo_registro)
         db.session.commit()
-        flash("Registro de chegada criado com sucesso!", 'success')
-        return redirect(url_for('alguma_pagina_apos_registro'))
+        # flash("Registro de chegada criado com sucesso!", 'success') # Descomente se usar flash
+        # return redirect(url_for('alguma_pagina_apos_registro')) # Descomente se usar redirect
 
-    return render_template('seu_template_de_registro.html', erro=None)
+        # Para fins de demonstração, retornaremos um JSON simples após o POST
+        return jsonify({"message": "Registro criado com sucesso!", "registro": novo_registro.nome}), 201
 
-    # Lógica para requisições GET (exibir o formulário)
-from sqlalchemy import or_
+    else: # request.method == 'GET'
+        # Verifica se o parâmetro 'finalizados' está presente na URL
+        mostrar_finalizados = request.args.get('finalizados', 'false').lower() == 'true'
+        registros = []
+
+        if mostrar_finalizados:
+            # Se 'finalizados' for 'true', mostra apenas os registros finalizados
+            registros = Registro.query.filter_by(finalizada=1).order_by(Registro.data_hora_login.asc()).all()
+            print("DEBUG_GET: Mostrando registros finalizados.")
+        else:
+            # Caso contrário, mostra todos os registros que NÃO estão finalizados
+            registros = Registro.query.filter_by(finalizada=0).order_by(Registro.data_hora_login.asc()).all()
+            print("DEBUG_GET: Mostrando registros não finalizados.")
+
+        # Converte os registros para um formato JSON serializável para passar para o template
+        registros_data = []
+        for reg in registros:
+            registros_data.append({
+                'id': reg.id,
+                'nome': reg.nome,
+                'matricula': reg.matricula,
+                'rota': reg.rota,
+                'tipo_entrega': reg.tipo_entrega,
+                'cidade_entrega': reg.cidade_entrega,
+                'data_hora_login': reg.data_hora_login.strftime('%Y-%m-%d %H:%M:%S') if reg.data_hora_login else None,
+                'gaiola': reg.gaiola,
+                'estacao': reg.estacao,
+                'finalizada': bool(reg.finalizada), # Converte para booleano para melhor representação
+                'cancelado': bool(reg.cancelado),
+                'em_separacao': reg.em_separacao,
+                'rua': reg.rua,
+                'estacao_carregamento': reg.estacao_carregamento,
+                'status': reg.status
+            })
+
+        # Retorna os dados como JSON. Em uma aplicação real, você renderizaria um template HTML aqui.
+        return jsonify(registros_data)
 
 @app.route('/transferir_no_show_para_registro/<int:no_show_id>', methods=['POST'])
 def transferir_no_show_para_registro(no_show_id):
