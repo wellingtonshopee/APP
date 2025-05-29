@@ -1,9 +1,10 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify, flash
+from flask import Flask, render_template, request, redirect, url_for, jsonify,current_app, flash
 from supabase import create_client, Client
 from sqlalchemy import or_ # Importar 'or_' para filtros OR
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta # Adicione ', timedelta' aqui
 import pytz
+from dateutil import tz # Para a função tz.gettz()
 import requests
 import feedparser
 from math import ceil
@@ -305,111 +306,132 @@ def status_motorista(matricula):
     return render_template('status_motorista.html', matricula=matricula)
 
 # --- Rota API para buscar o status do motorista pela matrícula (AJUSTADA) ---
-from flask import request
-
 @app.route('/api/status_registro_by_matricula/<string:matricula>', methods=['GET'])
 def api_status_registro_by_matricula(matricula):
     print(f"DEBUG: /api/status_registro_by_matricula/{matricula} - Rota API acessada.")
 
     registro_id = request.args.get('registro_id')
-    registro_encontrado = None
+    registro_principal = None
     tabela_origem = None
 
-    with app.app_context():
+    with current_app.app_context():
+        # --- Lógica de Busca do Registro Principal ---
         if registro_id:
             try:
                 registro_id_int = int(registro_id)
-                # Tenta buscar o registro pelo ID
-                registro_encontrado = db.session.query(Registro).filter_by(id=registro_id_int).first()
-                if registro_encontrado:
+                registro_principal = db.session.query(Registro).filter_by(id=registro_id_int).first()
+                if registro_principal:
                     tabela_origem = 'registros'
+                    print(f"DEBUG: Registro encontrado em 'registros' pelo ID: {registro_id_int}")
                 else:
-                    registro_encontrado = db.session.query(NoShow).filter_by(id=registro_id_int).first()
-                    if registro_encontrado:
+                    registro_principal = db.session.query(NoShow).filter_by(id=registro_id_int).first()
+                    if registro_principal:
                         tabela_origem = 'no_show'
+                        print(f"DEBUG: Registro encontrado em 'no_show' pelo ID: {registro_id_int}")
+                    else:
+                        print(f"DEBUG: Nenhum registro encontrado com ID {registro_id_int} em Registro ou NoShow.")
+                        return jsonify({'message': 'Nenhum registro encontrado para o ID especificado.'}), 404
             except ValueError:
                 print(f"DEBUG: registro_id inválido: {registro_id}")
                 return jsonify({'message': 'ID de registro inválido.'}), 400
         else:
-            # Lógica para buscar o registro pela matrícula (último ativo ou qualquer um)
-            registro_encontrado = db.session.query(Registro).filter(
+            registro_principal = db.session.query(Registro).filter(
                 Registro.matricula == matricula,
                 Registro.finalizada == 0,
                 Registro.cancelado == 0
             ).order_by(Registro.data_hora_login.desc()).first()
 
-            if registro_encontrado:
+            if registro_principal:
                 tabela_origem = 'registros'
+                print(f"DEBUG: Registro ATIVO encontrado em 'registros' para matrícula: {matricula}")
             else:
-                registro_encontrado = db.session.query(Registro).filter(
+                registro_principal = db.session.query(Registro).filter(
                     Registro.matricula == matricula,
                     or_(Registro.finalizada == 1, Registro.cancelado == 1)
                 ).order_by(Registro.data_hora_login.desc()).first()
-                if registro_encontrado:
+                if registro_principal:
                     tabela_origem = 'registros'
+                    print(f"DEBUG: Registro FINALIZADO/CANCELADO encontrado em 'registros' para matrícula: {matricula}")
                 else:
-                    registro_encontrado = db.session.query(NoShow).filter(
+                    registro_principal = db.session.query(NoShow).filter(
                         NoShow.matricula == matricula,
                         NoShow.finalizada == 0,
                         NoShow.cancelado == 0,
-                        NoShow.transferred_to_registro_id.is_(None)
                     ).order_by(NoShow.data_hora_login.desc()).first()
-                    if registro_encontrado:
+                    if registro_principal:
                         tabela_origem = 'no_show'
+                        print(f"DEBUG: Registro ATIVO encontrado em 'no_show' para matrícula: {matricula}")
                     else:
-                        registro_encontrado = db.session.query(NoShow).filter(
+                        registro_principal = db.session.query(NoShow).filter(
                             NoShow.matricula == matricula,
-                            or_(NoShow.finalizada == 1, NoShow.cancelado == 1, NoShow.em_separacao == 4)
+                            or_(NoShow.finalizada == 1, NoShow.cancelado == 1)
                         ).order_by(NoShow.data_hora_login.desc()).first()
-                        if registro_encontrado:
+                        if registro_principal:
                             tabela_origem = 'no_show'
+                            print(f"DEBUG: Registro FINALIZADO/CANCELADO encontrado em 'no_show' para matrícula: {matricula}")
 
-        if registro_encontrado:
+        # --- Construção da Resposta JSON ---
+        if registro_principal:
             response_data = {
-                'id': registro_encontrado.id,
-                'nome': registro_encontrado.nome,
-                'matricula': registro_encontrado.matricula,
-                'finalizada': getattr(registro_encontrado, 'finalizada', 0),
-                'cancelado': getattr(registro_encontrado, 'cancelado', 0),
-                'em_separacao': getattr(registro_encontrado, 'em_separacao', 0),
-                'gaiola': getattr(registro_encontrado, 'gaiola', None),
-                'estacao': getattr(registro_encontrado, 'estacao', None),
-                'rota': getattr(registro_encontrado, 'rota', None),
-                'tipo_entrega': getattr(registro_encontrado, 'tipo_entrega', None),
-                'cidade_entrega': getattr(registro_encontrado, 'cidade_entrega', None),
-                'rua': getattr(registro_encontrado, 'rua', None),
-                'data_hora_login': registro_encontrado.data_hora_login.strftime('%Y-%m-%d - %H:%M') if registro_encontrado.data_hora_login else None,
+                'id': registro_principal.id,
+                'nome': getattr(registro_principal, 'nome', 'N/A'),
+                'matricula': getattr(registro_principal, 'matricula', 'N/A'),
+                'data_hora_login': registro_principal.data_hora_login.strftime('%Y-%m-%d - %H:%M') if registro_principal.data_hora_login else None,
+                'finalizada': getattr(registro_principal, 'finalizada', 0),
+                'cancelado': getattr(registro_principal, 'cancelado', 0),
+                'em_separacao': getattr(registro_principal, 'em_separacao', 0),
+                'tipo_entrega': getattr(registro_principal, 'tipo_entrega', 'N/A'),
                 'tabela_origem': tabela_origem,
                 'estado': None
             }
-            # ... (o resto da sua lógica de formatação da resposta) ...
-            print(f"DEBUG: Registro encontrado: {response_data}")
+
+            response_data['rota'] = 'Aguarde'
+            response_data['cidade_entrega'] = 'Aguarde'
+            response_data['rua'] = 'Aguarde'
+            response_data['gaiola'] = 'Aguarde'
+            response_data['estacao'] = 'Aguarde'
+
+
+            if tabela_origem == 'registros':
+                response_data['rota'] = getattr(registro_principal, 'rota', 'Aguarde')
+                response_data['cidade_entrega'] = getattr(registro_principal, 'cidade_entrega', 'Aguarde')
+                response_data['rua'] = getattr(registro_principal, 'rua', 'Aguarde')
+                response_data['gaiola'] = getattr(registro_principal, 'gaiola', 'Aguarde')
+                response_data['estacao'] = getattr(registro_principal, 'estacao', 'Aguarde')
+
+                if response_data['tipo_entrega'] == 'No-Show':
+                    # Agora, a busca em no_show usa matricula '0001' e a rota do registro principal
+                    noshow_detalhes = db.session.query(NoShow).filter(
+                        NoShow.matricula == '0001', # <<< Matrícula fixa '0001'
+                        NoShow.gaiola == registro_principal.rota # Vínculo pela rota/gaiola
+                    ).order_by(NoShow.data_hora_login.desc()).first() # Pega o mais recente para essa rota e 0001
+
+                    if noshow_detalhes:
+                        print(f"DEBUG: Dados complementares de NoShow encontrados e usados (NoShow ID: {noshow_detalhes.id}, Matrícula '0001').")
+                        response_data['rua'] = getattr(noshow_detalhes, 'rua', 'Aguarde')
+                        response_data['gaiola'] = getattr(noshow_detalhes, 'gaiola', 'Aguarde')
+                        response_data['estacao'] = getattr(noshow_detalhes, 'estacao', 'Aguarde')
+                    else:
+                        print(f"DEBUG: Registro de 'No-Show' em 'registros' (ID: {registro_principal.id}) sem correspondência em 'no_show' (matrícula '0001' e rota {registro_principal.rota}).")
+
+            elif tabela_origem == 'no_show':
+                response_data['rota'] = getattr(registro_principal, 'gaiola', 'Aguarde')
+                response_data['rua'] = getattr(registro_principal, 'rua', 'Aguarde')
+                response_data['gaiola'] = getattr(registro_principal, 'gaiola', 'Aguarde')
+                response_data['estacao'] = getattr(registro_principal, 'estacao', 'Aguarde')
+
+            print(f"DEBUG: Dados de resposta final: {response_data}")
             return jsonify(response_data)
         else:
-            print(f"DEBUG: Nenhum registro encontrado para matrícula {matricula} e ID {registro_id}.")
+            print(f"DEBUG: Nenhum registro principal encontrado para matrícula {matricula} e ID {registro_id}.")
             return jsonify({'message': 'Nenhum registro encontrado para esta matrícula e ID.'}), 404
 
-
-
-def atualizar_status_registros_noshow():
-    with app.app_context():
-        registros_pendentes = Registro.query.filter(Registro.tipo_entrega == 'No-Show', Registro.em_separacao == 0).all()
-        for registro in registros_pendentes:
-            noshow_correspondente = NoShow.query.filter(
-                NoShow.gaiola == registro.rota,
-                NoShow.tipo_entrega == 'No-Show'
-                # Adicione outras condições de filtro, se necessário
-            ).first()
-            if noshow_correspondente:
-                registro.em_separacao = 2  # Exemplo de atualização de status
-                db.session.commit()
-                print(f"DEBUG: Registro ID {registro.id} atualizado devido a No-Show correspondente.")
-
+### Rota de atualização
 
 REGISTROS_POR_PAGINA = 10 # Defina o número de registros por página
 @app.route('/registros')
 def registros():
-    atualizar_status_registros_noshow() # type: ignore # Chama a função aqui
+    
 
     page = request.args.get('pagina', 1, type=int)
     per_page = 10 # Quantidade de itens por página
@@ -684,9 +706,13 @@ def associacao():
     registro_id = request.args.get('id', type=int) # Tenta obter o ID da URL
     registros_para_exibir = []
     filtro_id_aplicado = False
-    
+
     per_page = 10 # Define quantos registros por página se não for um ID específico
     page = request.args.get('pagina', 1, type=int) # Paginação para quando não há ID específico
+
+    # --- Nova variável para controlar a visibilidade do botão ---
+    existe_registro_aguardando_carregamento = False
+    # --- Fim da nova variável ---
 
     if registro_id:
         # >>>>>>>>>>> AQUI ESTÁ A MUDANÇA PRINCIPAL <<<<<<<<<<<
@@ -698,20 +724,24 @@ def associacao():
             # Apenas adiciona se não estiver finalizado
             if registro.finalizada == 0:
                 registros_para_exibir.append(registro)
+                # Se um registro específico foi encontrado e não está finalizado,
+                # verificamos se ele está na condição 0 para o botão.
+                if registro.em_separacao == 0:
+                    existe_registro_aguardando_carregamento = True
             else:
                 flash(f'O registro com ID {registro_id} já foi finalizado e não pode ser editado.', 'warning')
         else:
             flash(f'Registro com ID {registro_id} não encontrado.', 'danger')
         filtro_id_aplicado = True # Sinaliza que um ID específico foi procurado
-        
+
         # Para um único registro, a paginação é sempre 1/1
         pagina = 1
         total_paginas = 1
     else:
         # Se nenhum ID foi passado, mostra os registros que estão 'prontos' para serem associados/finalizados.
         query = Registro.query.filter(Registro.finalizada == 0, Registro.cancelado == 0)
-        query = query.filter(Registro.em_separacao.in_([0, 1, 2])) 
-        
+        query = query.filter(Registro.em_separacao.in_([0, 1, 2]))
+
         query = query.order_by(Registro.data_hora_login.desc())
 
         pagination = query.paginate(page=page, per_page=per_page, error_out=False)
@@ -719,6 +749,13 @@ def associacao():
         pagina = pagination.page
         total_paginas = pagination.pages
 
+        # --- Lógica para o botão quando não há filtro por ID ---
+        # Verifique se existe qualquer registro na lista que está em 'em_separacao = 0'
+        for reg in registros_para_exibir:
+            if reg.em_separacao == 0:
+                existe_registro_aguardando_carregamento = True
+                break # Se encontrarmos um, já podemos definir a flag e sair do loop
+        # --- Fim da lógica para o botão ---
 
     return render_template('associacao.html',
                            registros=registros_para_exibir,
@@ -726,7 +763,10 @@ def associacao():
                            pagina=pagina,
                            total_paginas=total_paginas,
                            rota=request.args.get('rota', ''),
-                           tipo_entrega=request.args.get('tipo_entrega', '')
+                           tipo_entrega=request.args.get('tipo_entrega', ''),
+                           # --- Passa a nova flag para o template ---
+                           existe_registro_aguardando_carregamento=existe_registro_aguardando_carregamento
+                           # --- Fim da passagem da flag ---
                           )
 
 
@@ -831,8 +871,8 @@ def desassociar_id(id):
         registro.rua = None
     
     # Define em_separacao de volta para 1 (Em Separação)
-    # Se estava em 2 (Carregamento Liberado), volta para 1
-    registro.em_separacao = 1 
+    # Se estava em 2 (Carregamento Liberado), volta para 0
+    registro.em_separacao = 0 
     
     db.session.commit()
     
@@ -997,6 +1037,7 @@ def registro_no_show():
 
 # --- ROTA UNIFICADA: Atualizar Status (para Associar, Finalizar, Cancelar, Transferir) ---
 # Esta rota substituirá a lógica de 'marcar_como_finalizado_no_show_id', 'associar_no_show_id' e 'transferir_no_show_para_registro'
+# --- A ROTA COMPLETA atualizar_status_no_show ---
 @app.route('/atualizar_status_no_show/<int:registro_id>', methods=['POST'])
 def atualizar_status_no_show(registro_id):
     registro = NoShow.query.get_or_404(registro_id)
@@ -1123,6 +1164,7 @@ def atualizar_status_no_show(registro_id):
                              status=request.args.get('status')))
 
 
+
 @app.route('/dessociar_no_show/<int:registro_id>', methods=['POST'])
 def dessociar_no_show(registro_id):
     registro = NoShow.query.get_or_404(registro_id)
@@ -1190,10 +1232,85 @@ def finalizar_carregamento_no_show_id_status_separacao(id):
     return redirect(url_for('registro_no_show', _anchor=f'no-show-registro-{id}'))
 
 
+# Adicione esta função em algum lugar acessível (ex: no seu arquivo principal app.py)
+def verificar_e_atualizar_em_separacao_registro(registro_id):
+    registro = Registro.query.get(registro_id)
+    if not registro:
+        print(f"DEBUG_ATUALIZAR_EM_SEPARACAO: Registro ID {registro_id} não encontrado.")
+        return False
+
+    print(f"DEBUG_ATUALIZAR_EM_SEPARACAO: Verificando Registro ID {registro.id}, Rota='{registro.rota}', Tipo='{registro.tipo_entrega}', Status atual em_separacao={registro.em_separacao}")
+
+    # Condição para atualização:
+    # 1. É um Registro do tipo 'No-Show'
+    # 2. Seu em_separacao atual NÃO é 2 (ou 3, se 3 significa finalizado para carregamento)
+    # 3. Existe um NoShow correspondente com em_separacao = 1 (SEPARACAO)
+    
+    # Assumindo que STATUS_EM_SEPARACAO['SEPARACAO'] é 1
+    # Assumindo que STATUS_EM_SEPARACAO['CARREGAMENTO_LIBERADO'] é 2 (que estamos tentando alcançar)
+
+    if registro.tipo_entrega == 'No-Show' and registro.em_separacao != 2:
+        no_show_correspondente = NoShow.query.filter(
+            NoShow.gaiola.ilike(registro.rota),
+            NoShow.em_separacao == STATUS_EM_SEPARACAO['SEPARACAO']
+        ).first()
+
+        if no_show_correspondente:
+            print(f"DEBUG_ATUALIZAR_EM_SEPARACAO: NoShow correspondente encontrado para Registro ID {registro.id}: NoShow ID {no_show_correspondente.id}.")
+            
+            # Atualiza o Registro principal
+            registro.em_separacao = 2
+            registro.status = STATUS_REGISTRO_PRINCIPAL['CARREGAMENTO_LIBERADO']
+            db.session.add(registro)
+            
+            # Atualiza o NoShow para um status que indique que foi "encontrado" e liberado
+            # Sugestão: AGUARDANDO_ENTREGADOR (3) para evitar que seja "encontrado" novamente
+            no_show_correspondente.em_separacao = STATUS_EM_SEPARACAO['AGUARDANDO_ENTREGADOR']
+            db.session.add(no_show_correspondente)
+            
+            try:
+                db.session.commit()
+                print(f"DEBUG_ATUALIZAR_EM_SEPARACAO: Registro ID {registro.id} e NoShow ID {no_show_correspondente.id} atualizados para em_separacao=2/3 com sucesso.")
+                return True
+            except Exception as e:
+                db.session.rollback()
+                print(f"DEBUG_ATUALIZAR_EM_SEPARACAO: Erro ao commitar atualização: {e}")
+                return False
+        else:
+            print(f"DEBUG_ATUALIZAR_EM_SEPARACAO: Nenhum NoShow correspondente em 'SEPARACAO' encontrado para Registro ID {registro.id}.")
+    else:
+        print(f"DEBUG_ATUALIZAR_EM_SEPARACAO: Registro ID {registro.id} não atende aos critérios para atualização (Não é No-Show ou já está em 2).")
+        
+    return False
+
+# Exemplo de como você chamaria essa função:
+# Você pode chamá-la em uma rota de atualização de Registro, ou em uma nova rota.
+
+# Opção 1: Chamar em uma rota de atualização de Registro existente
+# Se você tiver uma rota tipo @app.route('/atualizar_registro/<int:registro_id>', methods=['POST'])
+# após a atualização dos dados do Registro, você chamaria:
+# verificar_e_atualizar_em_separacao_registro(registro_id)
+
+# Opção 2: Criar uma rota específica para disparar a verificação/atualização
+# Isso permitiria que você acione a verificação manualmente ou via JS na interface
+@app.route('/verificar_status_e_atualizar/<int:registro_id>', methods=['POST'])
+def rota_verificar_status_e_atualizar(registro_id):
+    print(f"DEBUG: Rota /verificar_status_e_atualizar acessada para Registro ID: {registro_id}")
+    sucesso = verificar_e_atualizar_em_separacao_registro(registro_id)
+    if sucesso:
+        return jsonify({"message": f"Status do Registro ID {registro_id} verificado e atualizado com sucesso.", "status": "ok"}), 200
+    else:
+        return jsonify({"message": f"Falha ao verificar/atualizar status do Registro ID {registro_id}.", "status": "error"}), 400
+
+# Opção 3: Se houver uma rota para criar/atualizar NoShow, podemos chamar essa função lá também
+# Por exemplo, se você tem @app.route('/no_shows', methods=['POST']) para criar um NoShow:
+# Depois de criar/atualizar um NoShow, você pode buscar por Registros correspondentes
+# e chamar verificar_e_atualizar_em_separacao_registro para cada um deles.
+
+
 @app.route('/registros', methods=['GET', 'POST'])
 def criar_registro_principal():
     if request.method == 'POST':
-        # Lógica para criar um novo registro (mantida do seu código original)
         print(f"DEBUG_REG_CRIAR: [Passo 1] Rota de criação acessada via POST!")
         print(f"DEBUG_REG_CRIAR: [Passo 1.1] Conteúdo do formulário: {request.form}")
 
@@ -1205,6 +1322,7 @@ def criar_registro_principal():
         tipo_entrega = request.form.get('tipo_entrega')
         cidade_entrega = request.form.get('cidade_entrega')
 
+        # Inicializa novo_registro com valores padrão
         novo_registro = Registro(
             nome=nome,
             matricula=matricula,
@@ -1213,8 +1331,12 @@ def criar_registro_principal():
             tipo_entrega=tipo_entrega,
             cidade_entrega=cidade_entrega,
             rua='Aguarde',
-            estacao_carregamento='Aguarde',
-            status=STATUS_REGISTRO_PRINCIPAL['AGUARDANDO_CARREGAMENTO']
+            # CORREÇÃO: Usando 'estacao' conforme o modelo 'Registro'
+            estacao='Aguarde', 
+            em_separacao=0, # Valor padrão inicial
+            finalizada=0,
+            cancelado=0,
+            status=STATUS_REGISTRO_PRINCIPAL['AGUARDANDO_CARREGAMENTO'] # Status inicial
         )
 
         if tipo_entrega == 'No-Show':
@@ -1231,51 +1353,63 @@ def criar_registro_principal():
 
                 novo_registro.rota = no_show_encontrado.gaiola
                 novo_registro.rua = no_show_encontrado.rua
-                novo_registro.estacao_carregamento = no_show_encontrado.estacao
+                # CORREÇÃO: Usando 'estacao' conforme o modelo 'Registro'
+                novo_registro.estacao = no_show_encontrado.estacao 
+                
                 novo_registro.status = STATUS_REGISTRO_PRINCIPAL['CARREGAMENTO_LIBERADO']
-                novo_registro.em_separacao = no_show_encontrado.em_separacao
+                
+                # --- MUDANÇA PRINCIPAL: Define em_separacao do NOVO Registro para 2 ---
+                # Isso garante que o Registro principal nasça com status 'Carregamento Liberado'
+                novo_registro.em_separacao = 2 
+                # --- FIM DA MUDANÇA ---
 
-                # flash(f"Registro criado! Rota '{rota_input}' do tipo No-Show associado a um carregamento liberado.", 'success') # Descomente se usar flash
+                # Opcional: Ativar mensagem flash
+                # flash(f"Registro criado! Rota '{rota_input}' do tipo No-Show associado a um carregamento liberado.", 'success') 
 
                 # Atualiza o NoShow encontrado para evitar duplicidade
-                no_show_encontrado.em_separacao = STATUS_EM_SEPARACAO['AGUARDANDO_ENTREGADOR']
+                no_show_encontrado.em_separacao = STATUS_EM_SEPARACAO['AGUARDANDO_ENTREGADOR'] # Ex: 3
                 db.session.add(no_show_encontrado)
 
             else:
                 print(f"DEBUG_REG_CRIAR: [Passo 3] FALHA! Nenhum NoShow correspondente encontrado para Rota '{rota_input}' com status 'SEPARACAO'.")
-                # flash(f"Registro criado! Rota '{rota_input}' do tipo No-Show aguardando associação de carregamento.", 'warning') # Descomente se usar flash
+                # Opcional: Ativar mensagem flash
+                # flash(f"Registro criado! Rota '{rota_input}' do tipo No-Show aguardando associação de carregamento.", 'warning') 
+                
                 novo_registro.status = STATUS_REGISTRO_PRINCIPAL['AGUARDANDO_CARREGAMENTO']
-                novo_registro.em_separacao = None
+                # Se não encontrar NoShow, mantém o padrão ou define explicitamente 0 ou None
+                novo_registro.em_separacao = 0 
         else:
             print(f"DEBUG_REG_CRIAR: [Passo 2] Tipo de entrega '{tipo_entrega}' não é 'No-Show'. Não buscar NoShow.")
             novo_registro.status = STATUS_REGISTRO_PRINCIPAL['AGUARDANDO_CARREGAMENTO']
-            novo_registro.em_separacao = None
+            # Para outros tipos de entrega, define explicitamente 0
+            novo_registro.em_separacao = 0 
 
         db.session.add(novo_registro)
         db.session.commit()
-        # flash("Registro de chegada criado com sucesso!", 'success') # Descomente se usar flash
-        # return redirect(url_for('alguma_pagina_apos_registro')) # Descomente se usar redirect
+        # Opcional: Ativar mensagem flash
+        # flash("Registro de chegada criado com sucesso!", 'success') 
+        # Opcional: Redirecionar para outra página
+        # return redirect(url_for('alguma_pagina_apos_registro')) 
 
-        # Para fins de demonstração, retornaremos um JSON simples após o POST
-        return jsonify({"message": "Registro criado com sucesso!", "registro": novo_registro.nome}), 201
+        # Para fins de demonstração ou API, retorna um JSON
+        return jsonify({"message": "Registro criado com sucesso!", "registro_id": novo_registro.id, "rota": novo_registro.rota}), 201
 
     else: # request.method == 'GET'
-        # Verifica se o parâmetro 'finalizados' está presente na URL
         mostrar_finalizados = request.args.get('finalizados', 'false').lower() == 'true'
         registros = []
 
         if mostrar_finalizados:
-            # Se 'finalizados' for 'true', mostra apenas os registros finalizados
             registros = Registro.query.filter_by(finalizada=1).order_by(Registro.data_hora_login.asc()).all()
             print("DEBUG_GET: Mostrando registros finalizados.")
         else:
-            # Caso contrário, mostra todos os registros que NÃO estão finalizados
             registros = Registro.query.filter_by(finalizada=0).order_by(Registro.data_hora_login.asc()).all()
             print("DEBUG_GET: Mostrando registros não finalizados.")
 
-        # Converte os registros para um formato JSON serializável para passar para o template
         registros_data = []
         for reg in registros:
+            # Formata a data/hora para JSON
+            data_hora_login_str = reg.data_hora_login.strftime('%Y-%m-%d %H:%M:%S') if reg.data_hora_login else None
+            
             registros_data.append({
                 'id': reg.id,
                 'nome': reg.nome,
@@ -1283,19 +1417,18 @@ def criar_registro_principal():
                 'rota': reg.rota,
                 'tipo_entrega': reg.tipo_entrega,
                 'cidade_entrega': reg.cidade_entrega,
-                'data_hora_login': reg.data_hora_login.strftime('%Y-%m-%d %H:%M:%S') if reg.data_hora_login else None,
-                'gaiola': reg.gaiola,
+                'data_hora_login': data_hora_login_str,
+                'gaiola': reg.gaiola, # Assumindo que Registro pode ter gaiola
                 'estacao': reg.estacao,
-                'finalizada': bool(reg.finalizada), # Converte para booleano para melhor representação
+                'finalizada': bool(reg.finalizada),
                 'cancelado': bool(reg.cancelado),
                 'em_separacao': reg.em_separacao,
                 'rua': reg.rua,
-                'estacao_carregamento': reg.estacao_carregamento,
                 'status': reg.status
             })
 
-        # Retorna os dados como JSON. Em uma aplicação real, você renderizaria um template HTML aqui.
         return jsonify(registros_data)
+    
 
 @app.route('/transferir_no_show_para_registro/<int:no_show_id>', methods=['POST'])
 def transferir_no_show_para_registro(no_show_id):
