@@ -273,7 +273,7 @@
                             </div>
                             <div> {# Este div agora é flex para alinhar label e input #}
                                 <label for="estacao_{{ r.id }}" class="text-sm font-medium text-gray-700 whitespace-nowrap">Estação:</label>
-                                <input type="text" id="estacao_{{ r.id }}" name="estacao" value="{% if r.tipo_entrega == 'No-Show' and not r.estacao %}06{% else %}{{ r.estacao or '' }}{% endif %}"
+                                <input type="text" id="estacao_{{ r.id }}" name="estacao" value="{% if r.tipo_entrega == 'No-Show' and not r.estacao %} {% else %}{{ r.estacao or '' }}{% endif %}"
                                     {% if r.finalizada == 1 or r.cancelado == 1 %}disabled{% endif %}
                                     {% if r.gaiola and not r.estacao %}autofocus{% endif %}
                                 >
