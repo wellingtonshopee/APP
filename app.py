@@ -814,69 +814,102 @@ def api_update_separacao_status(registro_id):
 
 @app.route('/associar_id/<int:id>', methods=['POST'])
 def associar_id(id):
-    registro = Registro.query.get(id) 
-    
+    registro = NoShow.query.get(id)
+
     if not registro:
-        return jsonify({"error": "Registro não encontrado."}), 404
-    
+        # É bom retornar um erro JSON aqui, pois se não achou, não tem pra onde redirecionar a página específica
+        return jsonify({"error": "Registro No-Show não encontrado."}), 404
+
     # Adicionando verificação para registros já finalizados ou cancelados
-    # Usamos agora o status em_separacao para verificar isso
-    if registro.em_separacao == 3 or registro.em_separacao == 4: # 3=Finalizado, 4=Cancelado
-        return jsonify({"error": "Registro já está finalizado ou cancelado e não pode ser associado."}), 400
+    if registro.em_separacao == 3 or registro.em_separacao == 4:
+        # Também é bom retornar um erro JSON aqui
+        return jsonify({"error": "Registro No-Show já está finalizado ou cancelado e não pode ser associado."}), 400
 
     gaiola = request.form.get('gaiola')
     estacao = request.form.get('estacao')
-    rua = request.form.get('rua') # Para No-Show
+    rua = request.form.get('rua')
 
-    # Atualiza os campos
     registro.gaiola = gaiola
     registro.estacao = estacao
-    
+
     if registro.tipo_entrega == 'No-Show':
         registro.rua = rua
-    
-    # Se o registro está em 'Aguardando Carregamento' (0) ou 'Em Separação' (1) e foi "salvo" com os dados,
-    # ele agora passa para 'Carregamento Liberado' (2).
-    # Esta é a principal mudança aqui.
-    if registro.em_separacao in [0, 1]: 
+
+    if registro.em_separacao in [0, 1]:
         registro.em_separacao = 2 # Define como Carregamento Liberado
-    
+
     db.session.commit()
 
-    return jsonify({"message": "Associação salva e Carregamento Liberado!"}), 200
+    # --- A MUDANÇA ESTÁ AQUI ---
+    # Após salvar no banco, redirecionamos para a página que lista os no-shows.
+    # Você provavelmente já tem uma rota que renderiza 'registro_no_show.html'.
+    # Vou assumir que essa rota se chama 'registro_no_show' (nome da função).
+    # Se você tem filtros (data, nome, etc.) na sua página de listagem, é importante
+    # passá-los de volta no redirecionamento para manter o estado da página.
 
-# ... (Mantenha as outras rotas exatamente como te passei na última vez:
-#     /marcar_como_finalizado_id/<int:id>
-#     /desassociar_id/<int:id>
-#     /finalizar_carregamento_id_status_separacao/<int:id>
-#     /carregar_no_show/<int:id>
-# ) ...
+    # Exemplo simples, redireciona para a página principal de registro_no_show
+    # return redirect(url_for('registro_no_show'))
+
+    # Exemplo mais robusto: se você passa filtros, recupere-os da requisição e passe de volta
+    data_filtro = request.form.get('data') # Se esses filtros vêm do formulário
+    nome_filtro = request.form.get('nome')
+    matricula_filtro = request.form.get('matricula')
+    rota_filtro = request.form.get('rota')
+    status_filtro = request.form.get('status')
+
+    return redirect(url_for('registro_no_show',
+                            data=data_filtro,
+                            nome=nome_filtro,
+                            matricula=matricula_filtro,
+                            rota=rota_filtro,
+                            status=status_filtro)) # Redireciona para a página de listagem
 
 
 @app.route('/desassociar_id/<int:id>', methods=['POST'])
 def desassociar_id(id):
-    registro = Registro.query.get(id)
+    # --- MUDANÇA 1: Buscar na tabela CORRETA (NoShow) ---
+    registro = NoShow.query.get(id) # Agora busca no modelo NoShow
+
     if not registro:
-        return jsonify({"error": "Registro não encontrado."}), 404
+        # Retorna erro JSON se o registro não for encontrado (caso de ID inválido)
+        return jsonify({"error": "Registro No-Show não encontrado."}), 404
 
     # Verifica se o registro já foi finalizado ou cancelado
-    # Usamos agora o status em_separacao para verificar isso
     if registro.em_separacao == 3 or registro.em_separacao == 4: # 3=Finalizado, 4=Cancelado
+        # Retorna erro JSON se não puder desassociar devido ao status
         return jsonify({"error": "Não é possível desassociar um registro finalizado ou cancelado."}), 400
-    
-    # Reseta os campos de associação
+
+    # Reseta os campos de associação (limpa os dados)
     registro.gaiola = None
     registro.estacao = None
     if registro.tipo_entrega == 'No-Show':
         registro.rua = None
-    
-    # Define em_separacao de volta para 1 (Em Separação)
-    # Se estava em 2 (Carregamento Liberado), volta para 0
-    registro.em_separacao = 0 
-    
-    db.session.commit()
-    
-    return jsonify({"message": "Registro desassociado e retornado para 'Em Separação'!"}), 200
+
+    # Define em_separacao de volta para 0 (Aguardando Carregamento)
+    # ou 1 (Em Separação), dependendo do seu fluxo.
+    # Pelo seu código, você definiu para 0, então manterei.
+    registro.em_separacao = 0
+
+    db.session.commit() # Salva as alterações no banco de dados
+
+    # --- MUDANÇA 2: Redirecionar para a página HTML ---
+    # Para redirecionar, precisamos dos filtros que estavam na página.
+    # Assumimos que eles são passados como campos ocultos no formulário HTML.
+    data_filtro = request.form.get('data')
+    nome_filtro = request.form.get('nome')
+    matricula_filtro = request.form.get('matricula')
+    rota_filtro = request.form.get('rota')
+    status_filtro = request.form.get('status')
+
+    # Redireciona para a página de listagem de registros no-show.
+    # 'registro_no_show' deve ser o nome da função da sua rota que renderiza 'registro_no_show.html'.
+    return redirect(url_for('registro_no_show',
+                            data=data_filtro,
+                            nome=nome_filtro,
+                            matricula=matricula_filtro,
+                            rota=rota_filtro,
+                            status=status_filtro))
+
 
 
 @app.route('/marcar_como_finalizado_id/<int:id>', methods=['POST'])
