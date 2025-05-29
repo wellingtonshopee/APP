@@ -229,7 +229,7 @@
                     {% set status_class = 'carregamento-concluido-label' %}
                     {% set card_status_class = 'status-liberado' %}
                 {% elif r.em_separacao == 3 %}
-                    {% set status_text = 'Finalizado (Transferido)' %}
+                    {% set status_text = 'Transferido' %}
                     {% set status_class = 'finalizado-label' %}
                     {% set card_status_class = 'status-finalizado' %}
                 {% else %}
@@ -373,10 +373,10 @@
     </div>
 
     <div class="text-center mt-8">
-        <a href="{{ url_for('registros') }}" class="inline-block bg-gray-600 text-white px-6 py-3 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
-            Ver Lista de Registros
-        </a>
-    </div>
+    <a href="{{ url_for('registros') }}" class="inline-block bg-gray-600 text-white px-6 py-3 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+        Ver Lista de Registros
+    </a>
+</div>
 
 </main>
 

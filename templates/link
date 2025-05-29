@@ -1,8 +1,170 @@
-      <li><a href="{{ url_for('menu_principal') }}">Página Inicial</a></li>
-            <li><a href="{{ url_for('login') }}">Login Drive</a></li>
-            <li><a href="{{ url_for('cadastro') }}">Cadastro Drive</a></li>
-            <li><a href="{{ url_for('registros') }}">Painel do Operador</a></li> 
-            <li><a href="{{ url_for('registro_no_show') }}">Listar Registros No-Show</a></li>
-            <li><a href="{{ url_for('associacao_no_show') }}">Criar Registro No-Show</a></li>
-            <li><a href="{{ url_for('registros_finalizados') }}">Relatório de Registros</a></li>
-            <li><a href="{{ url_for('painel_final') }}">Painel de Atendimento</a></li>
+@app.route('/api/status_registro_by_matricula/<string:matricula>', methods=['GET'])
+def api_status_registro_by_matricula(matricula):
+    """
+    Endpoint da API para verificar o status de um registro (Registro ou NoShow)
+    com base na matrícula ou ID do registro.
+
+    Args:
+        matricula (str): A matrícula do registro a ser buscado.
+
+    Returns:
+        jsonify: Um objeto JSON contendo os detalhes do registro encontrado
+                 e sua tabela de origem, ou uma mensagem de erro.
+    """
+    print(f"DEBUG: /api/status_registro_by_matricula/{matricula} - Rota API acessada.")
+
+    registro_id = request.args.get('registro_id')
+    registro_encontrado = None
+    tabela_origem = None
+
+    try:
+        with app.app_context():
+            if registro_id:
+                # Lógica para buscar o registro pelo ID (se fornecido)
+                try:
+                    registro_id_int = int(registro_id)
+                    # Tenta buscar o registro pelo ID na tabela Registro
+                    registro_encontrado = db.session.query(Registro).filter_by(id=registro_id_int).first()
+                    if registro_encontrado:
+                        tabela_origem = 'registros'
+                    else:
+                        # Se não encontrado em Registro, tenta buscar em NoShow
+                        registro_encontrado = db.session.query(NoShow).filter_by(id=registro_id_int).first()
+                        if registro_encontrado:
+                            tabela_origem = 'no_show'
+                except ValueError:
+                    print(f"DEBUG: registro_id inválido: {registro_id}")
+                    return jsonify({'message': 'ID de registro inválido.'}), 400
+            else:
+                # Lógica para buscar o registro pela matrícula (se nenhum ID for fornecido)
+                # Prioriza a busca na tabela NoShow primeiro, conforme solicitado.
+
+                # 1. Busca "NoShow" que não foram transferidos e não estão finalizados/cancelados
+                # (candidatos à transferência)
+                registro_encontrado = db.session.query(NoShow).filter(
+                    NoShow.matricula == matricula,
+                    NoShow.finalizada == 0,
+                    NoShow.cancelado == 0,
+                    NoShow.transferred_to_registro_id.is_(None) # Condição crucial para NoShow não transferido
+                ).order_by(NoShow.data_hora_login.desc()).first()
+
+                if registro_encontrado:
+                    tabela_origem = 'no_show'
+                else:
+                    # 2. Se não encontrar NoShow ativo/transferível, busca NoShow que foram finalizados,
+                    # cancelados ou com status 'em_separacao' == 4
+                    registro_encontrado = db.session.query(NoShow).filter(
+                        NoShow.matricula == matricula,
+                        or_(NoShow.finalizada == 1, NoShow.cancelado == 1, NoShow.em_separacao == 4)
+                    ).order_by(NoShow.data_hora_login.desc()).first()
+                    if registro_encontrado:
+                        tabela_origem = 'no_show'
+                    else:
+                        # 3. Se não encontrar em NoShow, busca registros "ativos" (não finalizados ou cancelados)
+                        # na tabela Registro
+                        registro_encontrado = db.session.query(Registro).filter(
+                            Registro.matricula == matricula,
+                            Registro.finalizada == 0,
+                            Registro.cancelado == 0
+                        ).order_by(Registro.data_hora_login.desc()).first()
+
+                        if registro_encontrado:
+                            tabela_origem = 'registros'
+                        else:
+                            # 4. Finalmente, se não encontrar em Registro ativo, busca registros finalizados
+                            # ou cancelados na tabela Registro
+                            registro_encontrado = db.session.query(Registro).filter(
+                                Registro.matricula == matricula,
+                                or_(Registro.finalizada == 1, Registro.cancelado == 1)
+                            ).order_by(Registro.data_hora_login.desc()).first()
+                            if registro_encontrado:
+                                tabela_origem = 'registros'
+
+            if registro_encontrado:
+                # Constrói os dados da resposta JSON
+                response_data = {
+                    'id': registro_encontrado.id,
+                    'nome': registro_encontrado.nome,
+                    'matricula': registro_encontrado.matricula,
+                    'finalizada': getattr(registro_encontrado, 'finalizada', 0),
+                    'cancelado': getattr(registro_encontrado, 'cancelado', 0),
+                    'em_separacao': getattr(registro_encontrado, 'em_separacao', 0),
+                    'gaiola': getattr(registro_encontrado, 'gaiola', None),
+                    'estacao': getattr(registro_encontrado, 'estacao', None),
+                    'rota': getattr(registro_encontrado, 'rota', None),
+                    'tipo_entrega': getattr(registro_encontrado, 'tipo_entrega', None),
+                    'cidade_entrega': getattr(registro_encontrado, 'cidade_entrega', None),
+                    'rua': getattr(registro_encontrado, 'rua', None),
+                    'data_hora_login': registro_encontrado.data_hora_login.strftime('%Y-%m-%d - %H:%M') if registro_encontrado.data_hora_login else None,
+                    'tabela_origem': tabela_origem,
+                    'estado': None # Será populado com base na lógica abaixo
+                }
+
+                # Adiciona 'transferred_to_registro_id' para registros NoShow, se aplicável
+                if tabela_origem == 'no_show' and hasattr(registro_encontrado, 'transferred_to_registro_id'):
+                    response_data['transferred_to_registro_id'] = registro_encontrado.transferred_to_registro_id
+
+                # Lógica para determinar o 'estado' detalhado do registro
+                if tabela_origem == 'no_show':
+                    if registro_encontrado.transferred_to_registro_id:
+                        response_data['estado'] = 'NOSHOW_TRANSFERIDO_PARA_REGISTRO'
+                    elif registro_encontrado.finalizada == 0 and registro_encontrado.cancelado == 0 and registro_encontrado.em_separacao != 4:
+                        response_data['estado'] = 'NOSHOW_AGUARDANDO_TRANSFERENCIA' # Estado para NoShow pronto para ser transferido
+                    elif registro_encontrado.em_separacao == 4:
+                        response_data['estado'] = 'NOSHOW_EM_SEPARACAO'
+                    elif registro_encontrado.finalizada == 1:
+                        response_data['estado'] = 'NOSHOW_FINALIZADO'
+                    elif registro_encontrado.cancelado == 1:
+                        response_data['estado'] = 'NOSHOW_CANCELADO'
+                elif tabela_origem == 'registros':
+                    # Debugging: Imprime o valor exato e o tipo de tipo_entrega para depuração
+                    print(f"DEBUG: Registro.tipo_entrega (valor real): '{registro_encontrado.tipo_entrega}' (Tipo: {type(registro_encontrado.tipo_entrega)})")
+                    # Adiciona uma verificação para 'No-Show' dentro da tabela 'registros'
+                    # Usa .strip() para remover espaços em branco e garantir comparação correta
+                    if registro_encontrado.tipo_entrega and registro_encontrado.tipo_entrega.strip() == 'No-Show':
+                        # Verifica o estado de em_separacao para No-Show na tabela Registro
+                        if registro_encontrado.finalizada == 0 and registro_encontrado.cancelado == 0 and registro_encontrado.em_separacao == 2:
+                            response_data['estado'] = 'REGISTRO_NOSHOW_EM_PROCESSAMENTO' # Novo estado para No-Show em Registro e em processamento
+                            print(f"DEBUG: Estado definido como REGISTRO_NOSHOW_EM_PROCESSAMENTO para Registro com tipo_entrega='No-Show' e em_separacao=2")
+                        elif registro_encontrado.finalizada == 1:
+                            response_data['estado'] = 'REGISTRO_NOSHOW_FINALIZADO' # No-Show em Registro e finalizado
+                        elif registro_encontrado.cancelado == 1:
+                            response_data['estado'] = 'REGISTRO_NOSHOW_CANCELADO' # No-Show em Registro e cancelado
+                        else:
+                            response_data['estado'] = 'REGISTRO_ORIGEM_NOSHOW' # Estado geral para No-Show em Registro
+                            print(f"DEBUG: Estado definido como REGISTRO_ORIGEM_NOSHOW para Registro com tipo_entrega='No-Show'")
+                    elif registro_encontrado.finalizada == 0 and registro_encontrado.cancelado == 0:
+                        response_data['estado'] = 'REGISTRO_ATIVO'
+                    elif registro_encontrado.finalizada == 1:
+                        response_data['estado'] = 'REGISTRO_FINALIZADO'
+                    elif registro_encontrado.cancelado == 1:
+                        response_data['estado'] = 'REGISTRO_CANCELADO'
+
+                print(f"DEBUG: Registro encontrado: {response_data}")
+                return jsonify(response_data)
+            else:
+                # Nenhum registro encontrado
+                print(f"DEBUG: Nenhum registro encontrado para matrícula {matricula} e ID {registro_id}.")
+                return jsonify({'message': 'Nenhum registro encontrado para esta matrícula e ID.'}), 404
+    except Exception as e:
+        # Captura qualquer exceção inesperada e retorna um erro 500
+        print(f"ERRO: Ocorreu um erro inesperado na API: {e}")
+        return jsonify({'message': f'Erro interno do servidor: {str(e)}'}), 500
+
+# Função de exemplo para atualizar status de registros NoShow
+# Esta função não faz parte da rota API principal, mas é um exemplo de uso.
+def atualizar_status_registros_noshow():
+    with app.app_context():
+        registros_pendentes = Registro.query.filter(Registro.tipo_entrega == 'No-Show', Registro.em_separacao == 0).all()
+        for registro in registros_pendentes:
+            noshow_correspondente = NoShow.query.filter(
+                NoShow.gaiola == registro.rota,
+                NoShow.tipo_entrega == 'No-Show'
+                # Adicione outras condições de filtro, se necessário
+            ).first()
+            if noshow_correspondente:
+                registro.em_separacao = 2  # Exemplo de atualização de status
+                db.session.commit()
+                print(f"DEBUG: Registro ID {registro.id} atualizado devido a No-Show correspondente.")
+
+
