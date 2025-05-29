@@ -577,7 +577,7 @@
         {# Forms for active records #}
         {% if not registro.gaiola or not registro.estacao %}
             {# Form to Associate #}
-            <form action="{{ url_for('associar_no_show_id', id=registro.id) }}" method="POST"> {# Removido class="w-full" #}
+            <form action="{{ url_for('associar_id', id=registro.id) }}" method="POST"> {# Removido class="w-full" #}
                 <input type="text" name="gaiola" placeholder="Rota:" required class="flex-grow rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
                 <input type="text" name="estacao" placeholder="Estação:" required class="flex-grow rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
                 <input type="text" name="rua" placeholder="Rua:" value="{% if registro.rua and registro.rua != 'None' %}{{ registro.rua }}{% endif %}" class="flex-grow rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
@@ -586,11 +586,11 @@
             </form>
         {% else %}
             {# Form to Desassociate #}
-            <form action="{{ url_for('dessociar_no_show', registro_id=registro.id, data=data_filtro, nome=nome_filtro, matricula=matricula_filtro, rota=rota_filtro, status=status_filtro) }}" method="POST"> {# Removido class="w-full flex justify-end" #}
-                <button type="submit" class="btn-desassociar text-white rounded-md hover:bg-orange-600" {% if registro.em_separacao == 4 or registro.em_separacao == 3 %}disabled{% endif %}>
-                    Desassociar
-                </button>
-            </form>
+            <form action="{{ url_for('desassociar_id', id=registro.id, data=data_filtro, nome=nome_filtro, matricula=matricula_filtro, rota=rota_filtro, status=status_filtro) }}" method="POST">
+    <button type="submit" class="btn-desassociar text-white rounded-md hover:bg-orange-600" {% if registro.em_separacao == 4 or registro.em_separacao == 3 %}disabled{% endif %}>
+        Desassociar
+    </button>
+</form>
         {% endif %}
         <form action="{{ url_for('cancelar_no_show', id=registro.id, data=data_filtro, nome=nome_filtro, matricula=matricula_filtro, rota=rota_filtro, status=status_filtro) }}" method="POST" class="inline-block mr-2 cancelar-noshow-form" data-registro-id="{{ registro.id }}">
             <button type="submit" class="btn-cancelar cancelar-noshow-btn" {% if registro.em_separacao == 4 or registro.em_separacao == 3 %}disabled{% endif %}>Cancelar</button>
