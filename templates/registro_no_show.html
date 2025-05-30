@@ -531,87 +531,82 @@
         {% endwith %}
 
         <div class="cards">
-            {% if registros_no_show %}
-                {% for registro in registros_no_show %}
-                    {# Add ID to the card div for scrolling #}
-                    <div class="card" id="no-show-registro-{{ registro.id }}">
-                        {# Status Label - This already correctly shows "Cancelado" and "Finalizado" #}
+    {% if registros_no_show %}
+        {% for registro in registros_no_show %}
+            {# Condição para exibir o card: só mostra se não for cancelado nem finalizado por padrão, OU se o filtro de status corresponder #}
+            {% if (registro.cancelado != 1 and registro.finalizada != 1) or status_filtro == 'cancelado' or status_filtro == 'finalizado' %}
+                {# Add ID to the card div for scrolling #}
+                <div class="card" id="no-show-registro-{{ registro.id }}">
+                    {# Status Label - This already correctly shows "Cancelado" and "Finalizado" #}
+                    {% if registro.finalizada == 1 %}
+                    <span class="status-label status-finalizado">Finalizado</span>
+                    {% elif registro.cancelado == 1 or registro.em_separacao == 3 %}
+                    <span class="status-label status-cancelado">Cancelado</span>
+                    {% elif registro.em_separacao == 1 %}
+                    <span class="status-label status-separacao">Em Separação</span>
+                    {% elif registro.em_separacao == 2 %}
+                    <span class="status-label status-aguardando-entregador">Aguardando Entregador</span>
+                    {% elif registro.em_separacao == 4 %} {# Novo status para Transferido #}
+                    <span class="status-label status-transferido">Transferido</span>
+                    {% else %}
+                    <span class="status-label status-aguardando">Aguardando Motorista</span>
+                    {% endif %}
+                    {# BEGIN - Display fields in the desired order #}
+                    <p><strong>Data/Hora:</strong> {{ registro.data_hora_login | formata_data_hora }}</p>
+                    <p><strong>Nome:</strong> {{ registro.nome | default('N/A') }}</p>
+                    <p><strong>Matrícula:</strong> {{ registro.matricula | default('N/A') }}</p>
+                    <p><strong>Rota:</strong> {{ registro.gaiola | default('N/A') }}</p> {# Using gaiola as discussed, assuming it's the display Rota #}
+                    <p><strong>Entrega:</strong> {{ registro.tipo_entrega | default('N/A') }}</p>
+                    <p><strong>Rua:</strong> {{ registro.rua | default('N/A') }}</p>
+                    <p><strong>Estação:</strong> {{ registro.estacao | default('N/A') }}</p>
+
+                    {# Modified line for Finalizado text to show time if finalized, "Cancelado" if canceled, or "Não Finalizado" #}
+                    <p><strong>Data \ Hora Fim:</strong>
                         {% if registro.finalizada == 1 %}
-                        <span class="status-label status-finalizado">Finalizado</span>
+                            {{ registro.hora_finalizacao|formata_data_hora }}
                         {% elif registro.cancelado == 1 or registro.em_separacao == 3 %}
-                        <span class="status-label status-cancelado">Cancelado</span>
-                        {% elif registro.em_separacao == 1 %}
-                        <span class="status-label status-separacao">Em Separação</span>
-                        {% elif registro.em_separacao == 2 %}
-                        <span class="status-label status-aguardando-entregador">Aguardando Entregador</span>
-                        {% elif registro.em_separacao == 4 %} {# Novo status para Transferido #}
-                        <span class="status-label status-transferido">Transferido</span>
+                            Cancelado
+                        {% elif registro.em_separacao == 4 %} {# Adicionada condição para status Transferido #}
+                            {{ registro.hora_finalizacao|formata_data_hora }} {# Exibe a hora de finalização para Transferido #}
                         {% else %}
-                        <span class="status-label status-aguardando">Aguardando Motorista</span>
+                            Não Finalizado
                         {% endif %}
-                        {# BEGIN - Display fields in the desired order #}
-                        <p><strong>Data/Hora:</strong> {{ registro.data_hora_login | formata_data_hora }}</p>
-                        <p><strong>Nome:</strong> {{ registro.nome | default('N/A') }}</p>
-                        <p><strong>Matrícula:</strong> {{ registro.matricula | default('N/A') }}</p>
-                        <p><strong>Rota:</strong> {{ registro.gaiola | default('N/A') }}</p> {# Using gaiola as discussed, assuming it's the display Rota #}
-                        <p><strong>Entrega:</strong> {{ registro.tipo_entrega | default('N/A') }}</p>
-                        <p><strong>Rua:</strong> {{ registro.rua | default('N/A') }}</p>
-                        <p><strong>Estação:</strong> {{ registro.estacao | default('N/A') }}</p>
+                    </p>
+                    {# END - Display fields in the desired order #}
 
-                        {# Modified line for Finalizado text to show time if finalized, "Cancelado" if canceled, or "Não Finalizado" #}
-                        <p><strong>Data \ Hora Fim:</strong>
-                            {% if registro.finalizada == 1 %}
-                                {{ registro.hora_finalizacao|formata_data_hora }}
-                            {% elif registro.cancelado == 1 or registro.em_separacao == 3 %}
-                                Cancelado
-                            {% elif registro.em_separacao == 4 %} {# Adicionada condição para status Transferido #}
-                                {{ registro.hora_finalizacao|formata_data_hora }} {# Exibe a hora de finalização para Transferido #}
-                            {% else %}
-                                Não Finalizado
-                            {% endif %}
-                        </p>
-                        {# END - Display fields in the desired order #}
-
-                        {# Action Forms Section - Display all actions regardless of status #}
-    <div class="card-actions"> {# Removido flex flex-wrap gap-2 daqui para usar o CSS global #}
-        {# Forms for active records #}
-        {% if not registro.gaiola or not registro.estacao %}
-            {# Form to Associate #}
-            <form action="{{ url_for('associar_no_show_id', id=registro.id) }}" method="POST"> {# Removido class="w-full" #}
-                <input type="text" name="gaiola" placeholder="Rota:" required class="flex-grow rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
-                <input type="text" name="estacao" placeholder="Estação:" required class="flex-grow rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
-                <input type="text" name="rua" placeholder="Rua:" value="{% if registro.rua and registro.rua != 'None' %}{{ registro.rua }}{% endif %}" class="flex-grow rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
-                {# Removido 'disabled' e 'js-disable-manual-associate' #}
-                <button type="submit" class="btn-associar rounded-md shadow-sm text-white font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500" {% if registro.em_separacao == 4 or registro.em_separacao == 3 %}disabled{% endif %}>Associar</button>
-            </form>
-        {% else %}
-            {# Form to Desassociate #}
-            <form action="{{ url_for('dessociar_no_show', registro_id=registro.id, data=data_filtro, nome=nome_filtro, matricula=matricula_filtro, rota=rota_filtro, status=status_filtro) }}" method="POST"> {# Removido class="w-full flex justify-end" #}
-                <button type="submit" class="btn-desassociar text-white rounded-md hover:bg-orange-600" {% if registro.em_separacao == 4 or registro.em_separacao == 3 %}disabled{% endif %}>
-                    Desassociar
-                </button>
-            </form>
-        {% endif %}
-        <form action="{{ url_for('cancelar_no_show', id=registro.id, data=data_filtro, nome=nome_filtro, matricula=matricula_filtro, rota=rota_filtro, status=status_filtro) }}" method="POST" class="inline-block mr-2 cancelar-noshow-form" data-registro-id="{{ registro.id }}">
-            <button type="submit" class="btn-cancelar cancelar-noshow-btn" {% if registro.em_separacao == 4 or registro.em_separacao == 3 %}disabled{% endif %}>Cancelar</button>
-        </form>
-        <form action="{{ url_for('transferir_no_show_para_registro', no_show_id=registro.id, data=data_filtro, nome=nome_filtro, matricula=matricula_filtro, rota=rota_filtro, status=status_filtro) }}" method="POST" class="transferir-destaque">
-            <button type="submit" class="btn-transferir" {% if registro.em_separacao == 4 or registro.em_separacao == 3 %}disabled{% endif %}>Transferir</button>
-        </form>
-        {% if registro.em_separacao == 4 %}
-            {# Botão "Finalizar" só aparece após a transferência #}
-            <form action="{{ url_for('finalizar_no_show', id=registro.id) }}" method="POST">
-                <button type="submit" class="btn-finalizar">Finalizar</button>
-            </form>
-        {% endif %}
-    </div>
+                    {# Action Forms Section - Display all actions regardless of status #}
+                    <div class="card-actions"> {# Removido flex flex-wrap gap-2 daqui para usar o CSS global #}
+                        {# Forms for active records #}
+                        {% if not registro.gaiola or not registro.estacao %}
+                            {# Form to Associate #}
+                            <form action="{{ url_for('associar_id', id=registro.id) }}" method="POST"> {# Removido class="w-full" #}
+                                <input type="text" name="gaiola" placeholder="Rota:" required class="flex-grow rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                                <input type="text" name="estacao" placeholder="Estação:" required class="flex-grow rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                                <input type="text" name="rua" placeholder="Rua:" value="{% if registro.rua and registro.rua != 'None' %}{{ registro.rua }}{% endif %}" class="flex-grow rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                                {# Removido 'disabled' e 'js-disable-manual-associate' #}
+                                <button type="submit" class="btn-associar rounded-md shadow-sm text-white font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500" {% if registro.em_separacao == 4 or registro.em_separacao == 3 %}disabled{% endif %}>Associar</button>
+                            </form>
+                        {% endif %}
+                        <form action="{{ url_for('cancelar_no_show', id=registro.id, data=data_filtro, nome=nome_filtro, matricula=matricula_filtro, rota=rota_filtro, status=status_filtro) }}" method="POST" class="inline-block mr-2 cancelar-noshow-form" data-registro-id="{{ registro.id }}">
+                            <button type="submit" class="btn-cancelar cancelar-noshow-btn" {% if registro.em_separacao == 4 or registro.em_separacao == 3 %}disabled{% endif %}>Cancelar</button>
+                        </form>
+                        <form action="{{ url_for('transferir_no_show_para_registro', no_show_id=registro.id, data=data_filtro, nome=nome_filtro, matricula=matricula_filtro, rota=rota_filtro, status=status_filtro) }}" method="POST" class="transferir-destaque">
+                            <button type="submit" class="btn-transferir" {% if registro.em_separacao == 4 or registro.em_separacao == 3 %}disabled{% endif %}>Transferir</button>
+                        </form>
+                        {% if registro.em_separacao == 4 %}
+                            {# Botão "Finalizar" só aparece após a transferência #}
+                            <form action="{{ url_for('finalizar_no_show', id=registro.id) }}" method="POST">
+                                <button type="submit" class="btn-finalizar">Finalizar</button>
+                            </form>
+                        {% endif %}
                     </div>
-                {% endfor %}
-            {% else %}
-                <p class="text-center text-gray-600 mt-8">Nenhum registro de No-Show encontrado com os filtros aplicados.</p>
-            {% endif %}
-        </div>
-
+                </div>
+            {% endif %} {# <--- Este {% endif %} FECHA A CONDIÇÃO DE EXIBIÇÃO DO CARD. É crucial que ele esteja aqui, antes do {% endfor %}. #}
+        {% endfor %}
+    {% else %}
+        <p class="text-center text-gray-600 mt-8">Nenhum registro de No-Show encontrado com os filtros aplicados.</p>
+    {% endif %}
+</div>
         <div class="paginacao">
             {% if total_paginas > 1 %}
                 <span>Página {{ pagina }} de {{ total_paginas }}</span>

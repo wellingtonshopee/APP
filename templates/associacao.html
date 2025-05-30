@@ -59,7 +59,7 @@
         .em-separacao-label { background-color: #ef4444; /* red-500 */ } /* Em Separação */
         .carregamento-concluido-label { background-color: #f59e0b; /* amber-500 */ } /* Carregamento Concluído / Liberado */
         .finalizado-label { background-color: #10b981; /* emerald-500 */ } /* Finalizado (Geral) */
-        .cancelado-label { background-color: #6b7280; /* gray-500 */ } /* Cancelado */
+        .cancelado-label { background-color: #eb0505; /* gray-500 */ } /* Cancelado */
 
         /* Cores de fundo para o CARD inteiro, de acordo com o status */
         .card.status-aguardando { background-color: #e0f7fa; border: 1px solid #81d4fa; } /* light cyan */
@@ -170,6 +170,10 @@
         /* Mensagem de sucesso/erro no topo (js-controlled) */
         #messageBox { display: none; padding: 0.75rem; margin-bottom: 1rem; border-radius: 0.375rem; }
         #messageBox button { background: none; border: none; font-size: 1.25rem; cursor: pointer; }
+
+        /* Estilo para botão desabilitado */
+        .opacity-50 { opacity: 0.5; }
+        .pointer-events-none { pointer-events: none; }
     </style>
 </head>
 <body class="pagina-associacao">
@@ -244,7 +248,7 @@
                 {% set card_status_class = 'status-no-show' %} 
             {% endif %}
 
-            <div class="card {{ card_status_class }}" id="registro-{{ r.id }}">
+            <div class="card {{ card_status_class }}" id="registro-{{ r.id }}" data-em-separacao="{{ r.em_separacao }}">
                 {% if status_text %}
                     <span class="status-label {{ status_class }}">{{ status_text }}</span>
                 {% endif %}
@@ -273,7 +277,7 @@
                             </div>
                             <div> {# Este div agora é flex para alinhar label e input #}
                                 <label for="estacao_{{ r.id }}" class="text-sm font-medium text-gray-700 whitespace-nowrap">Estação:</label>
-                                <input type="text" id="estacao_{{ r.id }}" name="estacao" value="{% if r.tipo_entrega == 'No-Show' and not r.estacao %}06{% else %}{{ r.estacao or '' }}{% endif %}"
+                                <input type="text" id="estacao_{{ r.id }}" name="estacao" value="{% if r.tipo_entrega == 'No-Show' and not r.estacao %} {% else %}{{ r.estacao or '' }}{% endif %}"
                                     {% if r.finalizada == 1 or r.cancelado == 1 %}disabled{% endif %}
                                     {% if r.gaiola and not r.estacao %}autofocus{% endif %}
                                 >
@@ -343,7 +347,10 @@
                 {% endif %}
                 <br><br>
                 <a href="{{ url_for('associacao') }}" class="botao-estilo-transparente bg-blue-500">Ver Todos Pendentes</a>
-                <a href="{{ url_for('registros') }}" class="botao-estilo-transparente bg-gray-600">Ver Lista Completa</a>
+                {# REMOVIDO o ID deste botão para evitar duplicidade. #}
+                <a href="{{ url_for('registros') }}" class="inline-block bg-gray-600 text-white px-6 py-3 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                    Ver Lista de Registros
+                </a>
             </p>
         {% endif %}
     </div>
@@ -373,10 +380,14 @@
     </div>
 
     <div class="text-center mt-8">
-    <a href="{{ url_for('registros') }}" class="inline-block bg-gray-600 text-white px-6 py-3 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
-        Ver Lista de Registros
-    </a>
-</div>
+        {# ESTE é o ÚNICO botão "Ver Lista de Registros" com o ID. #}
+        <a id="btnVerListaRegistros" 
+           href="{{ url_for('registros') }}" 
+           data-original-href="{{ url_for('registros') }}" {# Armazena o href original #}
+           class="inline-block bg-gray-600 text-white px-6 py-3 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+            Ver Lista de Registros
+        </a>
+    </div>
 
 </main>
 
@@ -402,7 +413,7 @@
         }
     }
 
-    // NOVA FUNÇÃO: Lida com o salvamento da associação
+    // Lida com o salvamento da associação
     async function salvarAssociacao(id) {
         const form = document.querySelector(`#registro-${id} .form-associar`);
         if (!form) {
@@ -415,13 +426,12 @@
         try {
             const response = await fetch(form.action, {
                 method: 'POST',
-                body: formData // Envia os dados do formulário
+                body: formData
             });
             const data = await response.json();
 
             if (response.ok) {
                 showMessage(data.message, 'success');
-                // IMPORTANTE: Recarrega a página para exibir o card atualizado
                 setTimeout(() => { window.location.reload(); }, 1000);
             } else {
                 showMessage(data.error || 'Erro ao salvar associação.', 'error');
@@ -502,7 +512,6 @@
         }
     }
 
-
     async function cancelarRegistro(id) {
         if (!confirm('Tem certeza que deseja CANCELAR este registro? Esta ação é irreversível.')) {
             return;
@@ -516,7 +525,7 @@
             const data = await response.json();
             if (response.ok) {
                 showMessage(data.message, 'success');
-                setTimeout(() => { window.location.reload(); }, 1500); // Recarrega para mostrar o status atualizado
+                setTimeout(() => { window.location.reload(); }, 1500);
             } else {
                 showMessage(data.error || 'Erro ao cancelar registro.', 'error');
             }
@@ -525,9 +534,7 @@
             showMessage('Erro de rede ao cancelar.', 'error');
         }
     }
-    // Esta função (carregarNoShow) não será mais usada pelo botão "Carregar (No-Show)"
-    // pois o "Salvar Associação" já fará a transição para status 2.
-    // É mantida aqui apenas como referência ou se você precisar dela para outra finalidade.
+
     async function carregarNoShow(id) {
         if (!confirm('Tem certeza que deseja marcar este registro No-Show como "Carregado"?')) {
             return;
@@ -551,6 +558,56 @@
         }
     }
 
+ // Função que verifica se os campos 'gaiola' ou 'estacao' estão preenchidos
+    // e HABILITA/DESABILITA o botão "Ver Lista de Registros" conforme a regra:
+    // HABILITADO SE CAMPOS VAZIOS, DESABILITADO SE CAMPOS PREENCHIDOS
+    function checkAndToggleRecordsListButton() {
+        const btn = document.getElementById('btnVerListaRegistros');
+        if (!btn) {
+            console.warn("Botão 'Ver Lista de Registros' não encontrado. Verifique o ID.");
+            return;
+        }
+
+        let shouldDisableButton = false; // Começamos assumindo que o botão DEVE ESTAR HABILITADO
+
+        // 1. **PRIORIDADE MÁXIMA**: Verificar se há algum registro com em_separacao = 2 (Carregamento Liberado)
+        const liberadoCards = document.querySelectorAll('.card[data-em-separacao="2"]');
+        if (liberadoCards.length > 0) {
+            shouldDisableButton = true; // Se encontrou, DESABILITA o botão, e esta é a condição prioritária
+        } 
+        // 2. Se a condição de prioridade NÃO foi atendida (ou seja, não há cards com em_separacao = 2)
+        else { 
+            // Agora sim, verificar campos preenchidos em cards editáveis (em_separacao 0 ou 1)
+            const editableCards = document.querySelectorAll('.card[data-em-separacao="0"], .card[data-em-separacao="1"]');
+            for (const card of editableCards) {
+                const gaiolaInput = card.querySelector('input[name="gaiola"]');
+                const estacaoInput = card.querySelector('input[name="estacao"]');
+
+                if ((gaiolaInput && gaiolaInput.value.trim() !== '') || 
+                    (estacaoInput && estacaoInput.value.trim() !== '')) {
+                    shouldDisableButton = true; // Encontrou um campo preenchido, então DESABILITA
+                    break; // Pode parar de procurar
+                }
+            }
+        }
+        
+        // AGORA, A LÓGICA FINAL PARA HABILITAR/DESABILITAR O BOTÃO:
+        if (shouldDisableButton) { // Se 'shouldDisableButton' for TRUE (ou seja, alguma das condições acima foi atendida)
+            // DESABILITA o botão "Ver Lista de Registros"
+            btn.classList.add('opacity-50', 'pointer-events-none'); 
+            if (btn.hasAttribute('href')) {
+                btn.removeAttribute('href'); 
+            }
+        } else { // Se 'shouldDisableButton' for FALSE (nenhuma das condições acima foi atendida)
+            // HABILITA o botão "Ver Lista de Registros"
+            btn.classList.remove('opacity-50', 'pointer-events-none'); 
+            const originalHref = btn.getAttribute('data-original-href');
+            if (originalHref && !btn.hasAttribute('href')) {
+                btn.setAttribute('href', originalHref); 
+            }
+        }
+    }
+
     // Lógica para focar nos campos 'gaiola' e 'estacao'
     document.addEventListener('DOMContentLoaded', function() {
         const firstEditableInput = document.querySelector('.card:not(.finalizado-card):not(.cancelado-card) input[type="text"]:not(:disabled):first-of-type');
@@ -562,7 +619,6 @@
                 const gaiolaInput = form.querySelector('input[name="gaiola"]');
                 const estacaoInput = form.querySelector('input[name="estacao"]');
                 const ruaInput = form.querySelector('input[name="rua"]');
-                // MUDANÇA: O botão salvar agora é type="button" e não type="submit"
                 const salvarButton = form.querySelector('button[onclick^="salvarAssociacao"]');
 
                 if (gaiolaInput) {
@@ -574,6 +630,8 @@
                             else if (salvarButton) salvarButton.focus();
                         }
                     });
+                     // Adiciona o listener para verificar o botão ao digitar em gaiola
+                    gaiolaInput.addEventListener('input', checkAndToggleRecordsListButton);
                 }
                 if (estacaoInput) {
                     estacaoInput.addEventListener('keydown', function (event) {
@@ -595,6 +653,8 @@
                             }
                         }
                     });
+                     // Adiciona o listener para verificar o botão ao digitar em estação
+                    estacaoInput.addEventListener('input', checkAndToggleRecordsListButton);
                 }
                 if (ruaInput) {
                     ruaInput.addEventListener('keydown', function (event) {
@@ -606,6 +666,9 @@
                 }
             });
         }
+
+        // Chama a função para definir o estado inicial do botão ao carregar a página
+        checkAndToggleRecordsListButton();
     });
 </script>
 </body>

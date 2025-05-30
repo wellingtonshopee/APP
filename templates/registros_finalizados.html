@@ -357,16 +357,16 @@
     <div class="card-container">
         {% for registro in registros %}
         <div class="card"
-             data-data-hora-login="{{ registro.data_hora_login.strftime('%Y-%m-%d %H:%M:%S') }}"
-             data-tipo-entrega="{{ registro.tipo_entrega }}"
-             data-rota="{{ registro.rota if registro.__tablename__ == 'registros' else (registro.gaiola if registro.gaiola is not none else '') }}" {# Rota ou Gaiola, com fallback para vazio #}
-             data-matricula="{{ registro.matricula }}"
-             data-nome="{{ registro.nome }}"
-             data-cidade-entrega="{{ registro.cidade_entrega if registro.__tablename__ == 'registros' else '' }}"
-             data-gaiola-rua="{{ registro.gaiola if registro.__tablename__ == 'registros' else (registro.rua if registro.rua is not none else '') }}" {# Gaiola ou Rua, com fallback para vazio #}
-             data-estacao="{{ registro.estacao }}"
-             data-hora-finalizacao="{{ registro.hora_finalizacao.strftime('%Y-%m-%d %H:%M:%S') if registro.hora_finalizacao else '' }}"
-             data-finalizado="{{ registro.finalizada }}">
+     data-data-hora-login="{{ registro.data_hora_login|formata_data_hora }}"
+     data-tipo-entrega="{{ registro.tipo_entrega }}"
+     data-rota="{{ registro.rota if registro.__tablename__ == 'registros' else (registro.gaiola if registro.gaiola is not none else '') }}"
+     data-matricula="{{ registro.matricula }}"
+     data-nome="{{ registro.nome }}"
+     data-cidade-entrega="{{ registro.cidade_entrega if registro.__tablename__ == 'registros' else '' }}"
+     data-gaiola-rua="{{ registro.gaiola if registro.__tablename__ == 'registros' else (registro.rua if registro.rua is not none else '') }}"
+     data-estacao="{{ registro.estacao }}"
+     data-hora-finalizacao="{{ registro.hora_finalizacao|formata_data_hora }}" {# AQUI! #}
+     data-finalizado="{{ registro.finalizada }}">
 
             <p><strong>Tipo de Registro:</strong> {% if registro.__tablename__ == 'registros' %}Principal{% else %}No-Show{% endif %}</p>
             {# DEBUG: Exibe o nome da tabela para cada registro #}
