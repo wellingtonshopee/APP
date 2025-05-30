@@ -60,22 +60,20 @@ def get_status_text(status_code):
 class NoShow(db.Model):
     __tablename__ = 'no_show'
     id = db.Column(db.Integer, primary_key=True)
-    data_hora_login = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    data_hora_login = db.Column(db.DateTime(timezone=True), nullable=False, default=datetime.utcnow) # <--- AQUI
     nome = db.Column(db.String(100))
     matricula = db.Column(db.String(50))
     gaiola = db.Column(db.String(50)) # Rota
     tipo_entrega = db.Column(db.String(50))
     rua = db.Column(db.String(200))
     estacao = db.Column(db.String(50))
-    finalizada = db.Column(db.Integer, default=0) # 0 = não finalizado, 1 = finalizado
-    cancelado = db.Column(db.Integer, default=0)  # 0 = não cancelado, 1 = cancelado
-    em_separacao = db.Column(db.Integer, default=STATUS_EM_SEPARACAO['AGUARDANDO_MOTORISTA']) # Padrão: 0
-    hora_finalizacao = db.Column(db.DateTime)
+    finalizada = db.Column(db.Integer, default=0)
+    cancelado = db.Column(db.Integer, default=0)
+    em_separacao = db.Column(db.Integer, default=STATUS_EM_SEPARACAO['AGUARDANDO_MOTORISTA'])
+    hora_finalizacao = db.Column(db.DateTime(timezone=True)) # <--- E AQUI
 
     def __repr__(self):
         return f"<NoShow {self.id} - {self.nome} - Rota: {self.gaiola}>"
-
-
 
 class Registro(db.Model):
     __tablename__ = 'registros'
@@ -86,13 +84,13 @@ class Registro(db.Model):
     tipo_entrega = db.Column(db.String(80))
     cidade_entrega = db.Column(db.String(80))
     rua = db.Column(db.String(80))
-    data_hora_login = db.Column(db.DateTime, default=datetime.now)
+    data_hora_login = db.Column(db.DateTime(timezone=True), default=datetime.utcnow) # <--- AQUI
     tipo_veiculo = db.Column(db.String(80))
     em_separacao = db.Column(db.Integer, default=0)
     gaiola = db.Column(db.String(80))
     estacao = db.Column(db.String(80))
     finalizada = db.Column(db.Integer, default=0)
-    hora_finalizacao = db.Column(db.DateTime) # Mude de String para DateTime!
+    hora_finalizacao = db.Column(db.DateTime(timezone=True)) # <--- E AQUI
     cancelado = db.Column(db.Integer, default=0)
     login_id = db.Column(db.Integer, db.ForeignKey('login.id'))
     login = db.relationship('Login', backref=db.backref('registros', lazy=True))
@@ -498,87 +496,124 @@ def registros():
                            data_fim=data_fim_str or '',
                            cidades=cidades_disponiveis)
 
-# --- NOVO ENDPOINT DE API PARA AJAX ---
 @app.route('/api/registros_data')
 def api_registros_data():
     page = request.args.get('pagina', 1, type=int)
     per_page = REGISTROS_POR_PAGINA
 
-    rota = request.args.get('rota')
-    tipo_entrega = request.args.get('tipo_entrega')
-    cidade = request.args.get('cidade')
-    em_separacao_filtro_str = request.args.get('em_separacao') # Valor string do filtro
+    rota_filtro = request.args.get('rota')
+    tipo_entrega_filtro = request.args.get('tipo_entrega')
+    cidade_filtro = request.args.get('cidade')
+    em_separacao_filtro_str = request.args.get('em_separacao')
 
     data_inicio_str = request.args.get('data_inicio')
     data_fim_str = request.args.get('data_fim')
 
-    query = Registro.query # Inicia a query com seu modelo SQLAlchemy
+    query = Registro.query
 
-    # Aplica filtros opcionais
-    if rota:
-        query = query.filter(Registro.rota.ilike(f'%{rota}%'))
-    if tipo_entrega:
-        query = query.filter(Registro.tipo_entrega == tipo_entrega)
-    if cidade:
-        query = query.filter(Registro.cidade_entrega.ilike(f'%{cidade}%'))
+    if rota_filtro:
+        query = query.filter(Registro.rota.ilike(f'%{rota_filtro}%'))
+    if tipo_entrega_filtro:
+        query = query.filter(Registro.tipo_entrega == tipo_entrega_filtro)
+    if cidade_filtro:
+        query = query.filter(Registro.cidade_entrega.ilike(f'%{cidade_filtro}%'))
 
-    # --- INÍCIO DA LÓGICA DE FILTRO DE STATUS ATUALIZADA ---
-    # Se em_separacao_filtro_str NÃO FOI FORNECIDO (ou é uma string vazia),
-    # filtramos para NÃO mostrar os registros finalizados nem cancelados por padrão.
     if not em_separacao_filtro_str:
         query = query.filter(
             Registro.finalizada == 0,
             Registro.cancelado == 0
         )
     else:
-        # Se um filtro de status foi fornecido, aplicamos a lógica específica para cada valor
-        if em_separacao_filtro_str == '0': # Aguardando Carregar
-            query = query.filter(
-                Registro.em_separacao == 0,
-                Registro.finalizada == 0,
-                Registro.cancelado == 0
-            )
-        elif em_separacao_filtro_str == '1': # Em Separação
-            query = query.filter(
-                Registro.em_separacao == 1,
-                Registro.finalizada == 0,
-                Registro.cancelado == 0
-            )
-        elif em_separacao_filtro_str == '2': # AGUARDANDO TRANSFERÊNCIA
-            query = query.filter(
-                Registro.em_separacao == 2,
-                Registro.finalizada == 0,
-                Registro.cancelado == 0
-            )
-        elif em_separacao_filtro_str == '3': # Finalizado (corresponde a finalizada = 1)
-            query = query.filter(Registro.finalizada == 1)
-        elif em_separacao_filtro_str == '4': # Cancelado (corresponde a cancelado = 1)
-            query = query.filter(Registro.cancelado == 1)
-    # --- FIM DA LÓGICA DE FILTRO DE STATUS ATUALIZADA ---
+        try:
+            em_separacao_filtro_int = int(em_separacao_filtro_str)
+            if em_separacao_filtro_int == 0:
+                query = query.filter(
+                    Registro.em_separacao == 0,
+                    Registro.finalizada == 0,
+                    Registro.cancelado == 0
+                )
+            elif em_separacao_filtro_int == 1:
+                query = query.filter(
+                    Registro.em_separacao == 1,
+                    Registro.finalizada == 0,
+                    Registro.cancelado == 0
+                )
+            elif em_separacao_filtro_int == 2:
+                query = query.filter(
+                    Registro.em_separacao == 2,
+                    Registro.finalizada == 0,
+                    Registro.cancelado == 0
+                )
+            elif em_separacao_filtro_int == 3:
+                query = query.filter(Registro.finalizada == 1)
+            elif em_separacao_filtro_int == 4:
+                query = query.filter(Registro.cancelado == 1)
+        except ValueError:
+            print(f"ATENÇÃO: Valor de filtro 'em_separacao' inválido: {em_separacao_filtro_str}")
+            pass
 
-    # Filtro por data
     if data_inicio_str:
         try:
             data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%d')
             query = query.filter(Registro.data_hora_login >= data_inicio)
         except ValueError:
-            pass # Ignora, o JS não espera flash messages aqui
+            pass
     if data_fim_str:
         try:
-            # Inclui até o final do dia
             data_fim = datetime.strptime(data_fim_str, '%Y-%m-%d') + timedelta(days=1) - timedelta(seconds=1)
             query = query.filter(Registro.data_hora_login <= data_fim)
         except ValueError:
-            pass # Ignora
+            pass
 
-    query = query.order_by(Registro.data_hora_login.asc()) # Alterado para ordem ascendente (mais antigos primeiro)
-
-    # Paginação usando o paginate do SQLAlchemy
+    query = query.order_by(Registro.data_hora_login.asc())
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    
+    # --- INÍCIO DA LÓGICA DE VERIFICAÇÃO E ATUALIZAÇÃO AUTOMÁTICA ---
+    print("\n--- INÍCIO DA VERIFICAÇÃO DE AUTOMAÇÃO DE REGISTROS (API) ---")
+    
+    # Obtenha *todos* os registros NoShow que tem matrícula '0001' e estão aptos a serem transferidos
+    # A ÚNICA DIFERENÇA é que não usamos 'estacao' aqui, apenas 'gaiola' e 'matricula'
+    no_shows_ativos = NoShow.query.filter_by(
+        matricula='0001', # Adiciona filtro por matricula '0001'
+        cancelado=0,
+        finalizada=0
+    ).all()
+    print(f"DEBUG: Encontrados {len(no_shows_ativos)} registros NoShow ativos para possível correspondência (matricula 0001).")
+    
+    no_show_chaves_rota = set() # Vamos armazenar apenas as rotas dos NoShow
+    for ns in no_shows_ativos:
+        gaiola_clean = str(ns.gaiola).strip() if ns.gaiola is not None else None
+        if gaiola_clean:
+            no_show_chaves_rota.add(gaiola_clean) # Adiciona apenas a rota (gaiola)
+    
+    print(f"DEBUG: Rotas de NoShow ativos para correspondência: {no_show_chaves_rota}")
 
-    # Converte os objetos Registro para um formato serializável em JSON
     registros_json = []
+
     for reg in pagination.items:
+        print(f"\n--- Processando Registro ID: {reg.id} ---")
+        print(f"DEBUG: Status atual de Registro.em_separacao: {reg.em_separacao}")
+        print(f"DEBUG: Rota do Registro: '{reg.rota}'")
+        print(f"DEBUG: Cidade de Entrega do Registro: '{reg.cidade_entrega}'") # Ainda útil para debug
+
+        registro_rota_clean = str(reg.rota).strip() if reg.rota is not None else None
+        
+        # Condição de Elegibilidade para o Registro Principal
+        # Só se o status atual for 0 E não for já 2
+        if reg.em_separacao == 0 and reg.em_separacao != 2:
+            print(f"DEBUG: Registro ID {reg.id} é elegível para automação (status 0).")
+            
+            # A correspondência agora é APENAS pela rota do Registro estar na lista de rotas dos NoShow ativos
+            if registro_rota_clean in no_show_chaves_rota:
+                print(f"DEBUG: CORRESPONDÊNCIA ENCONTRADA para Registro ID {reg.id} (Rota: '{registro_rota_clean}') com um NoShow ativo (Matricula 0001)!")
+                print(f"DEBUG: Atualizando Registro ID {reg.id}. Status 'em_separacao' de {reg.em_separacao} para 2.")
+                reg.em_separacao = 2 # <--- AGORA SETA PARA O NÚMERO 2
+                db.session.add(reg)
+            else:
+                print(f"DEBUG: NENHUM No-Show correspondente ATIVO (Matricula 0001) encontrado para a Rota '{registro_rota_clean}' do Registro ID {reg.id}.")
+        else:
+            print(f"DEBUG: Registro ID {reg.id} (Status {reg.em_separacao}) NÃO elegível para automação (não está em 0 ou já está em 2).")
+
         registros_json.append({
             'id': reg.id,
             'data_hora_login': reg.data_hora_login.strftime('%Y-%m-%d %H:%M:%S') if reg.data_hora_login else None,
@@ -592,6 +627,19 @@ def api_registros_data():
             'finalizada': reg.finalizada,
             'cancelado': reg.cancelado
         })
+
+    try:
+        if db.session.dirty: 
+            db.session.commit()
+            print("\nDEBUG: Commits automáticos de status '2' para a página atual REALIZADOS.")
+        else:
+            print("\nDEBUG: NENHUMA alteração pendente para commitar para a página atual.")
+    except Exception as e:
+        db.session.rollback()
+        print(f"\nERRO: Falha ao commitar atualizações automáticas de status na API: {e}")
+        return jsonify({"error": "Erro interno ao processar registros."}), 500
+
+    print("--- FIM DA VERIFICAÇÃO DE AUTOMAÇÃO DE REGISTROS (API) ---\n")
 
     return jsonify({
         'records': registros_json,
@@ -877,6 +925,8 @@ def desassociar_id(id):
     db.session.commit()
     
     return jsonify({"message": "Registro desassociado e retornado para 'Em Separação'!"}), 200
+
+
 
 
 @app.route('/marcar_como_finalizado_id/<int:id>', methods=['POST'])
@@ -1199,22 +1249,52 @@ def dessociar_no_show(registro_id):
 
 @app.route('/cancelar_no_show/<int:id>', methods=['POST'])
 def cancelar_no_show(id):
-    no_show = NoShow.query.get(id)
-    if not no_show:
-        return jsonify({"error": "Registro No-Show não encontrado."}), 404
-    # Coloque a linha de print AQUI:
-    print(f"DEBUG: Tentando cancelar registro No-Show ID {id}, em_separacao={no_show.em_separacao}")
+    print(f"DEBUG: Requisição POST recebida para cancelar No-Show ID: {id}")
+    try:
+        no_show = NoShow.query.get(id)
+
+        if not no_show:
+            print(f"DEBUG: Registro No-Show ID {id} não encontrado no banco de dados.")
+            return jsonify({"error": "Registro No-Show não encontrado."}), 404
+
+        print(f"DEBUG: Registro encontrado. Status atual em_separacao={no_show.em_separacao}, cancelado={no_show.cancelado}")
+
+        # Se o registro já está em um status de cancelado (3) ou transferido (4)
+        # não permitimos outro cancelamento ou atualização.
+        # Ajustei esta condição para verificar o 'cancelado' também, se aplicável,
+        # mas o 'em_separacao' em 3 já indica cancelado.
+        if no_show.em_separacao == 3 or no_show.cancelado == 1:
+            print(f"DEBUG: Registro No-Show ID {id} já está cancelado (em_separacao=3 ou cancelado=1). Não será atualizado novamente.")
+            return jsonify({"error": "Registro No-Show já está cancelado."}), 400
+            
+        # Se for status 4 (Transferido), você pode querer tratar de forma diferente
+        # dependendo se um registro transferido pode ser "cancelado" posteriormente.
+        # Por enquanto, assumimos que se for 4, ele também não pode ser cancelado via este botão.
+        if no_show.em_separacao == 4:
+            print(f"DEBUG: Registro No-Show ID {id} está transferido (em_separacao=4). Não será cancelado por esta ação.")
+            return jsonify({"error": "Registro No-Show já está transferido e não pode ser cancelado diretamente."}), 400
 
 
-    if no_show.em_separacao in [3, 4]:
-        return jsonify({"error": "Registro No-Show já está finalizado ou cancelado."}), 400
+        # --- ESSA É A LINHA QUE VOCÊ PRECISA ADICIONAR/AJUSTAR ---
+        no_show.em_separacao = 3  # Define como Cancelado (status 3) na tabela no_show
+        no_show.cancelado = 1     # <--- Adiciona esta linha para setar o campo 'cancelado' para 1
+        # --- FIM DA LINHA A ADICIONAR/AJUSTAR ---
+        
+        # Registra a hora atual de Brasília
+        no_show.hora_finalizacao = datetime.now(pytz.timezone('America/Sao_Paulo')) 
 
-    no_show.em_separacao = 3  # Define como Cancelado (status 3) na tabela no_show
-    no_show.hora_finalizacao = datetime.now(pytz.timezone('America/Sao_Paulo')) # Registra a hora atual de Brasília
+        print(f"DEBUG: Tentando commitar alterações para No-Show ID {id}. Novo em_separacao={no_show.em_separacao}, novo cancelado={no_show.cancelado}. Nova hora_finalizacao={no_show.hora_finalizacao}")
+        
+        db.session.commit()
+        
+        print(f"DEBUG: Commit realizado com sucesso para No-Show ID {id}.")
 
-    db.session.commit()
+        return jsonify({"message": "Registro No-Show cancelado com sucesso!"}), 200
 
-    return jsonify({"message": "Registro No-Show cancelado com sucesso!"}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"ERRO: Falha inesperada ao cancelar registro No-Show ID {id}. Detalhes do erro: {e}")
+        return jsonify({"error": f"Erro interno do servidor: {str(e)}"}), 500
 
 @app.route('/finalizar_carregamento_no_show_id_status_separacao/<int:id>', methods=['POST'])
 def finalizar_carregamento_no_show_id_status_separacao(id):
@@ -1767,7 +1847,7 @@ def get_operational_info():
         "HUB Muriaé Informa: Rotas No-Show já estão liberadas para carregamento imediato! Procure o Analista de Transporte para mais orientações. | Carregamento Mercadão! As rotas liberadas para Carregamento já estão disponíveis, dirija-se até sua Estação.",
         "Atenção motoristas: Verifiquem documentação antes de se dirigir aos pátios de carregamento. | Prioridade de carregamento para veículos com agendamento prévio. Mantenha-se informado via rádio.",
         "Atenção: Nova Rota disponível. Várias cidades para atendimento . | HUB Muriaé: Todos os motoristas devem realizar o check-in na entrada.",
-        "Atenção logística: Motorista só movimente o veículo após a liberação. | Informamos: Acompanhe seu carregamento através da página de Status de Carregamento.",
+        "Atenção logística: Motorista só movimente o veículo após a liberação. | Informamos: Acompanhe sua liberação de carregamento através da página de Status de Carregamento.",
         "Segurança em primeiro lugar: Use sempre EPIs nas áreas de carregamento. | HUB Muriaé Informa: Acompanhe a Fila de Carregamento pela TV ou diretamente em seu celular.", # O '|' aqui agora está dentro da string, não como um operador no final.
         "HUB Muriaé: Verifique o quadro de avisos para informações importantes. | Atenção motoristas: Utilize sempre os equipamentos de segurança.",   # O '|' aqui agora está dentro da string, não como um operador no final.
         "Atenção motoristas: Utilize sempre os equipamentos de segurança. | Comunique-se com a equipe para otimizar seu carregamento.",   # O '|' aqui agora está dentro da string, não como um operador no final.
