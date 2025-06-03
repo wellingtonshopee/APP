@@ -60,7 +60,8 @@ def get_status_text(status_code):
 class NoShow(db.Model):
     __tablename__ = 'no_show'
     id = db.Column(db.Integer, primary_key=True)
-    data_hora_login = db.Column(db.DateTime(timezone=True), nullable=False, default=datetime.utcnow) # <--- AQUI
+    # **Ajuste:** Garante que o default é UTC e ciente do fuso horário.
+    data_hora_login = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.utcnow().replace(tzinfo=pytz.utc))
     nome = db.Column(db.String(100))
     matricula = db.Column(db.String(50))
     gaiola = db.Column(db.String(50)) # Rota
@@ -70,7 +71,8 @@ class NoShow(db.Model):
     finalizada = db.Column(db.Integer, default=0)
     cancelado = db.Column(db.Integer, default=0)
     em_separacao = db.Column(db.Integer, default=STATUS_EM_SEPARACAO['AGUARDANDO_MOTORISTA'])
-    hora_finalizacao = db.Column(db.DateTime(timezone=True)) # <--- E AQUI
+    # **Ajuste:** A coluna está correta. A atribuição da hora_finalizacao deve usar UTC.
+    hora_finalizacao = db.Column(db.DateTime(timezone=True)) 
 
     def __repr__(self):
         return f"<NoShow {self.id} - {self.nome} - Rota: {self.gaiola}>"
@@ -84,13 +86,15 @@ class Registro(db.Model):
     tipo_entrega = db.Column(db.String(80))
     cidade_entrega = db.Column(db.String(80))
     rua = db.Column(db.String(80))
-    data_hora_login = db.Column(db.DateTime(timezone=True), default=datetime.utcnow) # <--- AQUI
+    # **Ajuste:** Garante que o default é UTC e ciente do fuso horário.
+    data_hora_login = db.Column(db.DateTime(timezone=True), default=lambda: datetime.utcnow().replace(tzinfo=pytz.utc))
     tipo_veiculo = db.Column(db.String(80))
     em_separacao = db.Column(db.Integer, default=0)
     gaiola = db.Column(db.String(80))
     estacao = db.Column(db.String(80))
     finalizada = db.Column(db.Integer, default=0)
-    hora_finalizacao = db.Column(db.DateTime(timezone=True)) # <--- E AQUI
+    # **Ajuste:** A coluna está correta. A atribuição da hora_finalizacao deve usar UTC.
+    hora_finalizacao = db.Column(db.DateTime(timezone=True)) 
     cancelado = db.Column(db.Integer, default=0)
     login_id = db.Column(db.Integer, db.ForeignKey('login.id'))
     login = db.relationship('Login', backref=db.backref('registros', lazy=True))
@@ -104,7 +108,7 @@ class Login(db.Model):
     nome = db.Column(db.String(80), nullable=False)
     matricula = db.Column(db.String(20), unique=True, nullable=False)
     tipo_veiculo = db.Column(db.String(80))
-    data_cadastro = db.Column(db.DateTime)
+    data_cadastro = db.Column(db.DateTime) # Este pode ser naive se não for importante ter TZ
 
 class Cidade(db.Model):
     __tablename__ = 'cidades' # Nome da tabela no banco de dados
@@ -123,35 +127,34 @@ def init_db():
 def get_data_hora_brasilia():
     """
     Obtém a data e hora atuais no fuso horário de São Paulo (Brasil)
-    como um objeto datetime.
+    como um objeto datetime ciente do fuso horário.
     """
     tz_brasilia = pytz.timezone('America/Sao_Paulo')
     return datetime.now(tz_brasilia) # Retorna o objeto datetime diretamente
 
 def formata_data_hora(data_hora):
     if not data_hora:
-        return 'Não Finalizado' # Ou 'Aguarde', o que preferir para nulo
+        return 'Não Finalizado' 
 
     # Defina o fuso horário de exibição (Brasil/São Paulo)
     tz_destino = pytz.timezone('America/Sao_Paulo')
 
     if isinstance(data_hora, datetime):
-        # Se o objeto datetime NÃO tiver informações de fuso horário,
-        # assumimos que ele está em UTC (padrão do PostgreSQL para TIMESTAMP)
-        # e o tornamos "aware" (ciente do fuso horário) como UTC.
+        # Se o objeto datetime NÃO tiver informações de fuso horário (tzinfo is None),
+        # assumimos que ele já está no fuso horário de Muriaé (America/Sao_Paulo),
+        # pois o SQLAlchemy pode retornar datetime 'naive' já ajustado para a timezone da conexão.
         if data_hora.tzinfo is None:
-            data_hora_utc = pytz.utc.localize(data_hora)
+            # Torna o datetime 'aware' localizando-o no fuso horário de Muriaé.
+            data_hora_aware = tz_destino.localize(data_hora)
         else:
-            # Se já tem tzinfo (ex: já é de Brasília do get_data_hora_brasilia),
-            # apenas o converte para UTC primeiro para ser consistente e depois para o tz_destino
-            data_hora_utc = data_hora.astimezone(pytz.utc)
+            # Se já tem tzinfo, significa que ele já é 'aware'.
+            # Apenas converte para o fuso horário de destino se ainda não estiver.
+            data_hora_aware = data_hora.astimezone(tz_destino)
         
-        # Agora converta o datetime (que está em UTC) para o fuso horário de destino
-        data_hora_local = data_hora_utc.astimezone(tz_destino)
-        
-        return data_hora_local.strftime('%d/%m/%Y %H:%M:%S')
+        # Como data_hora_aware já está no tz_destino, podemos formatar diretamente.
+        return data_hora_aware.strftime('%d/%m/%Y %H:%M:%S')
     
-    # Se ainda chegar algo que não seja datetime (depois da migração), é um erro.
+    # Se ainda chegar algo que não seja datetime, é um erro.
     return 'Erro de Formato Inesperado'
 
 app.jinja_env.filters['formata_data_hora'] = formata_data_hora
@@ -499,7 +502,7 @@ def registros():
 @app.route('/api/registros_data')
 def api_registros_data():
     page = request.args.get('pagina', 1, type=int)
-    per_page = REGISTROS_POR_PAGINA
+    per_page = REGISTROS_POR_PAGINA # Certifique-se de que REGISTROS_POR_PAGINA está definido
 
     rota_filtro = request.args.get('rota')
     tipo_entrega_filtro = request.args.get('tipo_entrega')
@@ -518,12 +521,18 @@ def api_registros_data():
     if cidade_filtro:
         query = query.filter(Registro.cidade_entrega.ilike(f'%{cidade_filtro}%'))
 
+    # --- INÍCIO DA CORREÇÃO ---
     if not em_separacao_filtro_str:
+        # Quando nenhum filtro de em_separacao é selecionado (opção "Todos" no frontend)
+        # Excluir registros que estão "Aguardando Transferência" (em_separacao = 2)
+        # E que não estão finalizados nem cancelados.
         query = query.filter(
             Registro.finalizada == 0,
-            Registro.cancelado == 0
+            Registro.cancelado == 0,
+            Registro.em_separacao != 2 # <--- ESTA É A LINHA CHAVE DA CORREÇÃO
         )
     else:
+        # Se um filtro específico de em_separacao foi selecionado
         try:
             em_separacao_filtro_int = int(em_separacao_filtro_str)
             if em_separacao_filtro_int == 0:
@@ -539,6 +548,8 @@ def api_registros_data():
                     Registro.cancelado == 0
                 )
             elif em_separacao_filtro_int == 2:
+                # Se o filtro "Aguardando Transferência" (valor 2) é selecionado,
+                # então inclua esses registros.
                 query = query.filter(
                     Registro.em_separacao == 2,
                     Registro.finalizada == 0,
@@ -548,9 +559,13 @@ def api_registros_data():
                 query = query.filter(Registro.finalizada == 1)
             elif em_separacao_filtro_int == 4:
                 query = query.filter(Registro.cancelado == 1)
+            # Adicione aqui se tiver o status 5 para "Finalizado" no backend
+            # elif em_separacao_filtro_int == 5:
+            #     query = query.filter(Registro.finalizada == 1)
         except ValueError:
             print(f"ATENÇÃO: Valor de filtro 'em_separacao' inválido: {em_separacao_filtro_str}")
             pass
+    # --- FIM DA CORREÇÃO ---
 
     if data_inicio_str:
         try:
@@ -572,7 +587,6 @@ def api_registros_data():
     print("\n--- INÍCIO DA VERIFICAÇÃO DE AUTOMAÇÃO DE REGISTROS (API) ---")
     
     # Obtenha *todos* os registros NoShow que tem matrícula '0001' e estão aptos a serem transferidos
-    # A ÚNICA DIFERENÇA é que não usamos 'estacao' aqui, apenas 'gaiola' e 'matricula'
     no_shows_ativos = NoShow.query.filter_by(
         matricula='0001', # Adiciona filtro por matricula '0001'
         cancelado=0,
@@ -580,11 +594,11 @@ def api_registros_data():
     ).all()
     print(f"DEBUG: Encontrados {len(no_shows_ativos)} registros NoShow ativos para possível correspondência (matricula 0001).")
     
-    no_show_chaves_rota = set() # Vamos armazenar apenas as rotas dos NoShow
+    no_show_chaves_rota = set()
     for ns in no_shows_ativos:
         gaiola_clean = str(ns.gaiola).strip() if ns.gaiola is not None else None
         if gaiola_clean:
-            no_show_chaves_rota.add(gaiola_clean) # Adiciona apenas a rota (gaiola)
+            no_show_chaves_rota.add(gaiola_clean)
     
     print(f"DEBUG: Rotas de NoShow ativos para correspondência: {no_show_chaves_rota}")
 
@@ -594,7 +608,7 @@ def api_registros_data():
         print(f"\n--- Processando Registro ID: {reg.id} ---")
         print(f"DEBUG: Status atual de Registro.em_separacao: {reg.em_separacao}")
         print(f"DEBUG: Rota do Registro: '{reg.rota}'")
-        print(f"DEBUG: Cidade de Entrega do Registro: '{reg.cidade_entrega}'") # Ainda útil para debug
+        print(f"DEBUG: Cidade de Entrega do Registro: '{reg.cidade_entrega}'")
 
         registro_rota_clean = str(reg.rota).strip() if reg.rota is not None else None
         
@@ -648,7 +662,6 @@ def api_registros_data():
         'total_registros': pagination.total
     })
 
-
 @app.route('/api/current_active_records')
 def api_current_active_records():
     """
@@ -659,10 +672,11 @@ def api_current_active_records():
     try:
         # Filtra os registros que não foram finalizados (finalizada = 0)
         # e que não foram cancelados (cancelado = 0).
-        # Você pode ajustar esses filtros conforme sua definição de "ativo".
+        # Agora, também exclui por padrão os registros com em_separacao = 2 (Aguardando Transferência)
         query = Registro.query.filter(
             Registro.finalizada == 0,
-            Registro.cancelado == 0
+            Registro.cancelado == 0,
+            Registro.em_separacao != 2 # <--- Adicionada esta linha para excluir por padrão
         )
         
         # Opcional: Ordenar os registros para garantir uma ordem consistente no frontend
@@ -839,7 +853,12 @@ def api_update_separacao_status(registro_id):
 
         if not registro:
             return jsonify({"error": "Registro não encontrado."}), 404
-        
+
+        # **** ADICIONE ESTA VERIFICAÇÃO COM A NOVA MENSAGEM ****
+        if registro.em_separacao == 1:
+            return jsonify({"error": "Essa Rota ja esta em Separação por outro Operador!"}), 400
+        # **** FIM DA VERIFICAÇÃO ADICIONADA ****
+
         # Impede a atualização se o registro já estiver finalizado ou cancelado
         if registro.finalizada == 1 or registro.cancelado == 1:
             return jsonify({"error": "Este registro já foi finalizado ou cancelado e não pode ser atualizado."}), 400
@@ -854,19 +873,23 @@ def api_update_separacao_status(registro_id):
         # Registra o erro para depuração (opcional, mas recomendado)
         app.logger.error(f"Erro ao atualizar status de separação para registro {registro_id}: {e}")
         return jsonify({"error": "Ocorreu um erro interno ao processar a requisição."}), 500
-
-
+    
 
 # Rota para associar/salvar gaiola/estacao
 # app.py
 
 @app.route('/associar_id/<int:id>', methods=['POST'])
 def associar_id(id):
-    registro = Registro.query.get(id) 
-    
+    registro = Registro.query.get(id)
+
     if not registro:
         return jsonify({"error": "Registro não encontrado."}), 404
-    
+
+    # **** ADICIONE ESTA VERIFICAÇÃO ****
+    if registro.em_separacao == 2:
+        return jsonify({"error": "Essa Rota ja esta em Separação por outro Operador!"}), 400
+    # **** FIM DA VERIFICAÇÃO ADICIONADA ****
+
     # Adicionando verificação para registros já finalizados ou cancelados
     # Usamos agora o status em_separacao para verificar isso
     if registro.em_separacao == 3 or registro.em_separacao == 4: # 3=Finalizado, 4=Cancelado
@@ -879,16 +902,16 @@ def associar_id(id):
     # Atualiza os campos
     registro.gaiola = gaiola
     registro.estacao = estacao
-    
+
     if registro.tipo_entrega == 'No-Show':
         registro.rua = rua
-    
+
     # Se o registro está em 'Aguardando Carregamento' (0) ou 'Em Separação' (1) e foi "salvo" com os dados,
     # ele agora passa para 'Carregamento Liberado' (2).
     # Esta é a principal mudança aqui.
-    if registro.em_separacao in [0, 1]: 
+    if registro.em_separacao in [0, 1]:
         registro.em_separacao = 2 # Define como Carregamento Liberado
-    
+
     db.session.commit()
 
     return jsonify({"message": "Associação salva e Carregamento Liberado!"}), 200
@@ -1875,6 +1898,10 @@ def registros_finalizados():
     finalizado_filtro_str = request.args.get('finalizado', '')
     
     pagina = request.args.get('pagina', 1, type=int)
+    
+    # **NOTA:** Certifique-se de que REGISTROS_POR_PAGINA está definida em algum lugar do seu código.
+    # Exemplo (coloque no topo do seu arquivo, junto com as outras constantes):
+    # REGISTROS_POR_PAGINA = 10 
     per_page = REGISTROS_POR_PAGINA
 
     registros_items = []
@@ -1952,17 +1979,15 @@ def registros_finalizados():
     paginated_records = all_records[start_index:end_index]
 
     return render_template('registros_finalizados.html',
-                           registros=paginated_records, # Passa a lista combinada e paginada
-                           total_paginas=total_paginas,
-                           pagina=pagina,
-                           data=data_filtro_str,
-                           tipo_entrega=tipo_entrega_filtro,
-                           rota=rota_filtro,
-                           finalizado=finalizado_filtro_str,
-                           db_name=db_name, # Passa o nome do DB selecionado para o template
-                           display_db_name=display_db_name) # Nome amigável para exibição
-
-
+                            registros=paginated_records, # Passa a lista combinada e paginada
+                            total_paginas=total_paginas,
+                            pagina=pagina,
+                            data=data_filtro_str,
+                            tipo_entrega=tipo_entrega_filtro,
+                            rota=rota_filtro,
+                            finalizado=finalizado_filtro_str,
+                            db_name=db_name, # Passa o nome do DB selecionado para o template
+                            display_db_name=display_db_name) # Nome amigável para exibição
 
 # ... o restante do seu app.py ...
 # (Todas as suas outras rotas aqui: /sucesso, /boas_vindas, /todos_registros, /registros, /historico, /associacao, etc.)
