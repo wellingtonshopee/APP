@@ -60,7 +60,7 @@ def get_status_text(status_code):
 class NoShow(db.Model):
     __tablename__ = 'no_show'
     id = db.Column(db.Integer, primary_key=True)
-    data_hora_login = db.Column(db.DateTime(timezone=True), nullable=False, default=datetime.utcnow) # <--- AQUI
+    data_hora_login = db.Column(db.DateTime(timezone=True), nullable=False, default=datetime.utcnow) 
     nome = db.Column(db.String(100))
     matricula = db.Column(db.String(50))
     gaiola = db.Column(db.String(50)) # Rota
@@ -70,7 +70,7 @@ class NoShow(db.Model):
     finalizada = db.Column(db.Integer, default=0)
     cancelado = db.Column(db.Integer, default=0)
     em_separacao = db.Column(db.Integer, default=STATUS_EM_SEPARACAO['AGUARDANDO_MOTORISTA'])
-    hora_finalizacao = db.Column(db.DateTime(timezone=True)) # <--- E AQUI
+    hora_finalizacao = db.Column(db.DateTime(timezone=True)) 
 
     def __repr__(self):
         return f"<NoShow {self.id} - {self.nome} - Rota: {self.gaiola}>"
@@ -84,13 +84,13 @@ class Registro(db.Model):
     tipo_entrega = db.Column(db.String(80))
     cidade_entrega = db.Column(db.String(80))
     rua = db.Column(db.String(80))
-    data_hora_login = db.Column(db.DateTime(timezone=True), default=datetime.utcnow) # <--- AQUI
+    data_hora_login = db.Column(db.DateTime(timezone=True), default=datetime.utcnow) 
     tipo_veiculo = db.Column(db.String(80))
     em_separacao = db.Column(db.Integer, default=0)
     gaiola = db.Column(db.String(80))
     estacao = db.Column(db.String(80))
     finalizada = db.Column(db.Integer, default=0)
-    hora_finalizacao = db.Column(db.DateTime(timezone=True)) # <--- E AQUI
+    hora_finalizacao = db.Column(db.DateTime(timezone=True)) 
     cancelado = db.Column(db.Integer, default=0)
     login_id = db.Column(db.Integer, db.ForeignKey('login.id'))
     login = db.relationship('Login', backref=db.backref('registros', lazy=True))
@@ -120,6 +120,8 @@ def init_db():
         print("Banco de dados PostgreSQL inicializado (com Flask-SQLAlchemy).")
 
 # --- Suas funções utilitárias (get_data_hora_brasilia, formata_data_hora) ---
+
+# Sua função get_data_hora_brasilia (sem alterações)
 def get_data_hora_brasilia():
     """
     Obtém a data e hora atuais no fuso horário de São Paulo (Brasil)
@@ -128,39 +130,63 @@ def get_data_hora_brasilia():
     tz_brasilia = pytz.timezone('America/Sao_Paulo')
     return datetime.now(tz_brasilia) # Retorna o objeto datetime diretamente
 
+# COLOQUE ESTA FUNÇÃO formata_data_hora NO LUGAR DA SUA VERSÃO ANTIGA
+# ---------------------------------------------------------------------
 def formata_data_hora(data_hora):
+    """
+    Formata um objeto datetime ou string de data/hora para o fuso horário
+    de Brasília (America/Sao_Paulo) e retorna como string formatada.
+    Trata datetimes "naive" (sem fuso horário) como se já estivessem em Brasília.
+    """
     if not data_hora:
-        return 'Não Finalizado' # Ou 'Aguarde', o que preferir para nulo
+        return 'Não Finalizado'
 
-    # Defina o fuso horário de exibição (Brasil/São Paulo)
-    tz_destino = pytz.timezone('America/Sao_Paulo')
+    tz_destino = pytz.timezone('America/Sao_Paulo') # Fuso horário de Brasília (GMT-3)
 
+    data_hora_aware = None
     if isinstance(data_hora, datetime):
-        # Se o objeto datetime NÃO tiver informações de fuso horário,
-        # assumimos que ele está em UTC (padrão do PostgreSQL para TIMESTAMP)
-        # e o tornamos "aware" (ciente do fuso horário) como UTC.
         if data_hora.tzinfo is None:
-            data_hora_utc = pytz.utc.localize(data_hora)
+            # Se o datetime é "naive" (sem fuso horário),
+            # assumimos que ele JÁ ESTÁ NO FUSO HORÁRIO DE BRASÍLIA.
+            data_hora_aware = tz_destino.localize(data_hora)
         else:
-            # Se já tem tzinfo (ex: já é de Brasília do get_data_hora_brasilia),
-            # apenas o converte para UTC primeiro para ser consistente e depois para o tz_destino
-            data_hora_utc = data_hora.astimezone(pytz.utc)
-        
-        # Agora converta o datetime (que está em UTC) para o fuso horário de destino
-        data_hora_local = data_hora_utc.astimezone(tz_destino)
-        
-        return data_hora_local.strftime('%d/%m/%Y %H:%M:%S')
-    
-    # Se ainda chegar algo que não seja datetime (depois da migração), é um erro.
-    return 'Erro de Formato Inesperado'
+            # Se o datetime já é "aware", converte para o fuso horário de destino.
+            data_hora_aware = data_hora.astimezone(tz_destino)
+            
+    elif isinstance(data_hora, str):
+        try:
+            # IMPORTANTE: Use o formato correto para o seu banco de dados.
+            # Se a string tem microsegundos (ex: 'YYYY-MM-DD HH:MM:SS.microseconds'),
+            # use '%Y-%m-%d %H:%M:%S.%f'.
+            # Se a string NÃO tem microsegundos (ex: 'YYYY-MM-DD HH:MM:SS'),
+            # use '%Y-%m-%d %H:%M:%S'.
+            dt_object = datetime.strptime(data_hora, '%Y-%m-%d %H:%M:%S.%f') 
 
+            # Após converter a string para um datetime "naive",
+            # assumimos que ele já está no fuso horário de Brasília.
+            data_hora_aware = tz_destino.localize(dt_object)
+        except ValueError:
+            return f'Erro de Formato de Data (String): {data_hora}'
+            
+    else:
+        return 'Tipo de Dado Inesperado'
+
+    if data_hora_aware:
+        return data_hora_aware.strftime('%d/%m/%Y %H:%M:%S')
+    
+    return 'Problema Inesperado na Conversão'
+# ---------------------------------------------------------------------
+
+# --- REGISTRO DO FILTRO JINJA2 (Este já está no lugar certo) ---
 app.jinja_env.filters['formata_data_hora'] = formata_data_hora
-# --- Suas rotas ---
+
+# Sua função capitalize_words (sem alterações)
 def capitalize_words(text):
     if text:
         return ' '.join(word.capitalize() for word in text.split())
     return None
 
+# --- Suas rotas ---
 @app.route('/', methods=['GET', 'POST'])
 def login():
     erro = None
@@ -261,7 +287,7 @@ def login():
 
     return render_template('login.html', erro=erro)
 
-#----Fim da Rota Lgin -----
+#----Fim da Rota Login -----
 
 
 @app.route('/buscar_nome', methods=['POST'])
@@ -1864,6 +1890,55 @@ def get_operational_info():
 
 # ------ Registros Finalizados ------
 
+import pytz
+from datetime import datetime # Certifique-se de que datetime e pytz estão importados
+from math import ceil # Certifique-se de que ceil está importado
+
+# ... (Seus modelos Registro e NoShow, e a configuração do app e db devem estar aqui) ...
+
+# --- SUA FUNÇÃO formata_data_hora (Mantenha a última versão que discutimos) ---
+# Se ainda não o fez, use a versão mais robusta da função formata_data_hora que eu sugeri anteriormente.
+# É crucial que ela esteja definida ANTES da rota que a utiliza, e registrada com:
+# app.jinja_env.filters['formata_data_hora'] = formata_data_hora
+# Exemplo novamente (ajuste os formatos de strptime se necessário para o seu DB):
+def formata_data_hora(data_hora):
+    if not data_hora:
+        return 'Não Finalizado'
+
+    tz_destino = pytz.timezone('America/Sao_Paulo')
+
+    data_hora_aware = None
+    if isinstance(data_hora, datetime):
+        if data_hora.tzinfo is None:
+            # Se o datetime 'naive' (sem fuso horário) vem do DB, assumimos UTC
+            data_hora_aware = pytz.utc.localize(data_hora)
+        else:
+            # Se o datetime já é 'aware', converte para UTC primeiro
+            data_hora_aware = data_hora.astimezone(pytz.utc)
+    elif isinstance(data_hora, str):
+        try:
+            # Tenta converter a string para datetime.
+            # AJUSTE O FORMATO ABAIXO PARA O QUE SEU DB REALMENTE RETORNA
+            # Ex: se o DB retorna 'YYYY-MM-DD HH:MM:SS.microseconds'
+            dt_object = datetime.strptime(data_hora, '%Y-%m-%d %H:%M:%S.%f')
+            # Ou se o DB retorna 'YYYY-MM-DD HH:MM:SS'
+            # dt_object = datetime.strptime(data_hora, '%Y-%m-%d %H:%M:%S')
+
+            # Após parsear a string, trata o objeto datetime 'naive' resultante como UTC
+            data_hora_aware = pytz.utc.localize(dt_object)
+        except ValueError:
+            return f'Erro de Formato de Data (String): {data_hora}'
+    else:
+        return 'Tipo de Dado Inesperado'
+
+    if data_hora_aware:
+        data_hora_local = data_hora_aware.astimezone(tz_destino)
+        return data_hora_local.strftime('%d/%m/%Y %H:%M:%S')
+    
+    return 'Problema Inesperado na Conversão'
+
+# ... (Sua outra função capitalize_words se existir) ...
+
 @app.route('/registros_finalizados', methods=['GET'])
 def registros_finalizados():
     # Parâmetro para selecionar o banco de dados
@@ -1875,7 +1950,9 @@ def registros_finalizados():
     finalizado_filtro_str = request.args.get('finalizado', '')
     
     pagina = request.args.get('pagina', 1, type=int)
-    per_page = REGISTROS_POR_PAGINA
+    # Certifique-se de que REGISTROS_POR_PAGINA está definido em algum lugar (ex: no topo do arquivo)
+    # Exemplo: REGISTROS_POR_PAGINA = 10 
+    per_page = REGISTROS_POR_PAGINA 
 
     registros_items = []
     no_show_items = []
@@ -1887,6 +1964,8 @@ def registros_finalizados():
 
         if data_filtro_str:
             try:
+                # Se data_filtro_str pode ser um range de datas, você precisará de dois campos de data no HTML
+                # e ajustar esta lógica para BETWEEN. Por enquanto, foca em uma data específica.
                 data_filtro_dt = datetime.strptime(data_filtro_str, '%Y-%m-%d').date()
                 query_registros = query_registros.filter(db.func.date(Registro.data_hora_login) == data_filtro_dt)
             except ValueError:
@@ -1939,8 +2018,9 @@ def registros_finalizados():
         all_records = registros_items + no_show_items
         display_db_name = "Todos os Registros"
 
-
     # --- Ordena os resultados ---
+    # Certifique-se de que 'data_hora_login' é um atributo válido para TODOS os objetos em all_records
+    # e que todos são comparáveis (preferencialmente objetos datetime).
     all_records = sorted(all_records, key=lambda x: x.data_hora_login, reverse=True)
 
     # --- Paginação manual da lista combinada ---
@@ -1950,6 +2030,42 @@ def registros_finalizados():
     start_index = (pagina - 1) * per_page
     end_index = start_index + per_page
     paginated_records = all_records[start_index:end_index]
+
+    # --- SEÇÃO DE DEPURACÃO (MOVIDA PARA CÁ) ---
+    print("\n--- INÍCIO DEBUG DE DATAS ---")
+    print(f"DEBUG: paginated_records (quantidade de registros): {len(paginated_records)}")
+
+    if paginated_records: # Verifica se há registros para inspecionar
+        for i, registro in enumerate(paginated_records):
+            # Limita a alguns registros para não encher o console
+            if i >= 5: # Debug de apenas os primeiros 5 registros
+                break
+            
+            print(f"Registro ID: {getattr(registro, 'id', 'N/A')}")
+            print(f"  Tipo da tabela: {getattr(registro, '__tablename__', 'N/A')}")
+
+            # Data/Hora Login
+            data_login = getattr(registro, 'data_hora_login', None)
+            print(f"  data_hora_login (Valor Bruto): {data_login}")
+            print(f"  data_hora_login (Tipo Bruto): {type(data_login)}")
+            if isinstance(data_login, datetime) and data_login.tzinfo:
+                print(f"  data_hora_login (Fuso Horário): {data_login.tzinfo}")
+            elif isinstance(data_login, datetime):
+                print(f"  data_hora_login (Naive - Sem Fuso Horário)")
+
+            # Hora Finalização
+            hora_finalizacao = getattr(registro, 'hora_finalizacao', None)
+            print(f"  hora_finalizacao (Valor Bruto): {hora_finalizacao}")
+            print(f"  hora_finalizacao (Tipo Bruto): {type(hora_finalizacao)}")
+            if isinstance(hora_finalizacao, datetime) and hora_finalizacao.tzinfo:
+                print(f"  hora_finalizacao (Fuso Horário): {hora_finalizacao.tzinfo}")
+            elif isinstance(hora_finalizacao, datetime):
+                print(f"  hora_finalizacao (Naive - Sem Fuso Horário)")
+            print("-" * 20)
+    else:
+        print("Nenhum registro encontrado para depurar, ou paginated_records está vazio.")
+    print("--- FIM DEBUG DE DATAS ---\n")
+    # --- FIM DA SEÇÃO DE DEPURACÃO ---
 
     return render_template('registros_finalizados.html',
                            registros=paginated_records, # Passa a lista combinada e paginada
@@ -1962,12 +2078,10 @@ def registros_finalizados():
                            db_name=db_name, # Passa o nome do DB selecionado para o template
                            display_db_name=display_db_name) # Nome amigável para exibição
 
-
-
 # ... o restante do seu app.py ...
 # (Todas as suas outras rotas aqui: /sucesso, /boas_vindas, /todos_registros, /registros, /historico, /associacao, etc.)
 
 
 if __name__ == '__main__':
     init_db()
-    app.run(debug=True, port=5000)
+app.run(host='0.0.0.0', port=5000, debug=True)
