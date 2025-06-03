@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <style>
-        /* (CSS permanece igual ao que você já tem) */
         * {
             box-sizing: border-box;
         }
@@ -64,7 +63,7 @@
             cursor: not-allowed;
         }
         button {
-            background-color: #ff3c00;
+            background-color: #ff3c00; /* Cor da Shopee */
             color: white;
             border: none;
             cursor: pointer;
@@ -72,19 +71,19 @@
             transition: 0.3s;
         }
         button:disabled {
-            background-color: #cccccc; /* Estilo para botão desabilitado */
+            background-color: #cccccc;
             cursor: not-allowed;
         }
-        button:hover:not(:disabled) { /* Hover apenas quando não estiver desabilitado */
-            background-color: #0056b3;
+        button:hover:not(:disabled) {
+            background-color: #d13000; /* Um pouco mais escuro ao hover */
         }
-        .erro, #locationMessage, #rotaErrorMessage { /* Adicionado ID rotaErrorMessage para estilização */
+        .erro, #locationMessage, #rotaErrorMessage {
             color: red;
             text-align: center;
             margin-top: 10px;
             font-size: 14px;
         }
-        .location-success { /* Nova classe para mensagem de sucesso de localização */
+        .location-success {
             color: green;
         }
         .cadastro-link {
@@ -114,12 +113,13 @@
 <body>
 
     <div class="logo-container">
-        <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" alt="shopee32" class="logo">
+        <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" alt="Logo Shopee" class="logo">
     </div>
 
     <div class="card">
         <h2>Fila de Carregamento</h2>
 
+        {# A mensagem de erro do Flask será exibida aqui, se houver #}
         {% if erro %}
             <p class="erro">{{ erro }}</p>
         {% endif %}
@@ -133,7 +133,9 @@
 
             <label for="rota">Rota</label>
             <input type="text" id="rota" name="rota" required placeholder="Ex.: A-01">
-            <p id="rotaErrorMessage"></p> <label for="tipo_entrega">Tipo de Entrega</label>
+            <p id="rotaErrorMessage"></p> 
+            
+            <label for="tipo_entrega">Tipo de Entrega</label>
             <select id="tipo_entrega" name="tipo_entrega" required>
                 <option value="" disabled selected>Selecione</option>
                 <option value="Normal">Normal</option>
@@ -157,23 +159,23 @@
     <script>
         // Coordenadas do local de referência (SPX Express Shopee - Divinópolis)
         const LOCAL_REFERENCIA = {
-            latitude: -20.1706692, // Latitude aproximada do local
-            longitude: -44.8967584  // Longitude aproximada do local
+            latitude: -20.1706692, 
+            longitude: -44.8967584 
         };
         const RAIO_PERMITIDO_METROS = 10; // 10 metros
 
         // Elementos do DOM
         const matriculaInput = document.getElementById('matricula');
         const nomeInput = document.getElementById('nome');
-        const rotaInput = document.getElementById('rota'); // Novo elemento
+        const rotaInput = document.getElementById('rota'); 
         const submitButton = document.getElementById('submitButton');
         const loginForm = document.getElementById('loginForm');
         const locationMessage = document.getElementById('locationMessage');
-        const rotaErrorMessage = document.getElementById('rotaErrorMessage'); // Novo elemento
+        const rotaErrorMessage = document.getElementById('rotaErrorMessage'); 
 
         let usuarioProximo = false;
         let matriculaValida = false;
-        let rotaValida = false; // Nova flag para validação da rota
+        let rotaValida = false; 
 
         // Função para calcular a distância entre duas coordenadas (Fórmula de Haversine)
         function calcularDistancia(lat1, lon1, lat2, lon2) {
@@ -254,7 +256,7 @@
             }
         }
 
-        // --- Lógica de Busca de Nome e Autocomplete de Cidades (já existente) ---
+        // --- Lógica de Busca de Nome e Autocomplete de Cidades ---
         function debounce(func, delay) {
             let timeout;
             return function(...args) {
@@ -323,17 +325,13 @@
 
         // --- Nova Lógica de Validação da Rota ---
         rotaInput.addEventListener('input', () => {
-            const rota = rotaInput.value.trim().toUpperCase(); // Converte para maiúsculas para padronizar
-            // Expressão regular para A-01 (Letra-NúmeroNúmero)
-            // ^[A-Z]$ : Começa com uma letra maiúscula
-            // - : seguido por um hífen
-            // \d{2}$ : seguido por exatamente dois dígitos e termina a string
-            const regexRota = /^[A-Z]-\d{2}$/;
+            const rota = rotaInput.value.trim().toUpperCase(); 
+            const regexRota = /^[A-Z]-\d{2}$/; // Ex.: A-01
 
             if (regexRota.test(rota)) {
                 rotaValida = true;
-                rotaErrorMessage.textContent = ""; // Limpa a mensagem de erro
-                rotaInput.value = rota; // Garante que o valor no campo está padronizado (maiúsculas)
+                rotaErrorMessage.textContent = ""; 
+                rotaInput.value = rota; 
             } else {
                 rotaValida = false;
                 rotaErrorMessage.textContent = "Formato inválido. Use 'A-01'.";
@@ -350,11 +348,7 @@
                 const formData = new FormData(loginForm);
                 const data = Object.fromEntries(formData.entries());
 
-                // IMPORTANTE: Envie a localização REAL do usuário (se obtida) para validação no servidor.
-                // Por exemplo, você pode armazenar userLat e userLon em variáveis globais após obtê-las
-                // e adicioná-las aqui:
-                // data.userLatitude = userLatGlobal;
-                // data.userLongitude = userLonGlobal;
+                const matriculaDoForm = data.matricula; // Captura a matrícula para o redirecionamento
 
                 fetch(loginForm.action, {
                     method: loginForm.method,
@@ -363,15 +357,13 @@
                 })
                 .then(response => {
                     if (response.ok) {
-                        alert("Login efetuado com sucesso! Redirecionando...");
-                        // window.location.href = "/pagina_de_destino";
-                        return response.text();
+                        // Redireciona diretamente para status_motorista
+                        window.location.href = `/status_motorista/${matriculaDoForm}`; 
                     } else {
                         alert("Erro no login ou na validação do servidor. Verifique o console.");
                         console.error('Erro de servidor:', response.status, response.statusText);
                     }
                 })
-                .then(result => console.log('Resposta do servidor:', result))
                 .catch(error => {
                     console.error('Erro de rede ou processamento:', error);
                     alert("Ocorreu um erro ao tentar logar.");
