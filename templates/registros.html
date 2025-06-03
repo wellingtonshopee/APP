@@ -952,6 +952,11 @@
     async function handleCardDoubleClick(id, isFinalizada, emSeparacao, tipoEntrega) {
         console.log(`Duplo clique no registro ID: ${id}, Finalizado: ${isFinalizada}, Em Separação: ${emSeparacao}, Tipo de Entrega: ${tipoEntrega}`);
 
+        if (emSeparacao === 1) {
+            showMessage('Este registro está em separação e não pode ser editado.');
+            return;
+        }
+
         if (isFinalizada === 1) {
             showMessage('Este registro já está finalizado e não pode ser alterado.');
             return;
@@ -961,16 +966,9 @@
             showMessage('Este registro está aguardando transferência e não pode ser editado.');
             return;
         }
-        
+
         // Se já estiver "Em Separação" (1) ou "Aguardando Transferência" (2),
         // apenas redireciona para a página de associação.
-        if (emSeparacao === 1 || emSeparacao === 2) {
-            console.log(`Registro ID: ${id} já está em separação (${emSeparacao}). Redirecionando para associacao...`);
-            window.location.href = `/associacao?id=${id}`;
-            return;
-        }
-
-        // Se emSeparacao for 0 (Aguardando Carregamento), tenta mudar para 1 (Em Separação)
         if (emSeparacao === 0) {
             try {
                 const response = await fetch(`/api/update_separacao_status/${id}`, {
@@ -985,11 +983,7 @@
                     const data = await response.json();
                     console.log('Status atualizado com sucesso:', data);
                     showMessage(`Status do registro ${id} atualizado para "Em Separação"!`);
-                    // Após a atualização bem-sucedida, atualize os cards e redirecione.
-                    // Em vez de fetchAndUpdateRecords() que recarrega TUDO,
-                    // uma atualização incremental seria melhor aqui, mas para garantir
-                    // a consistência após uma ação do usuário, fetchAndUpdateRecords é aceitável.
-                    fetchAndUpdateRecords(); 
+                    fetchAndUpdateRecords();
                     window.location.href = `/associacao?id=${id}`; // Redireciona para associação
                 } else {
                     const errorData = await response.json();
@@ -1000,11 +994,31 @@
                 console.error('Erro na requisição fetch:', error);
                 showMessage('Erro de rede ou interno ao tentar atualizar o status. Verifique o console para mais detalhes.');
             }
+        } else if (emSeparacao === 2) {
+            console.log(`Registro ID: ${id} já está aguardando transferência.`);
+            window.location.href = `/associacao?id=${id}`;
         } else {
             console.warn(`Estado de separação desconhecido ou não tratável para clique: ${emSeparacao}. Redirecionando mesmo assim.`);
             window.location.href = `/associacao?id=${id}`;
         }
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // ... seu código existente dentro do DOMContentLoaded ...
+
+        // Cole o novo código aqui:
+        const cards = document.querySelectorAll('.card');
+        cards.forEach(card => {
+            card.addEventListener('dblclick', function() {
+                const id = this.dataset.id;
+                const finalizado = this.dataset.finalizado === '1';
+                const emSeparacao = parseInt(this.dataset.separacao);
+                const tipoEntrega = this.dataset.entrega;
+                handleCardDoubleClick(id, finalizado, emSeparacao, tipoEntrega);
+            });
+        });
+    });
+
 </script>
 </body>
 </html>

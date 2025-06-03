@@ -1,1 +1,200 @@
 
+@app.route('/api/registros_data')
+def api_registros_data():
+    page = request.args.get('pagina', 1, type=int)
+    per_page = REGISTROS_POR_PAGINA
+
+    rota_filtro = request.args.get('rota')
+    tipo_entrega_filtro = request.args.get('tipo_entrega')
+    cidade_filtro = request.args.get('cidade')
+    em_separacao_filtro_str = request.args.get('em_separacao')
+
+    data_inicio_str = request.args.get('data_inicio')
+    data_fim_str = request.args.get('data_fim')
+
+    query = Registro.query
+
+    if rota_filtro:
+        query = query.filter(Registro.rota.ilike(f'%{rota_filtro}%'))
+    if tipo_entrega_filtro:
+        query = query.filter(Registro.tipo_entrega == tipo_entrega_filtro)
+    if cidade_filtro:
+        query = query.filter(Registro.cidade_entrega.ilike(f'%{cidade_filtro}%'))
+
+    if not em_separacao_filtro_str:
+        query = query.filter(
+            Registro.finalizada == 0,
+            Registro.cancelado == 0
+        )
+    else:
+        try:
+            em_separacao_filtro_int = int(em_separacao_filtro_str)
+            if em_separacao_filtro_int == 0:
+                query = query.filter(
+                    Registro.em_separacao == 0,
+                    Registro.finalizada == 0,
+                    Registro.cancelado == 0
+                )
+            elif em_separacao_filtro_int == 1:
+                query = query.filter(
+                    Registro.em_separacao == 1,
+                    Registro.finalizada == 0,
+                    Registro.cancelado == 0
+                )
+            elif em_separacao_filtro_int == 2:
+                query = query.filter(
+                    Registro.em_separacao == 2,
+                    Registro.finalizada == 0,
+                    Registro.cancelado == 0
+                )
+            elif em_separacao_filtro_int == 3:
+                query = query.filter(Registro.finalizada == 1)
+            elif em_separacao_filtro_int == 4:
+                query = query.filter(Registro.cancelado == 1)
+        except ValueError:
+            print(f"ATENÇÃO: Valor de filtro 'em_separacao' inválido: {em_separacao_filtro_str}")
+            pass
+
+    if data_inicio_str:
+        try:
+            data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%d')
+            query = query.filter(Registro.data_hora_login >= data_inicio)
+        except ValueError:
+            pass
+    if data_fim_str:
+        try:
+            data_fim = datetime.strptime(data_fim_str, '%Y-%m-%d') + timedelta(days=1) - timedelta(seconds=1)
+            query = query.filter(Registro.data_hora_login <= data_fim)
+        except ValueError:
+            pass
+
+    query = query.order_by(Registro.data_hora_login.asc())
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    
+    # --- INÍCIO DA LÓGICA DE VERIFICAÇÃO E ATUALIZAÇÃO AUTOMÁTICA ---
+    print("\n--- INÍCIO DA VERIFICAÇÃO DE AUTOMAÇÃO DE REGISTROS (API) ---")
+    
+    # Obtenha *todos* os registros NoShow que tem matrícula '0001' e estão aptos a serem transferidos
+    # A ÚNICA DIFERENÇA é que não usamos 'estacao' aqui, apenas 'gaiola' e 'matricula'
+    no_shows_ativos = NoShow.query.filter_by(
+        matricula='0001', # Adiciona filtro por matricula '0001'
+        cancelado=0,
+        finalizada=0
+    ).all()
+    print(f"DEBUG: Encontrados {len(no_shows_ativos)} registros NoShow ativos para possível correspondência (matricula 0001).")
+    
+    no_show_chaves_rota = set() # Vamos armazenar apenas as rotas dos NoShow
+    for ns in no_shows_ativos:
+        gaiola_clean = str(ns.gaiola).strip() if ns.gaiola is not None else None
+        if gaiola_clean:
+            no_show_chaves_rota.add(gaiola_clean) # Adiciona apenas a rota (gaiola)
+    
+    print(f"DEBUG: Rotas de NoShow ativos para correspondência: {no_show_chaves_rota}")
+
+    registros_json = []
+
+    for reg in pagination.items:
+        print(f"\n--- Processando Registro ID: {reg.id} ---")
+        print(f"DEBUG: Status atual de Registro.em_separacao: {reg.em_separacao}")
+        print(f"DEBUG: Rota do Registro: '{reg.rota}'")
+        print(f"DEBUG: Cidade de Entrega do Registro: '{reg.cidade_entrega}'") # Ainda útil para debug
+
+        registro_rota_clean = str(reg.rota).strip() if reg.rota is not None else None
+        
+        # Condição de Elegibilidade para o Registro Principal
+        # Só se o status atual for 0 E não for já 2
+        if reg.em_separacao == 0 and reg.em_separacao != 2:
+            print(f"DEBUG: Registro ID {reg.id} é elegível para automação (status 0).")
+            
+            # A correspondência agora é APENAS pela rota do Registro estar na lista de rotas dos NoShow ativos
+            if registro_rota_clean in no_show_chaves_rota:
+                print(f"DEBUG: CORRESPONDÊNCIA ENCONTRADA para Registro ID {reg.id} (Rota: '{registro_rota_clean}') com um NoShow ativo (Matricula 0001)!")
+                print(f"DEBUG: Atualizando Registro ID {reg.id}. Status 'em_separacao' de {reg.em_separacao} para 2.")
+                reg.em_separacao = 2 # <--- AGORA SETA PARA O NÚMERO 2
+                db.session.add(reg)
+            else:
+                print(f"DEBUG: NENHUM No-Show correspondente ATIVO (Matricula 0001) encontrado para a Rota '{registro_rota_clean}' do Registro ID {reg.id}.")
+        else:
+            print(f"DEBUG: Registro ID {reg.id} (Status {reg.em_separacao}) NÃO elegível para automação (não está em 0 ou já está em 2).")
+
+        registros_json.append({
+            'id': reg.id,
+            'data_hora_login': reg.data_hora_login.strftime('%Y-%m-%d %H:%M:%S') if reg.data_hora_login else None,
+            'nome': reg.nome,
+            'matricula': reg.matricula,
+            'rota': reg.rota,
+            'tipo_entrega': reg.tipo_entrega,
+            'cidade_entrega': reg.cidade_entrega,
+            'hora_finalizacao': reg.hora_finalizacao.strftime('%Y-%m-%d %H:%M:%S') if reg.hora_finalizacao else None,
+            'em_separacao': reg.em_separacao,
+            'finalizada': reg.finalizada,
+            'cancelado': reg.cancelado
+        })
+
+    try:
+        if db.session.dirty: 
+            db.session.commit()
+            print("\nDEBUG: Commits automáticos de status '2' para a página atual REALIZADOS.")
+        else:
+            print("\nDEBUG: NENHUMA alteração pendente para commitar para a página atual.")
+    except Exception as e:
+        db.session.rollback()
+        print(f"\nERRO: Falha ao commitar atualizações automáticas de status na API: {e}")
+        return jsonify({"error": "Erro interno ao processar registros."}), 500
+
+    print("--- FIM DA VERIFICAÇÃO DE AUTOMAÇÃO DE REGISTROS (API) ---\n")
+
+    return jsonify({
+        'records': registros_json,
+        'pagina': pagination.page,
+        'total_paginas': pagination.pages,
+        'total_registros': pagination.total
+    })
+
+
+@app.route('/api/current_active_records')
+def api_current_active_records():
+    """
+    Retorna todos os registros considerados 'ativos' (não finalizados ou cancelados).
+    Esta rota é usada para atualizações incrementais no frontend e não aplica
+    filtros de data ou paginação.
+    """
+    try:
+        # Filtra os registros que não foram finalizados (finalizada = 0)
+        # e que não foram cancelados (cancelado = 0).
+        # Você pode ajustar esses filtros conforme sua definição de "ativo".
+        query = Registro.query.filter(
+            Registro.finalizada == 0,
+            Registro.cancelado == 0
+        )
+        
+        # Opcional: Ordenar os registros para garantir uma ordem consistente no frontend
+        # Por exemplo, por data de login, do mais antigo para o mais novo
+        query = query.order_by(Registro.data_hora_login.asc()) 
+
+        active_registros = query.all()
+
+        registros_json = []
+        for reg in active_registros:
+            registros_json.append({
+                'id': reg.id,
+                'data_hora_login': reg.data_hora_login.strftime('%Y-%m-%d %H:%M:%S') if reg.data_hora_login else None,
+                'nome': reg.nome,
+                'matricula': reg.matricula,
+                'rota': reg.rota,
+                'tipo_entrega': reg.tipo_entrega,
+                'cidade_entrega': reg.cidade_entrega,
+                'hora_finalizacao': reg.hora_finalizacao.strftime('%Y-%m-%d %H:%M:%S') if reg.hora_finalizacao else None,
+                'em_separacao': reg.em_separacao,
+                'finalizada': reg.finalizada,
+                'cancelado': reg.cancelado
+                # Não é necessário incluir 'updated_at' aqui, pois ele é para controle interno do BD
+            })
+        
+        return jsonify(registros_json)
+    
+    except Exception as e:
+        # Registra o erro no console do servidor para depuração
+        print(f"Erro ao buscar registros ativos: {e}")
+        # Retorna um erro 500 (Internal Server Error) para o frontend
+        return jsonify({"error": "Erro interno do servidor ao buscar registros ativos."}), 500
