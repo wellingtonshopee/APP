@@ -186,7 +186,9 @@ def capitalize_words(text):
         return ' '.join(word.capitalize() for word in text.split())
     return None
 
-# --- Suas rotas ---
+#-------Rota Login -------
+
+
 @app.route('/', methods=['GET', 'POST'])
 def login():
     erro = None
@@ -221,9 +223,49 @@ def login():
                         if registro_existente:
                             erro = f"Já existe um registro com matrícula {matricula} e tipo de entrega {tipo_entrega} para hoje."
                             print(erro)
-                            return render_template('login.html', erro=erro)
+                            # MUDANÇA AQUI: Retorna JSON de erro
+                            return jsonify(success=False, error=erro), 400 
+                        
+                        no_show_reg = NoShow(
+                            nome=nome,
+                            matricula=matricula,
+                            rota=rota,
+                            tipo_entrega=tipo_entrega,
+                            cidade_entrega=cidade_entrega,
+                            rua=rua,
+                            data_hora_login=data_hora_atual,
+                            tipo_veiculo=tipo_veiculo,
+                            em_separacao=0,
+                            finalizada=0,
+                            hora_finalizacao=None,
+                            cancelado=0,
+                            transferred_to_registro_id=None,
+                            login_id=login_id
+                        )
+                        db.session.add(no_show_reg)
+                        db.session.commit()
+                        new_session_id = no_show_reg.id
+                        print(f"Nova sessão No-Show criada com ID: {new_session_id}")
+                        # MUDANÇA AQUI: Retorna JSON de sucesso com dados para o frontend
+                        return jsonify(success=True, matricula=matricula, registro_id=new_session_id) 
 
-                    no_show_reg = NoShow(
+                ## =========================
+                ## 🔥 Verificação para registros normais (qualquer matrícula)
+                # Esta parte só será alcançada se a condição acima (No-Show da matricula 0001) não for atendida
+                if tipo_veiculo.lower() != 'moto': # Supondo que você ainda queira essa condição
+                    registro_existente = db.session.query(Registro).filter(
+                        Registro.matricula == matricula,
+                        Registro.tipo_entrega == tipo_entrega,
+                        db.func.date(Registro.data_hora_login) == data_hoje
+                    ).first()
+
+                    if registro_existente:
+                        erro = f"Já existe um registro com matrícula {matricula} e tipo de entrega {tipo_entrega} para hoje."
+                        print(erro)
+                        # MUDANÇA AQUI: Retorna JSON de erro
+                        return jsonify(success=False, error=erro), 400 
+
+                    registro = Registro(
                         nome=nome,
                         matricula=matricula,
                         rota=rota,
@@ -236,55 +278,28 @@ def login():
                         finalizada=0,
                         hora_finalizacao=None,
                         cancelado=0,
-                        transferred_to_registro_id=None,
                         login_id=login_id
                     )
-                    db.session.add(no_show_reg)
+                    db.session.add(registro)
                     db.session.commit()
-                    new_session_id = no_show_reg.id
-                    print(f"Nova sessão No-Show criada com ID: {new_session_id}")
-                    return redirect(url_for('status_motorista', matricula=matricula, registro_id=new_session_id))
-
-                ## =========================
-                ## 🔥 Verificação para registros normais (qualquer matrícula)
-                if tipo_veiculo.lower() != 'moto':
-                    registro_existente = db.session.query(Registro).filter(
-                        Registro.matricula == matricula,
-                        Registro.tipo_entrega == tipo_entrega,
-                        db.func.date(Registro.data_hora_login) == data_hoje
-                    ).first()
-
-                    if registro_existente:
-                        erro = f"Já existe um registro com matrícula {matricula} e tipo de entrega {tipo_entrega} para hoje."
-                        print(erro)
-                        return render_template('login.html', erro=erro)
-
-                registro = Registro(
-                    nome=nome,
-                    matricula=matricula,
-                    rota=rota,
-                    tipo_entrega=tipo_entrega,
-                    cidade_entrega=cidade_entrega,
-                    rua=rua,
-                    data_hora_login=data_hora_atual,
-                    tipo_veiculo=tipo_veiculo,
-                    em_separacao=0,
-                    finalizada=0,
-                    hora_finalizacao=None,
-                    cancelado=0,
-                    login_id=login_id
-                )
-                db.session.add(registro)
-                db.session.commit()
-                new_session_id = registro.id
-                print(f"Nova sessão Registro criada com ID: {new_session_id}")
-                return redirect(url_for('status_motorista', matricula=matricula, registro_id=new_session_id))
+                    new_session_id = registro.id
+                    print(f"Nova sessão Registro criada com ID: {new_session_id}")
+                    # MUDANÇA AQUI: Retorna JSON de sucesso com dados para o frontend
+                    return jsonify(success=True, matricula=matricula, registro_id=new_session_id)
+                else:
+                    # Se tipo_veiculo for "moto" e não for o caso de No-Show, talvez você precise de outra lógica ou erro aqui
+                    # Por enquanto, vou retornar um erro genérico
+                    erro = "Tipo de veículo 'moto' não permitido para este tipo de registro (exceto No-Show para 0001)."
+                    print(erro)
+                    return jsonify(success=False, error=erro), 400
 
             else:
                 erro = 'Número de registro não cadastrado. Por favor, cadastre-se primeiro.'
                 print(f"Tentativa de login falhou para matrícula {matricula}: Número de registro não cadastrado.")
-                return render_template('login.html', erro=erro)
+                # MUDANÇA AQUI: Retorna JSON de erro
+                return jsonify(success=False, error=erro), 400
 
+    # Se for um GET request, ou se algo deu errado antes de um retorno, renderiza o template de login
     return render_template('login.html', erro=erro)
 
 #----Fim da Rota Login -----
