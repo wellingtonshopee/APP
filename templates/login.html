@@ -71,12 +71,21 @@
             margin-top: 15px;
             transition: 0.3s;
         }
-        button:hover {
+        button:disabled {
+            background-color: #cccccc; /* Estilo para botão desabilitado */
+            cursor: not-allowed;
+        }
+        button:hover:not(:disabled) { /* Hover apenas quando não estiver desabilitado */
             background-color: #0056b3;
         }
-        .erro {
+        .erro, #locationMessage, #rotaErrorMessage { /* Adicionado ID rotaErrorMessage para estilização */
             color: red;
             text-align: center;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .location-success { /* Nova classe para mensagem de sucesso de localização */
+            color: green;
         }
         .cadastro-link {
             display: block;
@@ -123,9 +132,8 @@
             <input type="text" id="nome" name="nome" readonly required>
 
             <label for="rota">Rota</label>
-            <input type="text" id="rota" name="rota" required>
-
-            <label for="tipo_entrega">Tipo de Entrega</label>
+            <input type="text" id="rota" name="rota" required placeholder="Ex.: A-01">
+            <p id="rotaErrorMessage"></p> <label for="tipo_entrega">Tipo de Entrega</label>
             <select id="tipo_entrega" name="tipo_entrega" required>
                 <option value="" disabled selected>Selecione</option>
                 <option value="Normal">Normal</option>
@@ -136,6 +144,8 @@
             <input type="text" id="cidade_entrega" name="cidade_entrega" list="lista_cidades" autocomplete="off" required>
             <datalist id="lista_cidades"></datalist>
 
+            <p id="locationMessage"></p> 
+
             <button type="submit" id="submitButton" disabled>Entrar</button>
         </form>
 
@@ -145,7 +155,106 @@
     </div>
 
     <script>
-        // Debounce: aguarda 500ms após digitação parar para executar a busca
+        // Coordenadas do local de referência (SPX Express Shopee - Divinópolis)
+        const LOCAL_REFERENCIA = {
+            latitude: -20.1706692, // Latitude aproximada do local
+            longitude: -44.8967584  // Longitude aproximada do local
+        };
+        const RAIO_PERMITIDO_METROS = 10; // 10 metros
+
+        // Elementos do DOM
+        const matriculaInput = document.getElementById('matricula');
+        const nomeInput = document.getElementById('nome');
+        const rotaInput = document.getElementById('rota'); // Novo elemento
+        const submitButton = document.getElementById('submitButton');
+        const loginForm = document.getElementById('loginForm');
+        const locationMessage = document.getElementById('locationMessage');
+        const rotaErrorMessage = document.getElementById('rotaErrorMessage'); // Novo elemento
+
+        let usuarioProximo = false;
+        let matriculaValida = false;
+        let rotaValida = false; // Nova flag para validação da rota
+
+        // Função para calcular a distância entre duas coordenadas (Fórmula de Haversine)
+        function calcularDistancia(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // Raio da Terra em metros
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            return R * c; // Distância em metros
+        }
+
+        // Função para atualizar o estado do botão de submit
+        function atualizarBotaoSubmit() {
+            submitButton.disabled = !(usuarioProximo && matriculaValida && rotaValida);
+        }
+
+        // --- Lógica de Geolocalização ---
+        function obterLocalizacao() {
+            if (navigator.geolocation) {
+                locationMessage.textContent = "Obtendo sua localização...";
+                locationMessage.className = "";
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const userLat = position.coords.latitude;
+                        const userLon = position.coords.longitude;
+                        const distancia = calcularDistancia(
+                            userLat, userLon,
+                            LOCAL_REFERENCIA.latitude, LOCAL_REFERENCIA.longitude
+                        );
+
+                        if (distancia <= RAIO_PERMITIDO_METROS) {
+                            usuarioProximo = true;
+                            locationMessage.textContent = "Você está próximo ao local. Prossiga com o login.";
+                            locationMessage.className = "location-success";
+                        } else {
+                            usuarioProximo = false;
+                            locationMessage.textContent = `Você está a ${distancia.toFixed(2)} metros do local. É necessário estar a até ${RAIO_PERMITIDO_METROS} metros para logar.`;
+                            locationMessage.className = "erro";
+                        }
+                        atualizarBotaoSubmit();
+                    },
+                    (error) => {
+                        usuarioProximo = false;
+                        switch(error.code) {
+                            case error.PERMISSION_DENIED:
+                                locationMessage.textContent = "Acesso à localização negado. O login não pode ser realizado.";
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                locationMessage.textContent = "Informações de localização indisponíveis.";
+                                break;
+                            case error.TIMEOUT:
+                                locationMessage.textContent = "Tempo limite para obter a localização esgotado.";
+                                break;
+                            default:
+                                locationMessage.textContent = "Erro desconhecido ao obter a localização.";
+                                break;
+                        }
+                        locationMessage.className = "erro";
+                        atualizarBotaoSubmit();
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+            } else {
+                usuarioProximo = false;
+                locationMessage.textContent = "Seu navegador não suporta geolocalização. O login não pode ser realizado.";
+                locationMessage.className = "erro";
+                atualizarBotaoSubmit();
+            }
+        }
+
+        // --- Lógica de Busca de Nome e Autocomplete de Cidades (já existente) ---
         function debounce(func, delay) {
             let timeout;
             return function(...args) {
@@ -154,16 +263,13 @@
             };
         }
 
-        const matriculaInput = document.getElementById('matricula');
-        const nomeInput = document.getElementById('nome');
-        const submitButton = document.getElementById('submitButton');
-
         function buscarNome() {
             const matricula = matriculaInput.value.trim();
 
             if (!matricula) {
                 nomeInput.value = '';
-                submitButton.disabled = true;
+                matriculaValida = false;
+                atualizarBotaoSubmit();
                 return;
             }
 
@@ -179,22 +285,23 @@
             .then(data => {
                 if (data.nome) {
                     nomeInput.value = data.nome;
-                    submitButton.disabled = false;
+                    matriculaValida = true;
                 } else {
                     nomeInput.value = 'Matrícula não encontrada! Faça seu cadastro!';
-                    submitButton.disabled = true;
+                    matriculaValida = false;
                 }
+                atualizarBotaoSubmit();
             })
             .catch(error => {
                 console.error('Erro ao buscar nome:', error);
                 nomeInput.value = 'Erro ao buscar nome!';
-                submitButton.disabled = true;
+                matriculaValida = false;
+                atualizarBotaoSubmit();
             });
         }
 
         matriculaInput.addEventListener('input', debounce(buscarNome, 500));
 
-        // Autocompletar cidades
         const inputCidade = document.getElementById('cidade_entrega');
         const datalist = document.getElementById('lista_cidades');
 
@@ -213,6 +320,77 @@
                     });
                 });
         });
+
+        // --- Nova Lógica de Validação da Rota ---
+        rotaInput.addEventListener('input', () => {
+            const rota = rotaInput.value.trim().toUpperCase(); // Converte para maiúsculas para padronizar
+            // Expressão regular para A-01 (Letra-NúmeroNúmero)
+            // ^[A-Z]$ : Começa com uma letra maiúscula
+            // - : seguido por um hífen
+            // \d{2}$ : seguido por exatamente dois dígitos e termina a string
+            const regexRota = /^[A-Z]-\d{2}$/;
+
+            if (regexRota.test(rota)) {
+                rotaValida = true;
+                rotaErrorMessage.textContent = ""; // Limpa a mensagem de erro
+                rotaInput.value = rota; // Garante que o valor no campo está padronizado (maiúsculas)
+            } else {
+                rotaValida = false;
+                rotaErrorMessage.textContent = "Formato inválido. Use 'A-01'.";
+            }
+            atualizarBotaoSubmit();
+        });
+
+        // --- Lógica de Envio do Formulário ---
+        loginForm.addEventListener('submit', (event) => {
+            event.preventDefault(); // Evita o envio padrão do formulário
+
+            // Revalida as condições antes de enviar
+            if (usuarioProximo && matriculaValida && rotaValida) {
+                const formData = new FormData(loginForm);
+                const data = Object.fromEntries(formData.entries());
+
+                // IMPORTANTE: Envie a localização REAL do usuário (se obtida) para validação no servidor.
+                // Por exemplo, você pode armazenar userLat e userLon em variáveis globais após obtê-las
+                // e adicioná-las aqui:
+                // data.userLatitude = userLatGlobal;
+                // data.userLongitude = userLonGlobal;
+
+                fetch(loginForm.action, {
+                    method: loginForm.method,
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams(data).toString()
+                })
+                .then(response => {
+                    if (response.ok) {
+                        alert("Login efetuado com sucesso! Redirecionando...");
+                        // window.location.href = "/pagina_de_destino";
+                        return response.text();
+                    } else {
+                        alert("Erro no login ou na validação do servidor. Verifique o console.");
+                        console.error('Erro de servidor:', response.status, response.statusText);
+                    }
+                })
+                .then(result => console.log('Resposta do servidor:', result))
+                .catch(error => {
+                    console.error('Erro de rede ou processamento:', error);
+                    alert("Ocorreu um erro ao tentar logar.");
+                });
+
+            } else {
+                // Mensagens mais específicas para o usuário
+                if (!matriculaValida) {
+                    alert("Matrícula inválida ou não encontrada. Verifique e tente novamente.");
+                } else if (!rotaValida) {
+                    alert("Formato da Rota inválido. Por favor, use o formato 'A-01'.");
+                } else if (!usuarioProximo) {
+                    alert("Você não está próximo o suficiente do local para logar.");
+                }
+            }
+        });
+
+        // Inicia a obtenção da localização assim que a página é carregada
+        obterLocalizacao();
     </script>
 
 </body>

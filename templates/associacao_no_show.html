@@ -349,13 +349,10 @@
         {# Adicione um título para o menu, melhora a usabilidade #}
         <h2 style="color: #9ca3af; text-align: center; font-size: 1.25rem; margin-bottom: 1.5rem;">Menu de Navegação</h2>
         <ul>
-            <li><a href="{{ url_for('menu_principal') }}">Página Inicial</a></li>
-            <li><a href="{{ url_for('login') }}">Login Drive</a></li>
-            <li><a href="{{ url_for('cadastro') }}">Cadastro Drive</a></li>
-            <li><a href="{{ url_for('registros') }}">Painel do Operador</a></li>
-            <li><a href="{{ url_for('registro_no_show') }}">Listar Registros No-Show</a></li>
-            <li><a href="{{ url_for('associacao_no_show') }}">Criar Registro No-Show</a></li>
-            <li><a href="{{ url_for('registros_finalizados') }}">Relatório de Registros</a></li>
+        <li><a href="{{ url_for('menu_principal') }}">Página Inicial</a></li>
+<li><a href="{{ url_for('registros') }}">Painel do Operador</a></li>
+<li><a href="{{ url_for('registro_no_show') }}">Listar Registros No-Show</a></li>
+<li><a href="{{ url_for('associacao_no_show') }}">Criar Registro No-Show</a></li>
            
         </ul>
     </aside>
@@ -412,7 +409,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="rota">Rota:</label>
+                        <label for="rota">Rota: Ex.: A-10</label>
                         <input type="text" id="rota" name="rota" required autofocus> {# Adicionado autofocus #}
                     </div>
 

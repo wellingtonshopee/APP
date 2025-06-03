@@ -294,12 +294,12 @@
     <aside class="sidebar" id="sidebar">
         <ul>
             <li><a href="{{ url_for('menu_principal') }}">Página Inicial</a></li>
-<li><a href="{{ url_for('login') }}">Login Drive</a></li>
-<li><a href="{{ url_for('cadastro') }}">Cadastro Drive</a></li>
-<li><a href="{{ url_for('registros') }}">Painel do Operador</a></li>
-<li><a href="{{ url_for('registro_no_show') }}">Listar Registros No-Show</a></li>
-<li><a href="{{ url_for('associacao_no_show') }}">Criar Registro No-Show</a></li>
-<li><a href="{{ url_for('registros_finalizados') }}">Relatório de Registros</a></li>
+            <li><a href="{{ url_for('login') }}">Login Drive</a></li>
+            <li><a href="{{ url_for('cadastro') }}">Cadastro Drive</a></li>
+            <li><a href="{{ url_for('registros') }}">Painel do Operador</a></li>
+            <li><a href="{{ url_for('registro_no_show') }}">Listar Registros No-Show</a></li>
+            <li><a href="{{ url_for('associacao_no_show') }}">Criar Registro No-Show</a></li>
+            <li><a href="{{ url_for('registros_finalizados') }}">Relatório de Registros</a></li>
         </ul>
     </aside>
 
@@ -337,7 +337,6 @@
                 <option value="Normal" {% if tipo_entrega == 'Normal' %}selected{% endif %}>Normal</option>
                 <option value="No-Show" {% if tipo_entrega == 'No-Show' %}selected{% endif %}>No-Show</option>
             </select>
-
             <label for="rota-filter"></label>
             <input type="text" id="rota-filter" placeholder="Digite a rota" value="{{ rota }}">
 
@@ -357,16 +356,16 @@
     <div class="card-container">
         {% for registro in registros %}
         <div class="card"
-     data-data-hora-login="{{ registro.data_hora_login|formata_data_hora }}"
-     data-tipo-entrega="{{ registro.tipo_entrega }}"
-     data-rota="{{ registro.rota if registro.__tablename__ == 'registros' else (registro.gaiola if registro.gaiola is not none else '') }}"
-     data-matricula="{{ registro.matricula }}"
-     data-nome="{{ registro.nome }}"
-     data-cidade-entrega="{{ registro.cidade_entrega if registro.__tablename__ == 'registros' else '' }}"
-     data-gaiola-rua="{{ registro.gaiola if registro.__tablename__ == 'registros' else (registro.rua if registro.rua is not none else '') }}"
-     data-estacao="{{ registro.estacao }}"
-     data-hora-finalizacao="{{ registro.hora_finalizacao|formata_data_hora }}" {# AQUI! #}
-     data-finalizado="{{ registro.finalizada }}">
+             data-data-hora-login="{{ registro.data_hora_login|formata_data_hora }}"
+             data-tipo-entrega="{{ registro.tipo_entrega }}"
+             data-rota="{{ registro.rota if registro.__tablename__ == 'registros' else (registro.gaiola if registro.gaiola is not none else '') }}"
+             data-matricula="{{ registro.matricula }}"
+             data-nome="{{ registro.nome }}"
+             data-cidade-entrega="{{ registro.cidade_entrega if registro.__tablename__ == 'registros' else '' }}"
+             data-gaiola-rua="{{ registro.gaiola if registro.__tablename__ == 'registros' else (registro.rua if registro.rua is not none else '') }}"
+             data-estacao="{{ registro.estacao }}"
+             data-hora-finalizacao="{{ registro.hora_finalizacao|formata_data_hora }}" {# AQUI! #}
+             data-finalizado="{{ registro.finalizada }}">
 
             <p><strong>Tipo de Registro:</strong> {% if registro.__tablename__ == 'registros' %}Principal{% else %}No-Show{% endif %}</p>
             {# DEBUG: Exibe o nome da tabela para cada registro #}
