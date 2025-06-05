@@ -86,18 +86,18 @@ class Registro(db.Model):
     tipo_entrega = db.Column(db.String(80))
     cidade_entrega = db.Column(db.String(80))
     rua = db.Column(db.String(80))
-    # **Ajuste:** Garante que o default é UTC e ciente do fuso horário.
     data_hora_login = db.Column(db.DateTime(timezone=True), default=lambda: datetime.utcnow().replace(tzinfo=pytz.utc))
     tipo_veiculo = db.Column(db.String(80))
     em_separacao = db.Column(db.Integer, default=0)
     gaiola = db.Column(db.String(80))
     estacao = db.Column(db.String(80))
     finalizada = db.Column(db.Integer, default=0)
-    # **Ajuste:** A coluna está correta. A atribuição da hora_finalizacao deve usar UTC.
-    hora_finalizacao = db.Column(db.DateTime(timezone=True)) 
+    hora_finalizacao = db.Column(db.DateTime(timezone=True))
     cancelado = db.Column(db.Integer, default=0)
     login_id = db.Column(db.Integer, db.ForeignKey('login.id'))
     login = db.relationship('Login', backref=db.backref('registros', lazy=True))
+    # --- ADICIONE ESTA LINHA NO SEU MODELO REGISTRO ---
+    motivo_cancelamento = db.Column(db.Text, nullable=True) 
 
     def __repr__(self):
         return f'<Registro {self.matricula} - {self.nome}>'
@@ -973,23 +973,32 @@ def marcar_como_finalizado_id(id):
 
 @app.route('/cancelar_registro/<int:id>', methods=['POST'])
 def cancelar_registro(id):
-    registro = Registro.query.get(id)
-    if not registro:
-        return jsonify({"error": "Registro não encontrado."}), 404
+    try:
+        # Pega os dados JSON enviados pelo frontend (que contém a observação)
+        data = request.get_json()
+        observacao = data.get('observacao') # Extrai o valor da chave 'observacao'
 
-    # Adicionando verificação para evitar cancelar registros já finalizados ou cancelados
-    if registro.em_separacao == 3 or registro.em_separacao == 4:
-        return jsonify({"error": "Registro já está finalizado ou cancelado."}), 400
+        registro = Registro.query.get(id)
+        if not registro:
+            return jsonify({"error": "Registro não encontrado."}), 404
 
-    registro.em_separacao = 4  # Define como Cancelado (status 4)
-    # Opcional: Você pode manter registro.cancelado = 1 se for útil para outros relatórios/filtros
-    # ou remover esta linha se em_separacao for a única fonte da verdade para o status final.
-    registro.cancelado = 1
-    
-    db.session.commit()
-    
-    return jsonify({"message": "Registro cancelado com sucesso!"}), 200
+        # Adicionando verificação para evitar cancelar registros já finalizados ou cancelados
+        # Use os status corretos do seu sistema (aqui 3 e 4)
+        if registro.em_separacao == 3 or registro.em_separacao == 4:
+            return jsonify({"error": "Registro já está finalizado ou cancelado."}), 400
 
+        registro.em_separacao = 4  # Define como Cancelado (status 4)
+        registro.cancelado = 1     # Mantém o campo 'cancelado' para compatibilidade, se necessário
+
+        # Salva a observação na nova coluna
+        registro.motivo_cancelamento = observacao
+
+        db.session.commit()
+
+        return jsonify({"message": "Registro cancelado com sucesso!"}), 200
+    except Exception as e:
+        db.session.rollback() # Em caso de erro, desfaz a transação
+        return jsonify({"error": f"Erro ao cancelar registro: {str(e)}"}), 500
 
 @app.route('/finalizar_carregamento_id_status_separacao/<int:id>', methods=['POST'])
 def finalizar_carregamento_id_status_separacao(id):
