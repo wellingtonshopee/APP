@@ -10,3 +10,4 @@ bs4
 sqlalchemy 
 supabase
 flask_sqlalchemy
+Flask-Login
