@@ -167,15 +167,33 @@
 <body>
 
     <div class="sidebar" id="sidebar">
+    
         <h2>Menu de Navegação</h2>
         <ul>
+
+
 <li><a href="{{ url_for('menu_principal') }}">Página Inicial</a></li>
 <li><a href="{{ url_for('registros') }}">Painel do Operador</a></li>
 <li><a href="{{ url_for('registro_no_show') }}">Listar Registros No-Show</a></li>
 <li><a href="{{ url_for('associacao_no_show') }}">Criar Registro No-Show</a></li>
-
-
-
+<li><a href="{{ url_for('registros_finalizados') }}">Relatório de Registros</a></li>
+                <li><a href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                {% if current_user.is_authenticated %}
+                    <li><a href="{{ url_for('painel_gerencial') }}"><i class="fas fa-chart-line"></i> Painel Gerencial</a></li>
+                {% endif %}
+                <li><a href="{{ url_for('pacotes_rota') }}"><i class="fas fa-route"></i> Pacotes por Rota</a></li>
+                <li><a href="{{ url_for('gerenciar_usuarios') }}"><i class="fas fa-users-cog"></i> Gerenciar Usuários</a></li>
+                <li><a href="{{ url_for('cadastro_usuario') }}"><i class="fas fa-user-plus"></i> Cadastrar Novo Usuário</a></li>
+                <li><a href="{{ url_for('log_atividades') }}"><i class="fas fa-clipboard-list"></i> Log de Atividades</a></li>
+                <li><a href="{{ url_for('status_entrega') }}"></i> Status de Entrega</a></li>
+                <li><a href="{{ url_for('adicionar_situacao_pedido') }}"></i>Situação dos Pedidos</a></li>
+                <li><a href="{{ url_for('adicionar_etapa') }}"></i>Etapas da Entrega</a></li>
+                <li><a href="{{ url_for('menu_principal') }}"></i> Configurações</a></li>
+                {% if current_user.is_authenticated %}
+                    <li><a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
+                {% else %}
+                    <li><a href="{{ url_for('login2') }}"><i class="fas fa-sign-in-alt"></i> Login Sistema</a></li>
+                {% endif %}
 
         </ul>
     </div>

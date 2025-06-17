@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Pacotes da Rota</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background-color: #f4f4f4;
+            color: #333;
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Estilos do Menu Lateral (Sidebar) */
+        .sidebar {
+            height: 100%;
+            width: 250px; /* Largura padrão para desktop */
+            position: fixed;
+            z-index: 1000;
+            top: 0;
+            left: 0;
+            background-color: #343a40;
+            overflow-x: hidden;
+            transition: transform 0.5s ease;
+            padding-top: 60px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            transform: translateX(0);
+        }
+        .sidebar.hidden {
+            transform: translateX(-250px);
+        }
+        .sidebar.visible { /* Para telas menores */
+            transform: translateX(0);
+        }
+        .sidebar .logo-sidebar {
+            width: 150px; /* Tamanho da logo na sidebar */
+            margin-bottom: 20px;
+            border-radius: 8px; /* Cantos arredondados */
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3); /* Sombra */
+        }
+        .sidebar h2 {
+            color: white;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+        }
+        .sidebar ul {
+            list-style-type: none;
+            padding: 0;
+            width: 100%;
+        }
+        .sidebar ul li a {
+            padding: 15px 25px;
+            text-decoration: none;
+            font-size: 1.1em;
+            color: #f8f9fa;
+            display: block;
+            transition: 0.3s;
+            text-align: center;
+        }
+        .sidebar ul li a:hover {
+            background-color: #0056b3; /* Cor do hover do menu lateral - Mantenha este se quiser azul */
+            color: white;
+        }
+
+        /* Estilos do Conteúdo Principal */
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            margin-left: 250px; /* Espaço para o sidebar visível em desktop */
+            transition: margin-left 0.5s ease;
+            width: calc(100% - 250px);
+            padding: 0;
+        }
+        .main-content.expanded {
+            margin-left: 0;
+            width: 100%;
+        }
+
+        /* Estilos para o banner (no conteúdo principal) */
+        .banner {
+            background-color: #f30909; /* AGORA ESTÁ VERMELHO! */
+            color: white;
+            padding: 70px 20px 20px 20px; /* Ajusta o padding superior para dar espaço à logo e botão */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative; /* Base para posicionamento absoluto */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        /* Contêiner para logo e botão de menu */
+        .header-banner-controls { /* Alterado de .header-controls para evitar conflito e ser mais específico */
+            display: flex;
+            justify-content: space-between; /* Coloca a logo na esquerda e o botão na direita */
+            align-items: center;
+            position: absolute;
+            top: 15px; /* Ajuste para descer um pouco mais */
+            left: 20px;
+            right: 20px; /* Adiciona margem à direita também */
+            gap: 10px; /* Mantém o gap, embora com space-between ele seja menos relevante */
+            z-index: 10; /* Garante que fique acima de outros elementos */
+            width: auto; /* Ajusta a largura para o conteúdo */
+        }
+
+        .logo-banner { /* Nova classe para a logo no banner */
+            height: 50px; /* Ajuste o tamanho conforme necessário */
+            width: auto;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .menu-toggle {
+            background: none;
+            border: none;
+            color: #f8f9fa;
+            font-size: 2em;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .banner .title {
+            margin-top: 10px; /* Reduz a margem superior do título */
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            color: white;
+            text-align: center;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* ESTILOS PARA O FORMULÁRIO DE FILTROS NO BANNER */
+        .filter-form-banner {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-end; /* Alinha os campos pela base */
+            width: 100%;
+            padding: 0 10px;
+            box-sizing: border-box;
+        }
+
+        .filter-group-banner {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            margin-bottom: 10px; /* Mantém um pequeno espaço entre as linhas em telas menores */
+        }
+
+        .filter-group-banner label {
+            font-size: 0.9em;
+            color: white;
+            margin-bottom: 5px;
+            white-space: nowrap;
+        }
+
+        .filter-group-banner input[type="date"],
+        .filter-group-banner input[type="text"],
+        .filter-group-banner select {
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 0.9em;
+            max-width: 180px; /* Limite de largura para desktop */
+            color: #333;
+        }
+
+        .filter-form-banner button {
+            padding: 8px 12px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: 5px; /* Ajuste para alinhar com os campos quando quebra de linha */
+        }
+
+        .filter-form-banner button[type="button"].reset-btn {
+            background-color: #dc3545;
+        }
+
+        /* Estilos do Container e Formulário */
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex-grow: 1;
+        }
+        h1 {
+            text-align: center;
+            color: #0056b3;
+            margin-bottom: 30px;
+        }
+        form {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
+        }
+        form div {
+            margin-bottom: 15px;
+        }
+        form label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        form input[type="text"],
+        form select,
+        form textarea,
+        form input[type="file"] { /* Adicionado input type file */
+            width: calc(100% - 22px);
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+        form textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        form button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-right: 10px;
+        }
+        form button:hover {
+            background-color: #0056b3;
+        }
+        .flash { padding: 10px; margin-bottom: 15px; border-radius: 4px; }
+        .flash.success { background-color: #d4edda; color: #155724; border-color: #c3e6cb; }
+        .flash.danger { background-color: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+        .flash.warning { background-color: #fff3cd; color: #856404; border-color: #ffeeba; }
+
+        /* Estilos da Tabela de Pacotes Importados/Cadastrados */
+        .pacotes-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .pacotes-table th, .pacotes-table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        .pacotes-table th {
+            background-color: #007bff;
+            color: white;
+            font-size: 0.9em;
+        }
+        .pacotes-table tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        .pacotes-table button.delete-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.85em;
+        }
+        .pacotes-table button.delete-btn:hover {
+            background-color: #c82333;
+        }
+        .import-section { /* Seção de importação de arquivo */
+            display: flex;
+            flex-wrap: wrap; /* Permite quebrar linha em telas menores */
+            align-items: flex-end;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
+        }
+        .import-section .form-group {
+            flex: 1; /* Permite que os grupos de formulário cresçam */
+            min-width: 200px; /* Garante um tamanho mínimo para cada grupo */
+        }
+        .import-section button {
+            align-self: flex-end; /* Alinha o botão ao final */
+            margin-top: 10px; /* Espaço acima do botão em telas menores */
+        }
+
+
+        /* Media Queries para Responsividade */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 180px;
+                transform: translateX(-180px);
+            }
+            .sidebar.hidden {
+                transform: translateX(-180px);
+            }
+            .sidebar.visible {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+            }
+            .main-content.expanded {
+                margin-left: 0;
+            }
+
+            .banner {
+                padding-top: 60px; /* Ajusta o padding para mobile */
+            }
+
+            .header-banner-controls { /* Ajustes para o novo layout do banner em mobile */
+                top: 10px;
+                left: 10px;
+                right: 10px;
+            }
+
+            .logo-banner {
+                height: 40px;
+            }
+
+            .banner .title {
+                margin-top: 5px; /* Ajusta ainda mais a margem do título em mobile */
+                font-size: 1.5em;
+                padding-left: 0;
+            }
+
+            /* AJUSTES PARA OS FILTROS NO BANNER EM TELAS PEQUENAS */
+            .filter-form-banner {
+                flex-direction: column;
+                align-items: stretch; /* Estica os campos para a largura total */
+                gap: 8px; /* Reduz o espaço entre os campos empilhados */
+                padding: 0 5px;
+            }
+            .filter-group-banner {
+                width: 100%;
+                align-items: stretch;
+                margin-bottom: 0; /* Remove margem extra entre os campos empilhados */
+            }
+            .filter-group-banner input[type="date"],
+            .filter-group-banner input[type="text"],
+            .filter-group-banner select {
+                max-width: none; /* Remove o limite de largura */
+                width: 100%; /* Faz o input ocupar 100% da largura do pai */
+            }
+            .filter-form-banner button {
+                width: 100%; /* Botões ocupam a largura total em mobile */
+                margin-top: 5px;
+            }
+            .import-section {
+                flex-direction: column; /* Empilha os elementos no mobile */
+                align-items: stretch; /* Estica os elementos */
+            }
+            .import-section .form-group {
+                min-width: unset; /* Remove min-width em telas muito pequenas */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar hidden" id="mySidebar">
+       
+        <h2>Menu</h2>
+        <ul>
+         <li><a href="{{ url_for('menu_principal') }}">Página Inicial</a></li>
+<li><a href="{{ url_for('registros') }}">Painel do Operador</a></li>
+<li><a href="{{ url_for('registro_no_show') }}">Listar Registros No-Show</a></li>
+<li><a href="{{ url_for('associacao_no_show') }}">Criar Registro No-Show</a></li>
+<li><a href="{{ url_for('registros_finalizados') }}">Relatório de Registros</a></li>
+                <li><a href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                {% if current_user.is_authenticated %}
+                    <li><a href="{{ url_for('painel_gerencial') }}"><i class="fas fa-chart-line"></i> Painel Gerencial</a></li>
+                {% endif %}
+                <li><a href="{{ url_for('pacotes_rota') }}"><i class="fas fa-route"></i> Pacotes por Rota</a></li>
+                <li><a href="{{ url_for('gerenciar_usuarios') }}"><i class="fas fa-users-cog"></i> Gerenciar Usuários</a></li>
+                <li><a href="{{ url_for('cadastro_usuario') }}"><i class="fas fa-user-plus"></i> Cadastrar Novo Usuário</a></li>
+                <li><a href="{{ url_for('log_atividades') }}"><i class="fas fa-clipboard-list"></i> Log de Atividades</a></li>
+                <li><a href="{{ url_for('status_entrega') }}"></i> Status de Entrega</a></li>
+                <li><a href="{{ url_for('adicionar_situacao_pedido') }}"></i>Situação dos Pedidos</a></li>
+                <li><a href="{{ url_for('adicionar_etapa') }}"></i>Etapas da Entrega</a></li>
+                <li><a href="{{ url_for('menu_principal') }}"></i> Configurações</a></li>
+                {% if current_user.is_authenticated %}
+                    <li><a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
+                {% else %}
+                    <li><a href="{{ url_for('login2') }}"><i class="fas fa-sign-in-alt"></i> Login Sistema</a></li>
+                {% endif %}
+        </ul>
+    </div>
+
+<div class="main-content expanded" id="mainContent">
+    <div class="banner">
+        <div class="header-banner-controls">
+            <button class="menu-toggle" id="menuToggle">&#9776;</button>
+            <img src="{{ url_for('static', filename='imagem/shopee32.png') }}"alt="Logo no Banner" class="logo-banner">
+        </div>
+        <h1 class="title">Gerenciar Pacotes da Rota</h1>
+        <div></div>
+    </div>
+
+        <div class="container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                <ul class="flashes">
+                {% for category, message in messages %}
+                  <li class="flash {{ category }}">{{ message }}</li>
+                {% endfor %}
+                </ul>
+              {% endif %}
+            {% endwith %}
+
+            <h2>Adicionar Novo Pacote Manualmente</h2>
+            <form method="POST" action="{{ url_for('pacotes_rota') }}">
+                <div class="form-group">
+                    <label for="rota_selecionada_importacao">Rota do Pacote:</label>
+                    <select id="rota_selecionada_importacao" name="rota_selecionada_importacao" required>
+                        <option value="">Selecione uma Rota</option>
+                        {% for rota in rotas_existentes %}
+                            <option value="{{ rota }}" {% if rota_selecionada_no_form == rota %}selected{% endif %}>{{ rota }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="id_pacote">ID Pacote:</label>
+                    <input type="text" id="id_pacote" name="id_pacote" required>
+                </div>
+                <div class="form-group">
+                    <label for="etapa">Etapa:</label>
+                    <select id="etapa" name="etapa">
+                        <option value="">Não definida</option>
+                        {% for etapa in etapas %}
+                            <option value="{{ etapa.id }}">{{ etapa.nome_etapa }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="acoes">Ações:</label>
+                    <select id="acoes" name="acoes">
+                        <option value="">Selecione uma Ação</option>
+                          {% for situacao in situacoes_pedido %}
+                           <option value="{{ situacao.id }}">{{ situacao.nome_situacao }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="observacao">Observação:</label>
+                    <textarea id="observacao" name="observacao"></textarea>
+                </div>
+            
+                <button type="submit">Adicionar Pacote</button>
+            </form>
+
+            <hr>
+
+            <h2>Importar Pacotes de um Arquivo TXT</h2>
+            <form action="{{ url_for('importar_pacotes_txt') }}" method="POST" enctype="multipart/form-data">
+                <div class="import-section">
+                    <div class="form-group">
+                        <label for="rota_para_importar">Rota para os Pacotes no Arquivo:</label>
+                        <select id="rota_para_importar" name="rota_para_importar" required>
+                            <option value="">Selecione uma Rota</option>
+                            {% for rota in rotas_existentes %}
+                                <option value="{{ rota }}" {% if rota_selecionada_no_form == rota %}selected{% endif %}>{{ rota }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="file">Arquivo de Pacotes (.txt):</label>
+                        <input type="file" name="file" id="file" accept=".txt" required>
+                    </div>
+                    <button type="submit">Importar Pacotes do TXT</button>
+                </div>
+            </form>
+
+            <hr>
+
+            <h2>Visualizar Pacotes por Rota</h2>
+            <div class="import-section">
+                <div class="form-group" style="flex-grow: 1;">
+                    <label for="rotaSelectImport">Selecione a Rota para Visualizar:</label>
+                    <select id="rotaSelectImport" name="rotaSelectImport">
+                        <option value="todos">Todos os Pacotes (Todas as Rotas)</option>
+                        {% for rota in rotas_existentes %}
+                            <option value="{{ rota }}" {% if rota_selecionada_no_form == rota %}selected{% endif %}>{{ rota }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="button" onclick="importarPacotes()">Carregar Pacotes</button>
+            </div>
+
+            <table class="pacotes-table" id="pacotesTable">
+                <thead>
+                    <tr>
+                        <th>ID Pacote</th>
+                        <th>Rota</th>
+                        <th>Etapa da Entrega</th>
+                        <th>Observação</th>
+                        <th>Data\Hora Entrega</th>
+                        <th>Status da Entrega</th> 
+                        </tr>
+                </thead>
+                <tbody>
+                    {% for pacote in pacotes %}
+                    <tr id="pacote-{{ pacote.id }}">
+                        <td>{{ pacote.id_pacote }}</td>
+                        <td>{{ pacote.rota_vinculada }}</td>
+                        <td>{{ pacote.etapa.nome_etapa if pacote.etapa else 'Não definida' }}</td>
+                        <td>{{ pacote.observacao if pacote.observacao else '-' }}</td>
+                        <td>{{ pacote.data_cadastro.strftime('%Y-%M-%D %H:%M:%S') }}</td>
+                        <td>{{ pacote.acoes }}</td> 
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Lógica para alternar o menu lateral (REPETIDA)
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.getElementById('mySidebar');
+        const mainContent = document.getElementById('mainContent');
+
+        menuToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('hidden');
+            mainContent.classList.toggle('expanded');
+            if (window.innerWidth <= 768) {
+                sidebar.classList.toggle('visible');
+            }
+        });
+
+        // Ocultar o menu quando um link é clicado (útil em mobile)
+        sidebar.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', function() {
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.add('hidden');
+                    sidebar.classList.remove('visible');
+                    mainContent.classList.add('expanded');
+                }
+            });
+        });
+
+        // Lógica para importar pacotes por rota (visualizar)
+        async function importarPacotes() {
+            const rotaSelecionada = document.getElementById('rotaSelectImport').value;
+            const tbody = document.querySelector('#pacotesTable tbody');
+            tbody.innerHTML = '<tr><td colspan="6">Carregando pacotes...</td></tr>'; // Alterar colspan se adicionar coluna
+
+            try {
+                const response = await fetch(`/api/pacotes_por_rota/${rotaSelecionada}`);
+                const pacotes = await response.json();
+
+                tbody.innerHTML = '';
+                if (pacotes.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6">Nenhum pacote encontrado para esta rota.</td></tr>'; // Alterar colspan se adicionar coluna
+                } else {
+                    pacotes.forEach(pacote => {
+                        const row = `
+                            <tr id="pacote-${pacote.id}">
+                                <td>${pacote.id_pacote}</td>
+                                <td>${pacote.rota_vinculada}</td>
+                                <td>${pacote.etapa}</td>
+                                <td>${pacote.observacao || '-'}</td>
+                                <td>${pacote.data_cadastro}</td>
+                                <td>
+                                    ${pacote.acoes}
+                                    </td>
+                            </tr>
+                        `;
+                        tbody.insertAdjacentHTML('beforeend', row);
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao importar pacotes:', error);
+                tbody.innerHTML = '<tr><td colspan="6" style="color: red;">Erro ao carregar pacotes. Tente novamente.</td></tr>'; // Alterar colspan se adicionar coluna
+            }
+        }
+
+        // Chamar importarPacotes() ao carregar a página se uma rota já estiver selecionada
+        document.addEventListener('DOMContentLoaded', function() {
+            const rotaInicial = document.getElementById('rotaSelectImport').value;
+            // Se a rota inicial for diferente de "todos" e não for vazia, carrega os pacotes
+            if (rotaInicial && rotaInicial !== 'todos' && rotaInicial !== '') {
+                importarPacotes();
+            } else if (rotaInicial === 'todos') {
+                importarPacotes(); // Carrega todos os pacotes se "todos" for selecionado inicialmente
+            }
+        });
+
+    </script>
+</body>
+</html>

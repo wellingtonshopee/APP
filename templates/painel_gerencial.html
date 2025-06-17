@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Gerencial</title>
+    <style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        background-color: #f4f4f4;
+        color: #333;
+        display: flex;
+        min-height: 100vh;
+        overflow-x: hidden; /* Evita rolagem horizontal durante a transição */
+    }
+
+    /* Estilos do Menu Lateral (Sidebar) */
+    .sidebar {
+        height: 100%;
+        width: 250px; /* Largura padrão para desktop */
+        position: fixed;
+        z-index: 1000; /* Garante que fique acima de outros elementos */
+        top: 0;
+        left: 0;
+        background-color: #343a40;
+        overflow-x: hidden;
+        transition: transform 0.5s ease; /* Transição suave para esconder/mostrar */
+        padding-top: 60px; /* Espaço para o topo, ajuste se tiver algo lá */
+        box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+        color: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        transform: translateX(0); /* Posição inicial: visível em desktop */
+    }
+
+    .sidebar.hidden {
+        transform: translateX(-250px); /* Esconde o sidebar para a esquerda */
+    }
+
+    .sidebar .logo-sidebar {
+        width: 150px; /* Tamanho da logo na sidebar */
+        margin-bottom: 20px;
+        border-radius: 8px; /* Cantos arredondados */
+        box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3); /* Sombra */
+    }
+
+    .sidebar h2 {
+        color: white;
+        margin-bottom: 20px;
+        font-size: 1.2em; /* Tamanho do título do menu */
+    }
+
+    .sidebar ul {
+        list-style-type: none;
+        padding: 0;
+        width: 100%;
+    }
+
+    .sidebar ul li a {
+        padding: 15px 25px;
+        text-decoration: none;
+        font-size: 1.1em;
+        color: #f8f9fa;
+        display: block;
+        transition: 0.3s;
+        text-align: center;
+    }
+
+    .sidebar ul li a:hover {
+        background-color: #f30909;
+        color: white;
+    }
+
+    /* Estilos do Conteúdo Principal */
+    .main-content {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        margin-left: 250px; /* Espaço para o sidebar visível em desktop */
+        transition: margin-left 0.5s ease; /* Transição para o espaço do conteúdo */
+        width: calc(100% - 250px); /* Ajusta a largura quando o menu está visível */
+        padding: 0; /* Garante que não há padding extra empurrando o conteúdo */
+    }
+
+    .main-content.expanded {
+        margin-left: 0; /* Ocupa toda a largura quando o sidebar está escondido */
+        width: 100%;
+    }
+
+    /* Estilos para o banner (no conteúdo principal) */
+    .banner {
+        background-color: #f30909;
+        color: white;
+        padding: 10px 20px;
+        display: flex;
+        flex-direction: column; /* Para manter o título e o formulário empilhados */
+        align-items: center; /* Centraliza horizontalmente o título e o formulário */
+        position: relative; /* Para posicionar elementos absolutamente dentro dele */
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    /* Contêiner para logo e botão de menu - agora no cabeçalho */
+    .header-controls {
+        display: flex;
+        flex-direction: column; /* Coloca a logo acima do botão */
+        align-items: flex-start; /* Alinha a logo e o botão à esquerda */
+        position: absolute;
+        top: 10px;
+        left: 20px;
+        gap: 5px;
+    }
+
+    .logo-header {
+        height: 50px; /* Ajuste o tamanho da sua logo aqui */
+        width: auto;
+        object-fit: contain;
+        margin-bottom: 5px;
+        border-radius: 8px; /* Cantos arredondados */
+        box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3); /* Sombra */
+    }
+
+    .menu-toggle {
+        background: none; /* remove o fundo padrão */
+        border: none;
+        color: #f8f9fa; /* Cor branca para o ícone */
+        font-size: 2em; /* Tamanho do ícone do menu */
+        cursor: pointer;
+        padding: 0; /* Remove padding extra */
+        line-height: 1; /* Ajuda a alinhar o ícone */
+        /* Remova position absolute ou floats aqui se existirem */
+    }
+
+    .banner .title {
+        margin: 10px 0;
+        font-size: 1.8em;
+        color: white;
+        text-align: center;
+        width: 100%;
+        padding-left: 80px; /* Espaço para a logo e o botão */
+        box-sizing: border-box;
+    }
+
+    .filter-form-banner { /* Este é o formulário de filtros dentro do banner */
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+        justify-content: center; /* Centraliza os filtros */
+        align-items: center;
+        width: 100%;
+    }
+    .filter-group-banner {
+        display: flex;
+        flex-direction: column;
+        align-items: center; /* Centraliza os itens dentro do grupo */
+    }
+    .filter-group-banner label {
+        font-size: 0.9em;
+        color: white;
+        margin-bottom: 5px;
+        text-align: center; /* Centraliza o texto da label */
+    }
+    .filter-group-banner input[type="date"],
+    .filter-group-banner input[type="text"],
+    .filter-group-banner select {
+        padding: 6px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+        font-size: 0.9em;
+        max-width: 150px; /* Ajuste conforme necessário */
+    }
+    .filter-form-banner button {
+        padding: 8px 12px;
+        background-color: #28a745;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1em;
+        margin-top: 10px;
+    }
+    .filter-form-banner button[type="button"] {
+        background-color: #dc3545;
+    }
+
+
+    /* Estilos do Container principal (onde a tabela fica) */
+    .container {
+        max-width: 1200px;
+        margin: 20px auto;
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        flex-grow: 1; /* Permite que o container ocupe o espaço disponível */
+        overflow-x: auto; /* Adicionado para tabelas grandes em telas pequenas */
+    }
+
+    /* Estilos da Tabela */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        background-color: #fff;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    table th, table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+        white-space: nowrap; /* Evita quebra de linha em células da tabela */
+    }
+    table th {
+        background-color: #f2f2f2; /* Use a cor da sua identidade visual se quiser */
+        color: #333; /* Cor do texto do cabeçalho */
+        font-size: 0.9em; /* Ajuste o tamanho da fonte se quiser */
+    }
+    table tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+    table tr:hover {
+        background-color: #f1f1f1;
+    }
+
+    /* Estilos para inputs, selects (gerais fora do banner) */
+    select, input[type="datetime-local"], input[type="date"], input[type="text"] {
+        width: 100%; /* Ajusta a largura para o pai */
+        padding: 6px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+        font-size: 0.9em;
+    }
+
+    /* Flash messages */
+    .flashes {
+        list-style-type: none;
+        padding: 0;
+        margin: 20px 0;
+    }
+    .flashes li {
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 4px;
+        font-weight: bold;
+    }
+    .flash.success {
+        background-color: #d4edda;
+        color: #155724;
+        border-color: #c3e6cb;
+    }
+    .flash.danger {
+        background-color: #f8d7da;
+        color: #721c24;
+        border-color: #f5c6cb;
+    }
+    .flash.warning { /* Adicionado para consistência, se você usar warnings */
+        background-color: #fff3cd;
+        color: #856404;
+        border-color: #ffeeba;
+    }
+
+
+    /* Filtros no conteúdo principal (fora do banner, se houver) */
+    .filter-form { /* Se este for um formulário de filtros separado, fora do banner */
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+        padding: 15px;
+        background-color: #e9ecef;
+        border-radius: 5px;
+        align-items: end;
+    }
+    .filter-group { /* Se estes forem grupos de filtro separados, fora do banner */
+        display: flex;
+        flex-direction: column;
+    }
+    .filter-group label {
+        font-weight: bold;
+        margin-bottom: 5px;
+        white-space: nowrap;
+        font-size: 0.9em;
+    }
+    .filter-form button { /* Se este for um botão de filtro separado, fora do banner */
+        padding: 8px 15px;
+        background-color: #28a745;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1em;
+        align-self: flex-end;
+    }
+    .filter-form button:hover {
+        background-color: #218838;
+    }
+
+
+    /* Media Queries para Responsividade */
+    @media (max-width: 768px) {
+        .sidebar {
+            width: 180px; /* Reduz a largura do sidebar em telas menores */
+            transform: translateX(-180px); /* Escondido por padrão em mobile */
+        }
+        .sidebar.hidden {
+            transform: translateX(-180px); /* Permanece escondido */
+        }
+        .sidebar.visible { /* Classe para mostrar o sidebar em mobile (adicionada via JS) */
+            transform: translateX(0); /* Mostra quando ativado */
+        }
+        .main-content {
+            margin-left: 0; /* Começa sem margem à esquerda em mobile */
+            width: 100%; /* Ocupa toda a largura */
+        }
+        .main-content.expanded { /* Mesmo para quando expandido em mobile, não há margem */
+            margin-left: 0;
+        }
+
+        .banner {
+            flex-direction: column; /* Empilha os elementos do banner em mobile */
+            align-items: center; /* Centraliza tudo */
+            padding-top: 80px; /* Adicione padding para o conteúdo não ficar por baixo da logo/botão */
+        }
+
+        .header-controls {
+            position: absolute;
+            top: 10px;
+            left: 10px; /* Ajuste para mobile */
+            align-items: flex-start; /* Mantém logo/botão à esquerda */
+        }
+
+        .banner .title {
+            font-size: 1.5em; /* Reduz o tamanho do título no banner */
+            padding-left: 0; /* Remove padding para mobile */
+            margin-top: 0; /* Ajuste a margem superior do título */
+        }
+
+        .filter-form-banner {
+            flex-direction: column; /* Filtros empilhados em mobile */
+            align-items: stretch; /* Estica os inputs */
+            gap: 15px; /* Mais espaço entre os filtros */
+        }
+        .filter-group-banner {
+            width: 100%; /* Ocupa toda a largura disponível */
+            align-items: stretch; /* Estica a label e o input */
+        }
+        .filter-group-banner label {
+            text-align: left; /* Alinha a label à esquerda em mobile */
+        }
+        .filter-group-banner input[type="date"],
+        .filter-group-banner input[type="text"],
+        .filter-group-banner select {
+            max-width: none; /* Remove limite de largura */
+            width: 100%; /* Ocupa toda a largura */
+        }
+
+        .filter-form { /* Para formulário de filtro secundário, se houver */
+            grid-template-columns: 1fr; /* Colunas únicas para filtros */
+        }
+    }
+</style>
+</head>
+<body>
+    <div class="sidebar hidden" id="mySidebar">
+     
+        <h2>Menu</h2>
+        <ul>
+           <li><a href="{{ url_for('menu_principal') }}">Página Inicial</a></li>
+<li><a href="{{ url_for('registros') }}">Painel do Operador</a></li>
+<li><a href="{{ url_for('registro_no_show') }}">Listar Registros No-Show</a></li>
+<li><a href="{{ url_for('associacao_no_show') }}">Criar Registro No-Show</a></li>
+<li><a href="{{ url_for('registros_finalizados') }}">Relatório de Registros</a></li>
+                <li><a href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                {% if current_user.is_authenticated %}
+                    <li><a href="{{ url_for('painel_gerencial') }}"><i class="fas fa-chart-line"></i> Painel Gerencial</a></li>
+                {% endif %}
+                <li><a href="{{ url_for('pacotes_rota') }}"><i class="fas fa-route"></i> Pacotes por Rota</a></li>
+                <li><a href="{{ url_for('gerenciar_usuarios') }}"><i class="fas fa-users-cog"></i> Gerenciar Usuários</a></li>
+                <li><a href="{{ url_for('cadastro_usuario') }}"><i class="fas fa-user-plus"></i> Cadastrar Novo Usuário</a></li>
+                <li><a href="{{ url_for('log_atividades') }}"><i class="fas fa-clipboard-list"></i> Log de Atividades</a></li>
+                <li><a href="{{ url_for('status_entrega') }}"></i> Status de Entrega</a></li>
+                <li><a href="{{ url_for('adicionar_situacao_pedido') }}"></i>Situação dos Pedidos</a></li>
+                <li><a href="{{ url_for('adicionar_etapa') }}"></i>Etapas da Entrega</a></li>
+                <li><a href="{{ url_for('menu_principal') }}"></i> Configurações</a></li>
+                {% if current_user.is_authenticated %}
+                    <li><a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
+                {% else %}
+                    <li><a href="{{ url_for('login2') }}"><i class="fas fa-sign-in-alt"></i> Login Sistema</a></li>
+                {% endif %}
+        </ul>
+    </div>
+
+    <div class="main-content expanded" id="mainContent">
+        <div class="banner">
+            <div class="header-controls">
+                <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" alt="Logo da Empresa" class="logo-header">
+                <button class="menu-toggle" id="menuToggle">&#9776;</button>
+            </div>
+            <h1 class="title">Painel Gerencial de Registros de Entrega</h1>
+            <form class="filter-form-banner" method="GET" action="{{ url_for('painel_gerencial') }}">
+                <div class="filter-group-banner">
+                    <label for="data_hora_login">Data Carregamento:</label>
+                    <input type="date" id="data_hora_login" name="data_hora_login" value="{{ request.args.get('data_hora_login', '') }}">
+                </div>
+                <div class="filter-group-banner">
+                    <label for="matricula">Matrícula:</label>
+                    <input type="text" id="matricula" name="matricula" value="{{ request.args.get('matricula', '') }}">
+                </div>
+                <div class="filter-group-banner">
+                    <label for="nome">Entregador:</label>
+                    <input type="text" id="nome" name="nome" value="{{ request.args.get('nome', '') }}">
+                </div>
+                <div class="filter-group-banner">
+                    <label for="cidade_filtro">Cidade:</label>
+                    <select name="cidade_filtro">
+                        <option value="todos">Todas as Cidades</option>
+                        {% for cidade in cidades_unicas %}
+                        <option value="{{ cidade }}" {{ 'selected' if cidade == cidade_selecionada else '' }}>{{ cidade }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group-banner">
+                    <label for="rota_filtro">Rota (Ex: A-01):</label>
+                    <input type="text" id="rota_filtro" name="rota_filtro" pattern="[A-Z]-\d{2}" value="{{ request.args.get('rota_filtro', '') }}">
+                </div>
+                <div class="filter-group-banner">
+                    <label for="tipo_entrega_filtro">Tipo Entrega:</label>
+                    <select id="tipo_entrega_filtro" name="tipo_entrega_filtro">
+                        <option value="todos">Todos</option>
+                        {% for tipo in tipos_entrega_unicos %}
+                        <option value="{{ tipo }}" {% if request.args.get('tipo_entrega_filtro', 'todos') == tipo %}selected{% endif %}>{{ tipo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit">Filtrar</button>
+                <button type="button" onclick="window.location.href='{{ url_for('painel_gerencial') }}'">Limpar</button>
+            </form>
+        </div>
+
+        <div class="container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <ul class="flashes">
+                    {% for category, message in messages %}
+                        <li class="flash {{ category }}">{{ message }}</li>
+                    {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Data/Hora Login</th>
+                        <th>Matrícula</th>
+                        <th>Nome</th>
+                        <th>Cidade</th>
+                        <th>Rota</th>
+                        <th>Qtde. Pacotes</th>
+                        <th>Tipo Entrega</th>
+                        <th>Previsão Entrega</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in dados_painel %}
+                    <tr>
+                        <td>{{ item.id }}</td>
+                        <td>{{ item.data_hora_login }}</td>
+                        <td>{{ item.matricula }}</td>
+                        <td>{{ item.nome }}</td>
+                        <td>{{ item.cidade }}</td>
+                        <td>
+                            <a href="{{ url_for('pacotes_rota', rota_selecionada_importacao=item.rota) }}">
+                                {{ item.rota }}
+                            </a>
+                        </td>
+                        <td>{{ item.qtde_pacotes }}</td>
+                        <td>{{ item.tipo_entrega }}</td>
+                        <td>{{ item.previsao_entrega }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <style>
+        /* Estilos para o banner (no conteúdo principal) */
+        .banner {
+    background-color: #f30909 !important; /* Adicione !important temporariamente para testar */
+    color: white;
+    padding: 10px 20px;
+            display: flex;
+            flex-direction: column; /* Manter a flex-direction column para organizar itens */
+            align-items: center; /* Centraliza horizontalmente o título e o formulário */
+            position: relative; /* Para posicionar elementos absolutamente dentro dele, se necessário */
+        }
+
+        /* Novo estilo para o contêiner da logo e do botão de menu */
+        .header-controls {
+            display: flex; /* Permite alinhar a logo e o botão lado a lado */
+            flex-direction: column; /* Coloca a logo acima do botão */
+            align-items: flex-start; /* Alinha a logo e o botão à esquerda */
+            position: absolute; /* Posiciona o grupo de forma absoluta */
+            top: 10px; /* Distância do topo */
+            left: 20px; /* Distância da esquerda */
+            gap: 5px; /* Espaço entre a logo e o botão */
+        }
+
+        .logo-header {
+            height: 50px; /* Ajuste o tamanho da sua logo aqui */
+            width: auto;
+            object-fit: contain;
+            margin-bottom: 5px; /* Espaço entre a logo e o botão do menu */
+        }
+
+        .menu-toggle {
+            /* Mantenha os estilos existentes para o botão, mas ajuste margens ou padding se necessário */
+            background-color: #272727; /* Cor de fundo para o botão de menu */
+            color: #f4f5f7; /* Cor do ícone */
+            border: none;
+            border-radius: 5px;
+            padding: 8px 12px;
+            font-size: 1.2em;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            /* Remova 'position: absolute' se estiver aqui, pois agora está dentro de .header-controls */
+        }
+
+        .banner .title {
+            margin: 10px 0;
+            font-size: 1.8em;
+            color: white;
+            text-align: center;
+            width: 100%;
+            /* Ajuste o padding-left ou margin-left se o título ficar muito perto do logo/botão */
+            padding-left: 80px; /* Espaço para a logo e o botão */
+            box-sizing: border-box; /* Garante que padding não aumente a largura total */
+        }
+        .filter-form-banner {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+            justify-content: center; /* Centraliza os filtros */
+            align-items: center;
+            width: 100%;
+        }
+        .filter-group-banner {
+            display: flex;
+            flex-direction: column;
+            align-items: center; /* Centraliza os itens dentro do grupo */
+        }
+        .filter-group-banner label {
+            font-size: 0.9em;
+            color: white;
+            margin-bottom: 5px;
+            text-align: center; /* Centraliza o texto da label */
+        }
+        .filter-group-banner input[type="date"],
+        .filter-group-banner input[type="text"],
+        .filter-group-banner select {
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 0.9em;
+            max-width: 150px; /* Ajuste conforme necessário */
+        }
+        .filter-form-banner button {
+            padding: 8px 12px;
+            background-color: #28a745;
+            color: rgb(253, 252, 252);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: 10px;
+        }
+        .filter-form-banner button[type="button"] {
+            background-color: #2c2c2c;
+        }
+        @media (max-width: 768px) {
+            .banner {
+                align-items: center;
+                padding-top: 80px; /* Adicione padding para o conteúdo não ficar por baixo da logo/botão */
+                position: relative; /* Mantenha relative */
+            }
+            .header-controls {
+                position: absolute; /* Mantenha absolute */
+                top: 10px;
+                left: 10px; /* Ajuste para mobile */
+            }
+            .banner .title {
+                font-size: 1.5em;
+                padding-left: 0; /* Remova padding para mobile */
+            }
+            .filter-form-banner {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .filter-group-banner {
+                width: 100%;
+            }
+            .filter-group-banner input[type="date"],
+            .filter-group-banner input[type="text"],
+            .filter-group-banner select {
+                max-width: none;
+                width: 100%;
+            }
+        }
+        /* Estilos da sidebar */
+        .sidebar {
+            height: 100%;
+            width: 250px;
+            position: fixed;
+            z-index: 100;
+            top: 0;
+            left: 0;
+            background-color: #343a40;
+            overflow-x: hidden;
+            transition: 0.5s;
+            padding-top: 60px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        .sidebar h2 {
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .sidebar ul {
+            list-style-type: none;
+            padding: 0;
+            width: 100%;
+        }
+
+        .sidebar ul li a {
+            padding: 15px 25px;
+            text-decoration: none;
+            font-size: 1.1em;
+            color: #f8f9fa;
+            display: block;
+            transition: 0.3s;
+            text-align: center;
+        }
+
+        .sidebar ul li a:hover {
+            background-color: #0056b3;
+            color: white;
+        }
+
+        .sidebar.hidden {
+            left: -250px;
+        }
+
+        .main-content {
+            transition: margin-left 0.5s;
+            margin-left: 250px;
+            padding: 0; /* Remova padding que possa empurrar o conteúdo */
+            width: calc(100% - 250px); /* Ajuste a largura para ocupar o espaço restante */
+        }
+
+        .main-content.expanded {
+            margin-left: 0;
+            width: 100%;
+        }
+
+        .logo-sidebar {
+            width: 150px; /* Ajuste o tamanho da logo na sidebar */
+            margin-bottom: 20px;
+        }
+
+        /* Estilos da tabela e container */
+        .container {
+            padding: 20px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            white-space: nowrap; /* Evita que o texto quebre */
+        }
+
+        table th {
+            background-color: #f2f2f2;
+            color: #333;
+        }
+
+        table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        table tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        /* Flash messages */
+        .flashes {
+            list-style-type: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+
+        .flashes li {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .flash.success {
+            background-color: #d4edda;
+            color: #155724;
+            border-color: #c3e6cb;
+        }
+
+        .flash.danger {
+            background-color: #f8d7da;
+            color: #721c24;
+            border-color: #f5c6cb;
+        }
+    </style>
+
+    <script>
+        // ... (seu JavaScript existente, ele não precisa de mudanças para isso) ...
+        // Função para formatar data para o formato de input datetime-local (já deve existir)
+        function formatDateTimeLocal(date) {
+            if (!date) return '';
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
+        }
+
+        // Lógica para alternar o menu lateral
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.getElementById('mySidebar');
+        const mainContent = document.getElementById('mainContent');
+
+        menuToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('hidden');
+            mainContent.classList.toggle('expanded');
+            if (window.innerWidth <= 768) {
+                sidebar.classList.toggle('visible');
+            }
+        });
+
+        sidebar.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', function() {
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.add('hidden');
+                    sidebar.classList.remove('visible');
+                    mainContent.classList.add('expanded');
+                }
+            });
+        });
+
+        // Lógica para atualizar Etapa
+        document.querySelectorAll('.etapa-select').forEach(select => {
+            select.addEventListener('change', function() {
+                const registroId = this.dataset.registroId;
+                const novaEtapaId = this.value;
+
+                fetch(`/api/atualizar_etapa_registro/${registroId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ nova_etapa_id: novaEtapaId })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`Etapa do registro ${registroId} atualizada para: ${data.etapa_nome}`);
+                    } else {
+                        alert('Erro ao atualizar etapa: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    alert('Erro de conexão ao atualizar etapa.');
+                });
+            });
+        });
+
+        // Lógica para atualizar Situação do Pedido
+        document.querySelectorAll('.situacao-select').forEach(select => {
+            select.addEventListener('change', function() {
+                const registroId = this.dataset.registroId;
+                const novaSituacaoId = this.value;
+
+                fetch(`/api/atualizar_situacao_pedido/${registroId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ novaSituacaoId: novaSituacaoId })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`Situação do pedido ${registroId} atualizada para: ${data.situacao_nome}`);
+                    } else {
+                        alert('Erro ao atualizar situação do pedido: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    alert('Erro de conexão ao atualizar situação do pedido.');
+                });
+            });
+        });
+
+        // Lógica para atualizar Data de Entrega
+        document.querySelectorAll('.data-entrega-input').forEach(input => {
+            input.addEventListener('change', function() {
+                const registroId = this.dataset.registroId;
+                const novaData = this.value;
+
+                fetch(`/api/atualizar_data_entrega/${registroId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ nova_data: novaData.replace('T', ' ') + ':00' })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`Data de entrega do registro ${registroId} atualizada.`);
+                    } else {
+                        alert('Erro ao atualizar data de entrega: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    alert('Erro de conexão ao atualizar data de entrega.');
+                });
+            });
+        });
+
+    </script>
+</body>
+</html>

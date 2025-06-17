@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Seu Sistema</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body { background-color: #f8f9fa; }
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 30px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container login-container">
+        <h2 class="text-center mb-4">Login</h2>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <form method="POST" action="/login2">
+    {# ESSENCIAL: Isso insere o campo oculto com o token CSRF #}
+    {{ form.hidden_tag() }} 
+
+    <div>
+        {{ form.email.label }}<br>
+        {{ form.email(size=32) }}<br>
+        {# Opcional: Para mostrar erros de validação diretamente no HTML #}
+        {% for error in form.email.errors %}
+            <span style="color: red;">{{ error }}</span><br>
+        {% endfor %}
+    </div>
+    <div>
+        {{ form.password.label }}<br>
+        {{ form.password(size=32) }}<br>
+        {# Opcional: Para mostrar erros de validação diretamente no HTML #}
+        {% for error in form.password.errors %}
+            <span style="color: red;">{{ error }}</span><br>
+        {% endfor %}
+    </div>
+    <div>
+        {{ form.remember() }} {{ form.remember.label }}
+    </div>
+    <br>
+    {{ form.submit() }}
+</form>
+    </div>
+</body>
+</html>

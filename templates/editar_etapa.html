@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Etapa</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], textarea { width: calc(100% - 22px); padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; }
+        textarea { resize: vertical; min-height: 80px; }
+        button { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #0056b3; }
+        .flash { padding: 10px; margin-bottom: 15px; border-radius: 4px; }
+        .flash.success { background-color: #d4edda; color: #155724; border-color: #c3e6cb; }
+        .flash.danger { background-color: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+        .flash.warning { background-color: #fff3cd; color: #856404; border-color: #ffeeba; }
+        .back-link { margin-top: 20px; display: block; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Editar Etapa</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <ul class="flashes">
+            {% for category, message in messages %}
+              <li class="flash {{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <label for="nome_etapa">Nome da Etapa:</label>
+            <input type="text" id="nome_etapa" name="nome_etapa" value="{{ etapa.nome_etapa }}" required>
+
+            <label for="descricao">Descrição (opcional):</label>
+            <textarea id="descricao" name="descricao">{{ etapa.descricao }}</textarea>
+
+            <button type="submit">Salvar Alterações</button>
+        </form>
+
+        <a href="{{ url_for('adicionar_etapa') }}" class="back-link">Voltar para Adicionar Etapa</a>
+    </div>
+</body>
+</html>

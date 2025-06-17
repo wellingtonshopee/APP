@@ -1,0 +1,169 @@
+{# C:\Users\SEAOps\Documents\SysSPX\templates\editar_usuario.html #}
+{% extends "base.html" %} {# Isso informa ao Jinja2 para usar o layout do base.html #}
+
+{% block title %}Editar Usuário - SysSPX{% endblock %} {# Define o título específico desta página #}
+
+{% block head_extra %}
+    {# Inclua quaisquer links CSS ou meta tags adicionais aqui, se necessário #}
+{% endblock %}
+
+{% block top_banner_title %}
+    <h3 class="mb-0 ms-2">Editar Usuário</h3> {# Define o título no banner superior desta página #}
+{% endblock %}
+
+{% block content %}
+    {# ESTE É O CONTEÚDO PRINCIPAL DA PÁGINA DE EDIÇÃO #}
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Editar Informações do Usuário: {{ user.username }}</h4>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            <ul class="flashes list-unstyled"> {# Adicionei list-unstyled para melhor estilo com Bootstrap #}
+                                {% for category, message in messages %}
+                                    <li class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                        {{ message }}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="POST" action="{{ url_for('editar_usuario', usuario_id=user.id) }}">
+                        {{ form.hidden_tag() }} {# Inclui CSRF token #}
+
+                        <div class="mb-3">
+                            {{ form.username.label(class="form-label") }}
+                            {{ form.username(class="form-control") }}
+                            {% if form.username.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.username.errors %}<p>{{ error }}</p>{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.email.label(class="form-label") }}
+                            {{ form.email(class="form-control") }}
+                            {% if form.email.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.email.errors %}<p>{{ error }}</p>{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        {# Adicionando os campos de senha aqui, com Optional em Flask-WTF #}
+                        <div class="mb-3">
+                            {{ form.password.label(class="form-label") }}
+                            {{ form.password(class="form-control", placeholder="Deixe em branco para não alterar") }}
+                            {% if form.password.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.password.errors %}<p>{{ error }}</p>{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.confirm_password.label(class="form-label") }}
+                            {{ form.confirm_password(class="form-control") }}
+                            {% if form.confirm_password.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.confirm_password.errors %}<p>{{ error }}</p>{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        {# Fim dos campos de senha #}
+
+
+                        <div class="mb-3">
+                            {{ form.matricula.label(class="form-label") }}
+                            {{ form.matricula(class="form-control") }}
+                            {% if form.matricula.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.matricula.errors %}<p>{{ error }}</p>{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.nome_completo.label(class="form-label") }}
+                            {{ form.nome_completo(class="form-control") }}
+                            {% if form.nome_completo.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.nome_completo.errors %}<p>{{ error }}</p>{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            {{ form.is_admin(class="form-check-input") }}
+                            {{ form.is_admin.label(class="form-check-label") }}
+                            {% if form.is_admin.errors %}<span class="text-danger">{{ error }}</span>{% endif %}
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            {{ form.ativo(class="form-check-input") }}
+                            {{ form.ativo.label(class="form-check-label") }}
+                            {% if form.ativo.errors %}<span class="text-danger">{{ error }}</span>{% endif %}
+                        </div>
+
+                        {# --- CAMPO DE PERMISSÕES AJUSTADO --- #}
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.paginas_acesso.label }}:</label> {# CORRIGIDO AQUI: Use form.paginas_acesso.label #}
+                            <div class="form-check-group" style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; border-radius: 5px;">
+                                {% for subfield in form.paginas_acesso %} {# CORRIGIDO AQUI: Itere sobre form.paginas_acesso #}
+                                    <div class="form-check">
+                                        {{ subfield(class="form-check-input") }}
+                                        {{ subfield.label(class="form-check-label") }} {# O label para cada checkbox #}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            <small class="form-text text-muted">{{ form.paginas_acesso.description }}</small> {# CORRIGIDO AQUI: Descrição do campo #}
+                            {% if form.paginas_acesso.errors %} {# CORRIGIDO AQUI: Verifique erros de paginas_acesso #}
+                                <div class="text-danger">
+                                    {% for error in form.paginas_acesso.errors %}<p>{{ error }}</p>{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        {# --- FIM DO CAMPO DE PERMISSÕES AJUSTADO --- #}
+
+                        <div class="d-grid gap-2">
+                            {{ form.submit(class="btn btn-success btn-lg") }}
+                            <a href="{{ url_for('gerenciar_usuarios') }}" class="btn btn-secondary btn-lg">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts_extra %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const isAdminCheckbox = document.getElementById('is_admin'); // ID do checkbox "Administrador?"
+            // CORRIGIDO AQUI: O nome do campo no HTML é 'paginas_acesso'
+            const permissionCheckboxes = document.querySelectorAll('input[name="paginas_acesso"]'); 
+
+            function togglePermissions() {
+                const isAdmin = isAdminCheckbox.checked;
+                permissionCheckboxes.forEach(checkbox => {
+                    checkbox.disabled = isAdmin; // Desabilita se for admin
+                    if (isAdmin) {
+                        checkbox.checked = false; // Desmarca todas as permissões se for admin
+                    }
+                });
+            }
+
+            if (isAdminCheckbox) {
+                isAdminCheckbox.addEventListener('change', togglePermissions);
+                // Chama a função uma vez ao carregar a página para definir o estado inicial
+                togglePermissions();
+            }
+        });
+    </script>
+{% endblock %}

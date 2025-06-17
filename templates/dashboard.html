@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> {# Ajustado para melhor acessibilidade #}
+    <title>DashBoard - Gerencial</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            background-color: #f4f4f4;
+            color: #333;
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Estilos do Menu Lateral (Sidebar) */
+        .sidebar {
+            height: 100%;
+            width: 250px;
+            position: fixed;
+            z-index: 1000;
+            top: 0;
+            left: 0;
+            background-color: #343a40;
+            overflow-x: hidden;
+            transition: transform 0.5s ease;
+            transform: translateX(-250px); /* PADRÃO: ESCONDIDO */
+            padding-top: 60px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+        .sidebar.open { /* VISÍVEL quando a classe 'open' é aplicada */
+            transform: translateX(0);
+        }
+        /* Em telas menores, o padrão 'hidden' já se aplica, mas o '.open' também funciona */
+        @media (max-width: 768px) {
+            /* Não precisamos mais de um 'transform: translateX(-250px)' aqui, pois já é o padrão */
+        }
+
+
+        .sidebar .logo-sidebar {
+            width: 150px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        .sidebar h2 {
+            color: white;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+        }
+        .sidebar ul {
+            list-style-type: none;
+            padding: 0;
+            width: 100%;
+        }
+        .sidebar ul li a {
+            padding: 15px 25px;
+            text-decoration: none;
+            font-size: 1.1em;
+            color: #f8f9fa;
+            display: flex; /* Para alinhar ícone e texto */
+            align-items: center; /* Para alinhar verticalmente */
+            transition: 0.3s;
+            text-align: left; /* Alinhar texto à esquerda */
+        }
+        .sidebar ul li a i { /* Estilo para os ícones */
+            margin-right: 10px;
+        }
+        .sidebar ul li a:hover {
+            background-color: #0056b3;
+            color: white;
+        }
+
+        /* Estilos do Conteúdo Principal */
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            margin-left: 0; /* PADRÃO: NÃO DESLOCADO */
+            width: 100%; /* PADRÃO: LARGURA TOTAL */
+            transition: margin-left 0.5s ease, width 0.5s ease; /* Adicionada transição para largura */
+            padding: 0;
+        }
+        .main-content.shifted { /* DESLOCADO quando a classe 'shifted' é aplicada */
+            margin-left: 250px;
+            width: calc(100% - 250px);
+        }
+        /* Remover a media query específica para .main-content em mobile,
+           pois o padrão base agora é o que queremos em mobile. */
+        /* @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+            }
+        } */
+
+
+        /* Estilos do Banner (cabeçalho) */
+        .banner {
+            background-color: #f30909;
+            color: white;
+            padding: 70px 20px 20px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .header-banner-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            gap: 5px;
+            z-index: 10;
+            width: auto;
+        }
+
+        .logo-banner {
+            height: 50px;
+            width: auto;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+            margin-bottom: 5px;
+        }
+
+        .menu-toggle {
+            background: none;
+            border: none;
+            color: #f8f9fa;
+            font-size: 2em;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .banner .title {
+            margin-top: 10px;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            color: white;
+            text-align: center;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Novos Estilos para o Dashboard */
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .dashboard-header {
+            text-align: center;
+            color: #0056b3;
+            margin-bottom: 20px;
+        }
+
+        .kpis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* Ajustado minwidth para mais cards */
+            gap: 15px; /* Reduzido o gap */
+            margin-bottom: 30px;
+        }
+
+        .kpi-card {
+            background-color: #e9ecef;
+            padding: 15px; /* Reduzido padding */
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .kpi-card h3 {
+            color: #007bff;
+            margin-top: 0;
+            font-size: 1em; /* Reduzido font size */
+            margin-bottom: 5px;
+        }
+
+        .kpi-card .kpi-value {
+            font-size: 1.8em; /* Reduzido font size */
+            font-weight: bold;
+            color: #333;
+            margin-top: 5px;
+        }
+
+        .charts-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .chart-card {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            flex: 1 1 45%;
+            max-width: calc(50% - 10px);
+            min-width: 300px; /* Aumentado min-width para melhor visualização em desktop */
+            box-sizing: border-box;
+            height: 350px; /* Aumentado altura para gráficos */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chart-card canvas {
+            max-height: 300px; /* Ajustado max-height */
+            width: 100% !important;
+            height: auto !important;
+        }
+
+        /* Filtro de Data */
+        .filter-form-dashboard {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .filter-form-dashboard label {
+            font-weight: 600;
+            color: #495057;
+        }
+        .filter-form-dashboard input[type="date"] {
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            padding: 8px 10px;
+            font-size: 1em;
+        }
+        .filter-form-dashboard button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .filter-form-dashboard button:hover {
+            background-color: #0056b3;
+        }
+        .filter-form-dashboard .btn-secondary {
+            background-color: #6c757d;
+        }
+        .filter-form-dashboard .btn-secondary:hover {
+            background-color: #545b62;
+        }
+
+        /* Media Queries para Responsividade do Dashboard */
+        @media (max-width: 768px) {
+            .main-content.shifted {
+                margin-left: 0; /* No mobile, o conteúdo não se desloca lateralmente */
+            }
+            .filter-form-dashboard {
+                flex-direction: column; /* Empilha itens do filtro em mobile */
+            }
+            .kpis-grid {
+                grid-template-columns: 1fr; /* Coluna única em telas menores */
+            }
+            .charts-container {
+                flex-direction: column; /* Em retrato (mobile), empilha os gráficos */
+            }
+            .chart-card {
+                flex: 1 1 100%; /* Ocupa 100% da largura em telas menores */
+                max-width: 100%;
+                height: 280px; /* Ajusta a altura para mobile */
+            }
+        }
+        
+        /* --- Media Query Específica para Orientação Paisagem (Landscape) --- */
+        @media screen and (orientation: landscape) and (max-width: 992px) {
+            .kpis-grid {
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); /* Mais colunas para KPIs em paisagem */
+                gap: 8px; /* Reduz o gap para caber mais */
+            }
+            .charts-container {
+                flex-wrap: wrap;
+                gap: 15px;
+            }
+            .chart-card {
+                flex: 1 1 45%; /* Tenta manter 2 gráficos lado a lado */
+                max-width: calc(50% - 10px);
+                min-width: 200px;
+                height: 280px; /* Reduz a altura para gráficos em paisagem */
+            }
+            .chart-card canvas {
+                max-height: 220px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar" id="sidebar">
+        <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" alt="Logo da Empresa" class="logo-sidebar">
+        <h2>Menu</h2>
+        <ul>
+            <li><a href="{{ url_for('menu_principal') }}"><i class="fas fa-home"></i> Página Inicial</a></li>
+            <li><a href="{{ url_for('registros') }}"><i class="fas fa-clipboard-list"></i> Painel do Operador</a></li>
+            <li><a href="{{ url_for('registro_no_show') }}"><i class="fas fa-list-alt"></i> Listar Registros No-Show</a></li>
+            <li><a href="{{ url_for('associacao_no_show') }}"><i class="fas fa-clipboard-check"></i> Criar Registro No-Show</a></li>
+            <li><a href="{{ url_for('registros_finalizados') }}"><i class="fas fa-file-alt"></i> Relatório de Registros</a></li>
+            <li><a href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+            {# Condicionais de permissão para exibir itens do menu #}
+            {% if current_user.is_authenticated %}
+                {% if current_user.has_permission('painel_gerencial') or current_user.is_admin %}
+                    <li><a href="{{ url_for('painel_gerencial') }}"><i class="fas fa-chart-line"></i> Painel Gerencial</a></li>
+                {% endif %}
+                {% if current_user.has_permission('gerenciar_usuarios') or current_user.is_admin %}
+                    <li><a href="{{ url_for('gerenciar_usuarios') }}"><i class="fas fa-users-cog"></i> Gerenciar Usuários</a></li>
+                {% endif %}
+                {% if current_user.has_permission('cadastro_usuario') or current_user.is_admin %}
+                    <li><a href="{{ url_for('cadastro_usuario') }}"><i class="fas fa-user-plus"></i> Cadastrar Novo Usuário</a></li>
+                {% endif %}
+                {% if current_user.has_permission('log_atividades') or current_user.is_admin %}
+                    <li><a href="{{ url_for('log_atividades') }}"><i class="fas fa-clipboard-list"></i> Log de Atividades</a></li>
+                {% endif %}
+                {% if current_user.has_permission('status_entrega') or current_user.is_admin %}
+                    <li><a href="{{ url_for('status_entrega') }}"><i class="fas fa-truck"></i> Status de Entrega</a></li>
+                {% endif %}
+                {% if current_user.has_permission('adicionar_situacao_pedido') or current_user.is_admin %}
+                    <li><a href="{{ url_for('adicionar_situacao_pedido') }}"><i class="fas fa-tags"></i> Situação dos Pedidos</a></li>
+                {% endif %}
+                {% if current_user.has_permission('adicionar_etapa') or current_user.is_admin %}
+                    <li><a href="{{ url_for('adicionar_etapa') }}"><i class="fas fa-truck-ramp-box"></i> Etapas da Entrega</a></li>
+                {% endif %}
+                <li><a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
+            {% else %}
+                <li><a href="{{ url_for('login2') }}"><i class="fas fa-sign-in-alt"></i> Login Sistema</a></li>
+            {% endif %}
+            {# Link para configurações, sempre visível ou condicional conforme sua regra #}
+            <li><a href="{{ url_for('menu_principal') }}"><i class="fas fa-cog"></i> Configurações</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content" id="mainContent">
+        <div class="banner">
+            <div class="header-banner-controls">
+                <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" alt="Logo no Banner" class="logo-banner">
+                <button class="menu-toggle" id="menu-toggle"><i class="fas fa-bars"></i></button>
+            </div>
+            <h1 class="title">DashBoard - Sistema de Gerenciamento Operacional</h1>
+        </div>
+
+        <div class="dashboard-container">
+            <h2 class="dashboard-header">Visão Geral de Entregas</h2>
+
+            {# Formulário de Filtro de Data #}
+            <form action="{{ url_for('dashboard') }}" method="GET" class="filter-form-dashboard">
+                <div class="flex flex-col">
+                    <label for="startDate">Data Inicial:</label>
+                    <input type="date" id="startDate" name="start_date" value="{{ request.args.get('start_date', '') }}">
+                </div>
+                <div class="flex flex-col">
+                    <label for="endDate">Data Final:</label>
+                    <input type="date" id="endDate" name="end_date" value="{{ request.args.get('end_date', '') }}">
+                </div>
+                 <div class="flex items-end gap-2">
+                    <button type="submit" class="btn btn-primary">Aplicar Filtro</button>
+                    {% if request.args.get('start_date') or request.args.get('end_date') %}
+                        {# Alterado de <a> para <button> e aplicada classe btn-danger #}
+                        <button type="button" class="btn btn-danger" onclick="window.location.href='{{ url_for('dashboard') }}'">Limpar Filtro</button>
+                    {% endif %}
+                </div>
+            </form>
+             <div class="kpi-card">
+                    <h3>Qtd. Rotas Carregadas</h3>
+                    <div class="kpi-value text-blue-600" id="qtdRotasCarregadas">--</div>
+                </div>
+            <div class="kpis-grid">
+                <div class="kpi-card">
+                    <h3>Total de Pacotes</h3>
+                    <div class="kpi-value text-gray-700" id="totalPedidos">--</div>
+                </div>
+                <div class="kpi-card">
+                    <h3>Qtd. Pacotes Entregues</h3>
+                    <div class="kpi-value text-green-600" id="qtdPacotesEntregues">--</div>
+                </div>
+                <div class="kpi-card">
+                    <h3>Total de Entregas no Prazo</h3>
+                    <div class="kpi-value text-yellow-600" id="totalEntregasNoPrazo">--</div>
+                </div>
+                <div class="kpi-card">
+                    <h3>Entregas realizadas 100%</h3>
+                    <div class="kpi-value text-green-600" id="pedidosEntregues100">--</div>
+                </div>
+                <div class="kpi-card">
+                    <h3>On Time</h3>
+                    <div class="kpi-value text-blue-600" id="onTime">--</div>
+                </div>
+                <div class="kpi-card">
+                    <h3>In Full</h3>
+                    <div class="kpi-value text-blue-600" id="inFull">--</div>
+                </div>
+                <div class="kpi-card">
+                    <h3>OTIF</h3>
+                    <div class="kpi-value text-purple-600" id="otif">--</div>
+                </div>
+                <div class="kpi-card">
+                    <h3>Qtd. Pacotes Entregues com Atraso</h3>
+                    <div class="kpi-value text-yellow-600" id="taxaAtraso">--</div>
+                </div>
+                <div class="kpi-card">
+                    <h3>Tx. Avaria Motorista</h3>
+                    <div class="kpi-value text-orange-600" id="taxaAvaria">--</div>
+                </div>
+                <div class="kpi-card">
+                    <h3>% In Sucesso</h3>
+                    <div class="kpi-value text-red-600" id="percentualInSucesso">--</div>
+                </div>
+                <div class="kpi-card">
+                    <h3>% Devolvidos</h3>
+                    <div class="kpi-value text-indigo-600" id="percentualDevolvidos">--</div>
+                </div>
+                <div class="kpi-card">
+                    <h3>Total de In Sucesso</h3>
+                    <div class="kpi-value text-red-600" id="totalInSucesso">--</div>
+                </div>
+                <div class="kpi-card">
+                    <h3>Total Devolvidos</h3>
+                    <div class="kpi-value text-purple-600" id="totalDevolvidos">--</div>
+                </div>
+                <div class="kpi-card">
+                    <h3>Total Não Entregue</h3>
+                    <div class="kpi-value text-teal-600" id="totalNaoEntregue">--</div>
+                </div>
+            </div>
+            <div class="charts-container">
+                <div class="chart-card">
+                    <h3>Acompanhamento - Entregas</h3>
+                    <canvas id="statusDoughnutChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Acompanhamento - Entregas</h3>
+                    <canvas id="statusBarChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Entregas por Mês</h3>
+                    <canvas id="entregasMesBarChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>OTIF</h3>
+                    <canvas id="entregasMesDoughnutChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Lógica para alternar o menu lateral
+    const menuToggle = document.getElementById('menu-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('mainContent');
+
+    function updateSidebarClasses() {
+        if (window.innerWidth <= 768) {
+            sidebar.classList.remove('open');
+            mainContent.classList.remove('shifted');
+            menuToggle.innerHTML = '<i class="fas fa-bars"></i>';
+        } else {
+            sidebar.classList.add('open');
+            mainContent.classList.add('shifted');
+            menuToggle.innerHTML = '<i class="fas fa-times"></i>';
+        }
+    }
+
+    menuToggle.addEventListener('click', function() {
+        sidebar.classList.toggle('open');
+        mainContent.classList.toggle('shifted');
+        if (sidebar.classList.contains('open')) {
+            menuToggle.innerHTML = '<i class="fas fa-times"></i>';
+        } else {
+            menuToggle.innerHTML = '<i class="fas fa-bars"></i>';
+        }
+    });
+
+    sidebar.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', function() {
+            if (window.innerWidth <= 768) {
+                sidebar.classList.remove('open');
+                mainContent.classList.remove('shifted');
+                menuToggle.innerHTML = '<i class="fas fa-bars"></i>';
+            }
+        });
+    });
+
+    document.addEventListener('DOMContentLoaded', updateSidebarClasses);
+    window.addEventListener('resize', updateSidebarClasses);
+
+    // --- Lógica para o Dashboard ---
+    let statusDoughnutChartInstance;
+    let statusBarChartInstance;
+    let entregasMesBarChartInstance;
+    let entregasMesDoughnutChartInstance; // Este será agora o Velocímetro OTIF
+
+
+    async function fetchDashboardData() {
+        try {
+            // Obter as datas do filtro
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            let apiUrl = '/api/dashboard_data';
+            const params = new URLSearchParams();
+
+            if (startDate) {
+                params.append('start_date', startDate);
+            }
+            if (endDate) {
+                params.append('end_date', endDate);
+            }
+
+            if (params.toString()) {
+                apiUrl += '?' + params.toString();
+            }
+            
+            const response = await fetch(apiUrl);
+            const data = await response.json();
+
+            // *** DEBUG: Loga os dados completos recebidos da API ***
+            console.log("Dados recebidos da API:", data);
+
+            // Atualizar KPIs
+            document.getElementById('totalPedidos').textContent = data.kpis.totalPedidos;
+            document.getElementById('qtdPacotesEntregues').textContent = data.kpis.qtdPacotesEntregues;
+            document.getElementById('qtdRotasCarregadas').textContent = data.kpis.qtdRotasCarregadas;
+            document.getElementById('pedidosEntregues100').textContent = data.kpis.pedidosEntregues100;
+            document.getElementById('onTime').textContent = data.kpis.onTime;
+            document.getElementById('inFull').textContent = data.kpis.inFull;
+            document.getElementById('otif').textContent = data.kpis.otif;
+            document.getElementById('taxaAtraso').textContent = data.kpis.taxaAtraso;
+            document.getElementById('taxaAvaria').textContent = data.kpis.taxaAvaria;
+            document.getElementById('percentualInSucesso').textContent = data.kpis.percentualInSucesso;
+            document.getElementById('percentualDevolvidos').textContent = data.kpis.percentualDevolvidos;
+            document.getElementById('totalInSucesso').textContent = data.kpis.totalInSucesso || '0';
+            document.getElementById('totalEntregasNoPrazo').textContent = data.kpis.totalEntregasNoPrazo || '0'; 
+            document.getElementById('totalDevolvidos').textContent = data.kpis.totalDevolvidos || '0';
+            document.getElementById('totalNaoEntregue').textContent = data.kpis.totalNaoEntregue || '0';
+
+
+            // Destruir instâncias de gráficos anteriores
+            if (statusDoughnutChartInstance) statusDoughnutChartInstance.destroy();
+            if (statusBarChartInstance) statusBarChartInstance.destroy();
+            if (entregasMesBarChartInstance) entregasMesBarChartInstance.destroy();
+            if (entregasMesDoughnutChartInstance) {
+                // Se era um Chart.js, destrua-o antes de desenhar o novo
+                if (entregasMesDoughnutChartInstance.destroy) {
+                    entregasMesDoughnutChartInstance.destroy();
+                }
+                entregasMesDoughnutChartInstance = null; // Limpa a referência
+            }
+
+
+            // Cores dinâmicas para os gráficos de Rosca e Barra de Status dos Pedidos
+            // Mapeamento baseado nos labels: ['Entregues 100%', 'Em Sucesso', 'Com Atraso', 'Em Andamento', 'Pendentes']
+            const commonColors = [
+                '#28a745', // Verde (para 'Entregues 100%')
+                '#dc3545', // Vermelho (para 'Em Sucesso' - seguindo seu pedido "Total de In Sucesso = Vermelho")
+                '#ffc107', // Amarelo (para 'Com Atraso')
+                '#007bff', // Azul (para 'Em Andamento') - usando um azul claro
+                '#6c757d', // Cinza (para 'Pendentes')
+                '#6610f2', // Roxo (usado se houver mais de 5 categorias, para evitar repetição)
+                '#17a2b8', // Turquesa
+                '#fd7e14', // Laranja
+                '#e83e8c', // Rosa
+                '#20c997'  // Verde Água
+            ];
+
+            // Renderizar Gráfico de Status (Rosca - Painel Gerencial)
+            const statusDoughnutCtx = document.getElementById('statusDoughnutChart').getContext('2d');
+            statusDoughnutChartInstance = new Chart(statusDoughnutCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.charts.painelGerencialLabels,
+                    datasets: [{
+                        data: data.charts.painelGerencialCounts,
+                        backgroundColor: commonColors.slice(0, data.charts.painelGerencialLabels.length),
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { font: { size: 10 } } },
+                        tooltip: { callbacks: { label: function(context) { 
+                            let label = context.label || '';
+                            if (label) label += ': ';
+                            if (context.parsed !== null) label += context.parsed + ' pedidos';
+                            return label;
+                        } } }
+                    }
+                }
+            });
+
+            // Renderizar Gráfico de Status (Barra - Painel Gerencial)
+            const statusBarCtx = document.getElementById('statusBarChart').getContext('2d');
+            statusBarChartInstance = new Chart(statusBarCtx, {
+                type: 'bar',
+                data: {
+                    labels: data.charts.painelGerencialLabels,
+                    datasets: [{
+                        label: 'Pedidos por Status',
+                        data: data.charts.painelGerencialCounts,
+                        backgroundColor: commonColors.slice(0, data.charts.painelGerencialLabels.length),
+                        borderColor: commonColors.slice(0, data.charts.painelGerencialLabels.length).map(color => color.replace('1)', '0.8)')),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, ticks: { callback: function(value) { if (Number.isInteger(value)) return value; }, font: { size: 10 } } },
+                        x: { ticks: { font: { size: 10 } } }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) label += ': ';
+                            if (context.parsed.y !== null) label += context.parsed.y + ' pedidos';
+                            return label;
+                        } } }
+                    }
+                }
+            });
+
+            // Renderizar Gráfico de Entregas por Mês (Barra)
+            const entregasMesBarCtx = document.getElementById('entregasMesBarChart').getContext('2d');
+            entregasMesBarChartInstance = new Chart(entregasMesBarCtx, {
+                type: 'bar',
+                data: {
+                    labels: data.charts.entregasMesLabels,
+                    datasets: [{
+                        label: 'Entregas por Mês',
+                        data: data.charts.entregasMesCounts,
+                        backgroundColor: '#4CAF50', // Cor verde para entregas - mantido um verde específico
+                        borderColor: '#388E3C',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, ticks: { callback: function(value) { if (Number.isInteger(value)) return value; }, font: { size: 10 } } },
+                        x: { ticks: { font: { size: 10 } } }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) label += ': ';
+                            if (context.parsed.y !== null) label += context.parsed.y + ' entregas';
+                            return label;
+                        } } }
+                    }
+                }
+            });
+
+            // GRÁFICO DE VELOCÍMETRO OTIF
+            const otifValueString = data.kpis.otif; // Ex: "93.1%"
+            // Converte a string OTIF para float, lidando com vírgula como separador decimal
+            const otifValue = parseFloat(otifValueString.replace('%', '').replace(',', '.'));
+            
+            drawGaugeChart('entregasMesDoughnutChart', otifValue); // Usa o canvas com o ID original para o velocímetro
+
+        } catch (error) {
+            console.error('Erro ao buscar dados do dashboard:', error);
+            // Atualizar KPIs para indicar erro
+            document.getElementById('totalPedidos').textContent = 'Erro';
+            document.getElementById('qtdPacotesEntregues').textContent = 'Erro';
+            document.getElementById('qtdRotasCarregadas').textContent = 'Erro';
+            document.getElementById('pedidosEntregues100').textContent = 'Erro';
+            document.getElementById('onTime').textContent = 'Erro';
+            document.getElementById('inFull').textContent = 'Erro';
+            document.getElementById('otif').textContent = 'Erro';
+            document.getElementById('taxaAtraso').textContent = 'Erro';
+            document.getElementById('taxaAvaria').textContent = 'Erro';
+            document.getElementById('percentualInSucesso').textContent = 'Erro';
+            document.getElementById('percentualDevolvidos').textContent = 'Erro';
+            document.getElementById('totalInSucesso').textContent = 'Erro';
+            document.getElementById('totalEntregasNoPrazo').textContent = 'Erro';
+            document.getElementById('totalDevolvidos').textContent = 'Erro';
+            document.getElementById('totalNaoEntregue').textContent = 'Erro';
+        }
+    }
+
+    // Função para desenhar o Gráfico de Velocímetro (Gauge Chart)
+    function drawGaugeChart(canvasId, value) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) {
+            console.error(`Canvas com ID '${canvasId}' não encontrado.`);
+            return;
+        }
+        const ctx = canvas.getContext('2d');
+
+        // Obtém as dimensões computadas (CSS) do elemento canvas
+        const canvasCssWidth = canvas.clientWidth;
+        const canvasCssHeight = canvas.clientHeight;
+
+        // Obtém a proporção de pixels do dispositivo para telas de alta DPI
+        const pixelRatio = window.devicePixelRatio || 1;
+
+        // Define as dimensões da superfície de desenho do canvas, escalando pelo pixelRatio para nitidez
+        canvas.width = canvasCssWidth * pixelRatio;
+        canvas.height = canvasCssHeight * pixelRatio;
+
+        // Escala o contexto de desenho para corresponder ao pixelRatio, evitando o desfoque
+        ctx.scale(pixelRatio, pixelRatio);
+
+        // --- Variáveis de Layout ---
+        const marginY = 20; 
+        const arcWidth = 45; 
+        const outerLabelOffset = 15; 
+        const needleBaseRadius = 15; 
+
+        const maxRadiusPossible = Math.min(canvasCssWidth / 2, (canvasCssHeight - marginY * 2) / 1.5);
+        const radius = maxRadiusPossible - arcWidth / 2 - outerLabelOffset - 5; 
+        if (radius <= 0) { 
+            console.warn("Raio do velocímetro muito pequeno para desenhar.");
+            return;
+        }
+
+        const gaugeVisualHeight = radius + arcWidth / 2 + outerLabelOffset + 30 + 35; 
+        const centerY = (canvasCssHeight / 2) + (gaugeVisualHeight / 2) - radius - arcWidth / 2 - outerLabelOffset + 75; 
+
+        const centerX = canvasCssWidth / 2;
+
+
+        // Limpa o canvas para redesenhar
+        ctx.clearRect(0, 0, canvasCssWidth, canvasCssHeight);
+
+        // Define os segmentos do velocímetro e suas cores (ângulos em radianos)
+        const startAngle = Math.PI; 
+        const endAngle = 2 * Math.PI;   
+        const totalSweep = endAngle - startAngle; 
+
+        const ranges = [
+            { limit: 45, color: '#dc3545', label: 'Péssimo' }, 
+            { limit: 79, color: '#ffc107', label: 'Ruim' },    
+            { limit: 91, color: '#007bff', label: 'Bom' },     
+            { limit: 100, color: '#28a745', label: 'Ótimo' }   
+        ];
+        
+        let currentArcStartAngle = startAngle;
+        ctx.lineWidth = arcWidth; 
+
+        for (let i = 0; i < ranges.length; i++) {
+            const range = ranges[i];
+            const segmentEndAngle = startAngle + (range.limit / 100) * totalSweep;
+            
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, currentArcStartAngle, segmentEndAngle);
+            ctx.strokeStyle = range.color;
+            ctx.stroke();
+
+            // Posiciona os rótulos de texto FORA de cada segmento
+            const labelPositionRadius = radius + (arcWidth / 2) + outerLabelOffset; 
+            const segmentMidAngle = currentArcStartAngle + (segmentEndAngle - currentArcStartAngle) / 2;
+            const labelX = centerX + Math.cos(segmentMidAngle) * labelPositionRadius;
+            const labelY = centerY + Math.sin(segmentMidAngle) * labelPositionRadius;
+
+            ctx.font = 'bold 14px "Inter", sans-serif'; 
+            ctx.fillStyle = '#333'; 
+
+            if (segmentMidAngle > Math.PI && segmentMidAngle < 1.5 * Math.PI) { 
+                ctx.textAlign = 'right';
+            } else if (segmentMidAngle >= 1.5 * Math.PI && segmentMidAngle < 2 * Math.PI) { 
+                ctx.textAlign = 'left';
+            } else { 
+                ctx.textAlign = 'center'; 
+            }
+            const labelYAdjusted = labelY + (segmentMidAngle > 1.8 * Math.PI || segmentMidAngle < 1.2 * Math.PI ? 5 : 0);
+            ctx.fillText(range.label, labelX, labelYAdjusted);
+
+            currentArcStartAngle = segmentEndAngle;
+        }
+
+        // Desenha a agulha
+        const needleValue = Math.max(0, Math.min(100, value));
+        const needleAngle = startAngle + (needleValue / 100) * totalSweep;
+        const needleLength = radius + (arcWidth / 2) - 5; 
+        const tailLength = radius * 0.2; 
+
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(needleAngle);
+
+        // Agulha preta
+        ctx.strokeStyle = '#000'; 
+        ctx.fillStyle = '#000';
+
+        ctx.beginPath();
+        ctx.moveTo(-tailLength, 0); 
+        ctx.lineTo(needleLength, 0);
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Círculo central da agulha (sólido e cinza)
+        ctx.beginPath();
+        ctx.arc(0, 0, needleBaseRadius, 0, Math.PI * 2); 
+        ctx.fillStyle = '#666'; 
+        ctx.fill();
+
+        ctx.restore();
+
+        // Exibe o valor percentual atual
+        ctx.font = 'bold 36px "Inter", sans-serif'; 
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'center';
+        // Posição Y ajustada para ficar centralizado abaixo do velocímetro e mais próximo da agulha
+        ctx.fillText(`${value.toFixed(1)}%`, centerX, centerY + 30); 
+
+        // Exibe a categoria (Péssimo, Ruim, Bom, Ótimo)
+        let category = '';
+        if (value <= 45) category = 'Péssimo';
+        else if (value <= 79) category = 'Ruim';
+        else if (value <= 91) category = 'Bom';
+        else category = 'Ótimo';
+
+        ctx.font = 'bold 22px "Inter", sans-serif'; 
+        ctx.fillStyle = '#666';
+        ctx.textAlign = 'center';
+        ctx.fillText(category, centerX, centerY + 70); 
+    }
+
+    // Chama a função de busca de dados ao carregar o DOM
+    document.addEventListener('DOMContentLoaded', fetchDashboardData);
+    // Também busca e redesenha ao redimensionar a janela para ajustar o tamanho do gráfico
+    window.addEventListener('resize', fetchDashboardData);
+</script>
+
+</body>
+</html>

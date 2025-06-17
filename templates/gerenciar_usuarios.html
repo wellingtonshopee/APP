@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Usuários</title>
+
+    <!-- Inclusão do Bootstrap CSS (necessário para os estilos de tabela, botões, etc.) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Inclusão do Font Awesome CSS (necessário para os ícones) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <style>
+        /* ESTILOS DE LAYOUT GLOBAIS E ESPECÍFICOS DA PÁGINA (CONSOLIDADOS) */
+        /* Estes estilos controlam o layout principal da página (body, sidebar, main-content) */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background-color: #f4f4f4;
+            color: #333;
+            display: flex; /* Permite layout flexível com sidebar e conteúdo */
+            min-height: 100vh;
+            overflow-x: hidden; /* Evita rolagem horizontal durante a transição */
+        }
+
+        /* Estilos do Menu Lateral (Sidebar) */
+        .sidebar {
+            height: 100%;
+            width: 250px; /* Largura padrão para desktop */
+            position: fixed; /* Fixa o sidebar na tela */
+            z-index: 1000; /* Garante que fique acima de outros elementos */
+            top: 0;
+            left: 0;
+            background-color: #343a40; /* Cor de fundo escura */
+            overflow-x: hidden;
+            transition: transform 0.5s ease; /* Transição suave para esconder/mostrar */
+            padding-top: 20px; /* Espaço do topo */
+            box-shadow: 2px 0 5px rgba(0,0,0,0.5); /* Sombra para profundidade */
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center; /* Centraliza itens como logo e título */
+            justify-content: flex-start;
+            transform: translateX(0); /* Posição inicial: visível em desktop */
+            border: 2px solid red; /* DEBUG: Para ver a borda do sidebar */
+        }
+
+        .sidebar.hidden {
+            transform: translateX(-250px) !important; /* Esconde o sidebar para a esquerda, !important para forçar */
+            background-color: #555; /* DEBUG: Muda a cor para confirmar que a classe foi aplicada */
+            border: 2px solid purple; /* DEBUG: Muda a cor da borda quando escondido */
+        }
+        .sidebar.visible { /* A classe .visible não é estritamente necessária se hidden for bem aplicada, mas a mantive */
+             transform: translateX(0);
+        }
+
+        .sidebar .logo-sidebar {
+            width: 120px; /* Tamanho da logo na sidebar */
+            margin-bottom: 20px;
+            border-radius: 8px; /* Cantos arredondados */
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3); /* Sombra */
+        }
+
+        .sidebar h2.menu-title { /* Título do menu na sidebar */
+            color: white;
+            margin-bottom: 20px;
+            font-size: 1.4em; /* Tamanho do título do menu */
+        }
+
+        .sidebar ul {
+            list-style-type: none;
+            padding: 0;
+            width: 100%;
+        }
+
+        .sidebar ul li a {
+            padding: 15px 25px;
+            text-decoration: none;
+            font-size: 1.1em;
+            color: #f8f9fa;
+            display: block;
+            transition: 0.3s;
+            text-align: center;
+        }
+
+        .sidebar ul li a:hover {
+            background-color: #f30909; /* Cor de destaque ao passar o mouse */
+            color: white;
+        }
+
+        /* Estilos do Conteúdo Principal */
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            margin-left: 250px; /* Espaço para o sidebar visível em desktop */
+            transition: margin-left 0.5s ease, width 0.5s ease; /* Transição suave */
+            width: calc(100% - 250px); /* Ajusta a largura quando o menu está visível */
+            padding: 0; /* Garante que não há padding extra */
+            border: 2px solid blue; /* DEBUG: Para ver a borda do main-content */
+        }
+
+        .main-content.expanded {
+            margin-left: 0 !important; /* Ocupa toda a largura quando o sidebar está escondido, !important para forçar */
+            width: 100% !important; /* !important para forçar */
+            border: 2px solid green; /* DEBUG: Borda quando expandido */
+        }
+
+        /* MEDIA QUERIES PARA RESPONSIVIDADE */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 180px; /* Reduz a largura do sidebar em telas menores */
+                transform: translateX(-180px) !important; /* Escondido por padrão em mobile, !important para forçar */
+            }
+            .sidebar.hidden {
+                transform: translateX(-180px) !important; /* Permanece escondido, !important para forçar */
+            }
+            .sidebar.visible { /* Classe para mostrar o sidebar em mobile (adicionada via JS) */
+                transform: translateX(0) !important; /* Mostra quando ativado, !important para forçar */
+            }
+            .main-content {
+                margin-left: 0 !important; /* Começa sem margem à esquerda em mobile, !important para forçar */
+                width: 100% !important; /* Ocupa toda a largura, !important para forçar */
+            }
+            .main-content.expanded { /* Mesmo para quando expandido em mobile, não há margem */
+                margin-left: 0 !important;
+                width: 100% !important;
+            }
+            .content-header { /* Ajustes para o banner em telas menores */
+                width: 100%;
+                left: 0;
+                padding-top: 80px; /* Adiciona padding para o conteúdo não ficar por baixo da logo/botão */
+            }
+            .header-controls {
+                position: absolute;
+                top: 10px;
+                left: 10px; /* Ajuste para mobile */
+                align-items: flex-start; /* Mantém logo/botão à esquerda */
+            }
+            .content-header .title {
+                font-size: 1.5em; /* Reduz o tamanho do título no banner */
+                padding-left: 0; /* Remove padding para mobile */
+                margin-top: 0; /* Ajuste a margem superior do título */
+            }
+            .filter-form-banner {
+                flex-direction: column; /* Filtros empilhados em mobile */
+                align-items: stretch; /* Estica os inputs */
+                gap: 15px; /* Mais espaço entre os filtros */
+            }
+            .filter-group-banner {
+                width: 100%; /* Ocupa toda a largura disponível */
+                align-items: stretch; /* Estica a label e o input */
+            }
+            .filter-group-banner label {
+                text-align: left; /* Alinha a label à esquerda em mobile */
+            }
+            .filter-group-banner input[type="date"],
+            .filter-group-banner input[type="text"],
+            .filter-group-banner select {
+                max-width: none; /* Remove limite de largura */
+                width: 100%; /* Ocupa toda a largura */
+            }
+        }
+
+        /* ESTILOS ESPECÍFICOS DO BANNER (content-header) */
+        .content-header {
+            background-color: #f30909; /* Cor do banner */
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            flex-direction: column; /* Para manter o título e o formulário empilhados */
+            align-items: center; /* Centraliza horizontalmente o título e o formulário */
+            position: relative; /* Para posicionar elementos absolutamente dentro dele */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            padding-bottom: 20px; /* Espaçamento extra abaixo do formulário de filtro */
+        }
+
+        .header-controls {
+            display: flex;
+            flex-direction: column; /* Coloca a logo acima do botão */
+            align-items: flex-start; /* Alinha a logo e o botão à esquerda */
+            position: absolute;
+            top: 10px;
+            left: 20px;
+            gap: 5px;
+        }
+
+        .logo-header {
+            height: 50px; /* Ajuste o tamanho da sua logo aqui */
+            width: auto;
+            object-fit: contain;
+            margin-bottom: 5px;
+            border-radius: 8px; /* Cantos arredondados */
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3); /* Sombra */
+        }
+        /* Fallback para logo */
+        .logo-header[src=""] {
+            display: none; /* Esconde se não houver logo */
+        }
+
+        .menu-toggle {
+            background: none; /* remove o fundo padrão */
+            border: none;
+            color: #f8f9fa; /* Cor branca para o ícone */
+            font-size: 2em; /* Tamanho do ícone do menu */
+            cursor: pointer;
+            padding: 0; /* Remove padding extra */
+            line-height: 1; /* Ajuda a alinhar o ícone */
+        }
+
+        .content-header .title {
+            margin: 10px 0;
+            font-size: 1.8em;
+            color: white;
+            text-align: center;
+            width: 100%;
+            padding-left: 80px; /* Espaço para a logo e o botão */
+            box-sizing: border-box;
+        }
+
+        .filter-form-banner { /* Este é o formulário de filtros dentro do banner */
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+            justify-content: center; /* Centraliza os filtros */
+            align-items: flex-end; /* Alinha botões/campos na base */
+            width: 100%;
+            padding: 0 20px; /* Padding horizontal para o formulário */
+            box-sizing: border-box;
+        }
+        .filter-group-banner {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start; /* Alinha labels à esquerda */
+            margin-bottom: 10px; /* Espaçamento entre grupos de filtro */
+        }
+        .filter-group-banner label {
+            font-size: 0.9em;
+            color: white;
+            margin-bottom: 5px;
+            white-space: nowrap;
+        }
+        .filter-group-banner input[type="date"],
+        .filter-group-banner input[type="text"],
+        .filter-group-banner select {
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 0.9em;
+            max-width: 150px; /* Ajuste conforme necessário */
+            background-color: #fff; /* Fundo branco para inputs */
+            color: #333; /* Texto escuro */
+        }
+        .filter-form-banner button {
+            padding: 8px 12px;
+            background-color: #28a745; /* Botão de aplicar */
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            min-width: 100px; /* Largura mínima para botões */
+            margin-top: 10px; /* Adiciona margem acima dos botões */
+        }
+        .filter-form-banner button[type="button"] { /* Botão de limpar */
+            background-color: #dc3545;
+        }
+        .filter-form-banner button:hover {
+            opacity: 0.9;
+        }
+
+
+        /* Estilos do Container principal (onde a tabela fica) */
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex-grow: 1; /* Permite que o container ocupe o espaço disponível */
+            overflow-x: auto; /* Adicionado para tabelas grandes em telas pequenas */
+        }
+
+        /* Estilos da Tabela */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            white-space: nowrap;
+        }
+        table th {
+            background-color: #f2f2f2;
+            color: #333;
+            font-size: 0.9em;
+        }
+        table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        table tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        /* Flash messages */
+        .flashes {
+            list-style-type: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+        .flashes li {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .flash.success {
+            background-color: #d4edda;
+            color: #155724;
+            border-color: #c3e6cb;
+        }
+        .flash.danger {
+            background-color: #f8d7da;
+            color: #721c24;
+            border-color: #f5c6cb;
+        }
+        .flash.warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border-color: #ffeeba;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar hidden" id="mySidebar">
+        {# Substitua 'images/your_sidebar_logo.png' pelo caminho real da sua logo para o sidebar #}
+        <img src="{{ url_for('static', filename='imagem/shopee32.png') }}"
+             onerror="this.onerror=null; this.src='https://placehold.co/120x120/343a40/ffffff?text=LOGO';"
+             alt="Logo SysSPX" class="logo-sidebar">
+        <h2 class="menu-title">Menu</h2>
+        <ul>
+                     <li><a href="{{ url_for('menu_principal') }}">Página Inicial</a></li>
+<li><a href="{{ url_for('login') }}">Login Drive</a></li>
+<li><a href="{{ url_for('cadastro') }}">Cadastro Drive</a></li>
+<li><a href="{{ url_for('registros') }}">Painel do Operador</a></li>
+<li><a href="{{ url_for('registro_no_show') }}">Listar Registros No-Show</a></li>
+<li><a href="{{ url_for('associacao_no_show') }}">Criar Registro No-Show</a></li>
+<li><a href="{{ url_for('registros_finalizados') }}">Relatório de Registros</a></li>
+                <li><a href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                {% if current_user.is_authenticated %}
+                    <li><a href="{{ url_for('painel_gerencial') }}"><i class="fas fa-chart-line"></i> Painel Gerencial</a></li>
+                {% endif %}
+                <li><a href="{{ url_for('pacotes_rota') }}"><i class="fas fa-route"></i> Pacotes por Rota</a></li>
+                <li><a href="{{ url_for('gerenciar_usuarios') }}"><i class="fas fa-users-cog"></i> Gerenciar Usuários</a></li>
+                <li><a href="{{ url_for('cadastro_usuario') }}"><i class="fas fa-user-plus"></i> Cadastrar Novo Usuário</a></li>
+                <li><a href="{{ url_for('log_atividades') }}"><i class="fas fa-clipboard-list"></i> Log de Atividades</a></li>
+                <li><a href="{{ url_for('status_entrega') }}"></i> Status de Entrega</a></li>
+                <li><a href="{{ url_for('adicionar_situacao_pedido') }}"></i>Situação dos Pedidos</a></li>
+                <li><a href="{{ url_for('adicionar_etapa') }}"></i>Etapas da Entrega</a></li>
+                <li><a href="{{ url_for('menu_principal') }}"></i> Configurações</a></li>
+                {% if current_user.is_authenticated %}
+                    <li><a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
+                {% else %}
+                    <li><a href="{{ url_for('login2') }}"><i class="fas fa-sign-in-alt"></i> Login Sistema</a></li>
+                {% endif %}
+        </ul>
+    </div>
+
+    <div class="main-content expanded" id="mainContent">
+        <div class="content-header"> {# Renomeado de 'banner' para 'content-header' #}
+            <div class="header-controls">
+                {# Substitua 'images/your_header_logo.png' pelo caminho real da sua logo para o cabeçalho do banner #}
+                <img src="{{ url_for('static', filename='imagem/shopee32.png') }}"
+                     onerror="this.onerror=null; this.src='https://placehold.co/50x50/f30909/ffffff?text=LOGO';"
+                     alt="Logo Cabeçalho" class="logo-header">
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i> {# Ícone Font Awesome para o botão de menu #}
+                </button>
+            </div>
+            <h1 class="title">Gerenciamento de Usuários</h1>
+
+            <!-- Filtros de Matrícula e Usuário dentro do Banner -->
+            <form action="{{ url_for('gerenciar_usuarios') }}" method="GET" class="filter-form-banner">
+                <div class="filter-group-banner">
+                    <label for="filter_matricula">Matrícula:</label>
+                    <input type="text" id="filter_matricula" name="matricula" value="{{ request.args.get('matricula', '') }}" placeholder="Digite a matrícula">
+                </div>
+                <div class="filter-group-banner">
+                    <label for="filter_username">Usuário:</label>
+                    <input type="text" id="filter_username" name="username" value="{{ request.args.get('username', '') }}" placeholder="Digite o usuário">
+                </div>
+                <button type="submit">Aplicar Filtro</button>
+                {% if request.args.get('matricula') or request.args.get('username') %}
+                    <button type="button" onclick="window.location.href='{{ url_for('gerenciar_usuarios') }}'">Limpar Filtro</button>
+                {% endif %}
+            </form>
+        </div>
+
+        <div class="container">
+            {# O título 'Lista de Usuários' aqui é opcional se o banner já tiver um título principal #}
+            <h2 class="mb-4">Lista de Usuários</h2>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <a href="{{ url_for('cadastro_usuario') }}" class="btn btn-primary mb-3">
+                <i class="fas fa-user-plus me-2"></i> Cadastrar Novo Usuário
+            </a>
+
+            <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th scope="col">ID</th>
+                            <th scope="col">Matrícula</th>
+                            <th scope="col">Usuário</th>
+                            <th scope="col">Nome Completo</th>
+                            <th scope="col">Admin</th>
+                            <th scope="col">Ativo</th>
+                            <th scope="col">Permissões de Acesso</th>
+                            <th scope="col">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in usuarios %}
+                        <tr>
+                            <td>{{ user.id }}</td>
+                            <td>{{ user.matricula }}</td>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.nome_completo if user.nome_completo else 'N/A' }}</td>
+                            <td>
+                                {% if user.is_admin %}
+                                    <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i> Sim</span>
+                                {% else %}
+                                    <span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i> Não</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.ativo %}
+                                    <span class="badge bg-success"><i class="fas fa-circle-check me-1"></i> Sim</span>
+                                {% else %}
+                                    <span class="badge bg-danger"><i class="fas fa-ban me-1"></i> Não</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.is_admin %}
+                                    <span class="badge bg-primary">Acesso Total</span>
+                               {% elif user.permissoes_objeto|length > 0 %} {# É bom usar o nome da relação, se for permissoes_objeto #}
+    {% for perm_obj in user.permissoes_objeto %} {# Itere sobre os objetos de permissão #}
+        <span class="badge bg-info text-dark me-1 mb-1">{{ perm_obj.descricao }}</span> {# <-- MUDOU AQUI! #}
+    {% endfor %}
+                                {% else %}
+                                    <span class="badge bg-secondary">Nenhuma definida</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('editar_usuario', usuario_id=user.id) }}" class="btn btn-sm btn-warning mb-1" title="Editar Usuário">
+                                    <i class="fas fa-edit"></i> <span class="d-none d-md-inline">Editar</span>
+                                </a>
+                                <a href="{{ url_for('alternar_status_usuario', user_id=user.id) }}"
+                                   class="btn btn-sm {% if user.ativo %}btn-danger{% else %}btn-success{% endif %} mb-1"
+                                   onclick="return confirm('Tem certeza que deseja {{ 'desativar' if user.ativo else 'ativar' }} o usuário {{ user.username }}?');"
+                                   title="Alternar Status">
+                                    <i class="fas {% if user.ativo %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
+                                    <span class="d-none d-md-inline">{{ 'Desativar' if user.ativo else 'Ativar' }}</span>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <!-- Inclusão do Bootstrap JS (necessário para o alert dismiss e outros componentes) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var sidebar = document.getElementById('mySidebar');
+            var mainContent = document.getElementById('mainContent');
+            var menuToggle = document.getElementById('menuToggle');
+
+            // DEBUG: Log elements found
+            console.log('DOM Content Loaded!');
+            console.log('Sidebar element:', sidebar);
+            console.log('Main Content element:', mainContent);
+            console.log('Menu Toggle element:', menuToggle);
+
+            // Inicialmente, esconde o sidebar em telas pequenas, mostra em telas grandes
+            if (window.innerWidth <= 768) {
+                sidebar.classList.add('hidden');
+                mainContent.classList.add('expanded');
+                // Altera o texto do botão para "Mostrar Menu" em telas pequenas
+                if (menuToggle) {
+                    menuToggle.innerHTML = '<i class="fas fa-bars"></i> Mostrar Menu';
+                }
+            } else {
+                sidebar.classList.remove('hidden');
+                mainContent.classList.remove('expanded');
+                // Altera o texto do botão para "Esconder Menu" em telas grandes
+                if (menuToggle) {
+                    menuToggle.innerHTML = '<i class="fas fa-bars"></i> Esconder Menu';
+                }
+            }
+
+            if (menuToggle) {
+                menuToggle.addEventListener('click', function() {
+                    // DEBUG: Log click event
+                    console.log("Menu toggle clicked!");
+                    console.log("Sidebar classes BEFORE toggle:", sidebar.classList);
+                    console.log("MainContent classes BEFORE toggle:", mainContent.classList);
+
+                    sidebar.classList.toggle('hidden');
+                    mainContent.classList.toggle('expanded');
+
+                    // DEBUG: Log classes AFTER toggle
+                    console.log("Sidebar classes AFTER toggle:", sidebar.classList);
+                    console.log("MainContent classes AFTER toggle:", mainContent.classList);
+
+                    // Altera o texto e ícone do botão
+                    if (sidebar.classList.contains('hidden')) {
+                        menuToggle.innerHTML = '<i class="fas fa-bars"></i> Mostrar Menu';
+                    } else {
+                        menuToggle.innerHTML = '<i class="fas fa-bars"></i> Esconder Menu';
+                    }
+                });
+            } else {
+                console.error("Erro: O botão menuToggle não foi encontrado!");
+            }
+
+
+            // Opcional: ajustar sidebar e mainContent ao redimensionar a tela
+            window.addEventListener('resize', function() {
+                // DEBUG: Log resize event
+                console.log('Window resized!');
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.add('hidden');
+                    mainContent.classList.add('expanded');
+                    if (menuToggle) {
+                        menuToggle.innerHTML = '<i class="fas fa-bars"></i> Mostrar Menu';
+                    }
+                } else {
+                    sidebar.classList.remove('hidden');
+                    mainContent.classList.remove('expanded');
+                    if (menuToggle) {
+                        menuToggle.innerHTML = '<i class="fas fa-bars"></i> Esconder Menu';
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
