@@ -11,3 +11,4 @@ sqlalchemy
 supabase
 flask_sqlalchemy
 Flask-Login
+Flask-Migrate 
