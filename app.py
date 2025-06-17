@@ -6,7 +6,7 @@ from flask_login import LoginManager, current_user, login_user, logout_user, log
 from flask_migrate import Migrate
 from werkzeug.security import generate_password_hash, check_password_hash # Adicionado/Confirmado ambos os hashes!
 from collections import Counter
-
+from io import BytesIO
 
 # Importações de tempo e data
 from datetime import datetime, timedelta, timezone # Adicionado 'timezone' para datetime.now(timezone.utc)
