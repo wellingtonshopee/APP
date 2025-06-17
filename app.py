@@ -1,168 +1,287 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify,current_app, flash
-from supabase import create_client, Client
-from sqlalchemy import or_ # Importar 'or_' para filtros OR
-from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime, timedelta # Adicione ', timedelta' aqui
-import pytz
-from dateutil import tz # Para a função tz.gettz()
-import requests
-import feedparser
-from math import ceil
-from io import BytesIO
-from sqlalchemy import func
-import psycopg2
+# app.py
+
+# Importações principais do Flask e extensões
+from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, abort,current_app , session # Adicionado 'session'
+from flask_login import LoginManager, current_user, login_user, logout_user, login_required
+from flask_migrate import Migrate
+from werkzeug.security import generate_password_hash, check_password_hash # Adicionado/Confirmado ambos os hashes!
+from collections import Counter
+
+
+# Importações de tempo e data
+from datetime import datetime, timedelta, timezone # Adicionado 'timezone' para datetime.now(timezone.utc)
+import pytz # Para fusos horários específicos se necessário para outras lógicas
+from dateutil import tz # Adicionado de volta, pois você pode usá-lo em outros projetos para manipulação de TZ.
+from functools import wraps # Para o decorador role_required (se você usar a lógica de permissões)
+
+# Importações de SQLAlchemy e funções de banco de dados
+from sqlalchemy import distinct, func, or_ # Adicionado 'or_' - comum para queries complexas
+
+# Importações de componentes do seu projeto (models, forms, config)
+from models import db, Login, Registro, NoShow, Etapa, Cidade, SituacaoPedido, PacoteRastreado, User, Permissao, LogAtividade
+from forms import SistemaLoginForm, CadastroUsuarioForm, EditarUsuarioForm, NovaSenhaForm # Ajustado
+from config import STATUS_EM_SEPARACAO, STATUS_REGISTRO_PRINCIPAL, REGISTROS_POR_PAGINA, get_data_hora_brasilia, PERMISSIONS
+from sqlalchemy.orm import joinedload # Importe joinedload para carregar relacionamentos
+
+
+# Outras importações (verifique se realmente usa cada uma no app.py)
 import os
-from sqlalchemy import or_
-import threading 
-import random # <--- ADICIONE ESTA LINHA
-from bs4 import BeautifulSoup
+import threading # Se estiver usando threads no app principal
+import random # Se estiver usando números aleatórios
+import requests # Para requisições HTTP (APIs, feeds)
+import feedparser # Para feeds RSS (se usar)
+from math import ceil # Se usar funções matemáticas como ceil
+from io import BytesIO # Se manipular bytes para streams/arquivos
+import psycopg2 # **ATENÇÃO: Se não estiver usando PostgreSQL, REMOVA esta linha!**
+from bs4 import BeautifulSoup # Para web scraping (se usar)
+from forms import SistemaLoginForm, CadastroUsuarioForm, EditarUsuarioForm, NovaSenhaForm
 
 
+# As linhas abaixo não são importações, são comentários, mas mantidas por sua solicitação.
+# Removidas (Não usadas, duplicadas ou importadas de outro lugar):
+# from mimetypes import inited # Não é um módulo comum para flask apps
+# from flask_sqlalchemy import SQLAlchemy # db é inicializado em models.py
+# current_app # Não é necessário aqui se login_manager for vinculado diretamente
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+
+# 2. Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'sua_chave_secreta_aqui'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres.fjurmbfvfuzhyrwkduav:Qaz241059%23MLP140308@aws-0-us-east-2.pooler.supabase.com:5432/postgres'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres.fjurmbfvfuzhyrwkduav:Qaz241059#MLP140308@aws-0-us-east-2.pooler.supabase.com:5432/postgres'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
-
-# --- Definição dos Modelos do Banco de Dados --- # SISTEMA CRIADO E DESENVOLVIDO POR WELLINGTON CAMPOS: E-MAIL: WCAMPOS241059@GMAIL.COM
-# ====================================================================
-# DEFINIÇÃO DAS CONSTANTES DE STATUS (ADICIONE OU VERIFIQUE ESTAS)
-# ====================================================================
-STATUS_REGISTRO_PRINCIPAL = {
-    'AGUARDANDO_CARREGAMENTO': 'Aguardando Carregamento',
-    'CARREGAMENTO_LIBERADO': 'Carregamento Liberado',
-    'EM_CARREGAMENTO': 'Em Carregamento',
-    'FINALIZADO': 'Finalizado',
-    'CANCELADO': 'Cancelado'
-}
-
-# Constantes para os estados de 'em_separacao'
-# --- Definições dos Status de 'em_separacao' ---
-STATUS_EM_SEPARACAO = {
-    'AGUARDANDO_MOTORISTA': 0,
-    'SEPARACAO': 1,
-    'FINALIZADO': 2, # Manter Finalizado com valor 2
-    'CANCELADO': 3,
-    'TRANSFERIDO': 4,
-    'AGUARDANDO_ENTREGADOR': 5 # Nova chave adicionada
-}
+db.init_app(app)
 
 
-# --- Função Auxiliar para Traduzir o Status (para exibir no HTML) ---
+# Adicione estas linhas AQUI, após 'app = Flask(__name__)' e antes de qualquer rota
+app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['ALLOWED_EXTENSIONS'] = {'txt'} # Certifique-se de que está definido aqui!
+
+# --- INICIALIZAÇÃO DO FLASK-LOGIN ---
+login_manager = LoginManager() # Crie a instância do LoginManager
+login_manager.init_app(app)    # VINCULE o LoginManager à sua aplicação Flask
+login_manager.login_view = 'login2' # Define a rota para onde o Flask-Login deve redirecionar
+login_manager.login_message = 'Por favor, faça login para acessar esta página.'
+login_manager.login_message_category = 'info'
+
+# Função de carregamento de usuário para Flask-Login
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id)) # CORRIGIDO: de Usuario para User
+# --- FIM DA INICIALIZAÇÃO DO FLASK-LOGIN ---
+
+
+# 3. Bind the SQLAlchemy db object to the Flask app
+
+
+# 4. Initialize Flask-Migrate AQUI, depois de db.init_app(app)
+migrate = Migrate(app, db) # ADICIONE ESTA LINHA
+
+# --- Decorator para Controle de Acesso ---
+def permission_required(pagina_nome):
+    def decorator(f):
+        @wraps(f)
+        @login_required # Garante que o usuário esteja logado
+        def decorated_function(*args, **kwargs):
+            # Admin sempre tem acesso
+            if current_user.is_admin:
+                return f(*args, **kwargs)
+
+            # Busca a permissão pelo nome da página
+            permissao = Permissao.query.filter_by(nome_pagina=pagina_nome).first()
+
+            if not permissao:
+                flash(f'Erro: Permissão para "{pagina_nome}" não configurada no sistema.', 'danger')
+                return abort(403) # Proibido se a permissão não existir
+
+            # Verifica se o usuário tem esta permissão
+            if permissao in current_user.permissoes:
+                return f(*args, **kwargs)
+            else:
+                flash('Você não tem permissão para acessar esta página.', 'danger')
+                return redirect(url_for('dashboard')) # Redireciona para dashboard se não tiver permissão
+        return decorated_function
+    return decorator
+
+# --- Decorator para Log de Atividades ---
+from functools import wraps
+from flask import request, redirect, current_app # Adicione current_app se não estiver lá
+from flask_login import current_user # Certifique-se de importar current_user
+# Importe db e LogAtividade de onde eles são definidos, ex: from models import db, LogAtividade
+
+def log_activity(action_template, details_func=None):
+    """
+    Um decorador para logar atividades do usuário.
+
+    Args:
+        action_template (str): Um template de string para a ação,
+                                pode conter '{user}'.
+        details_func (callable, optional): Uma função que retorna detalhes adicionais.
+                                          Recebe o 'username' capturado como argumento.
+                                          Defaults to None.
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # Capture as informações do usuário e IP antes de executar a função decorada
+            # Isso é CRUCIAL para rotas de logout, onde current_user mudará.
+            initial_user_id = current_user.id if current_user.is_authenticated else None
+            initial_username = current_user.username if current_user.is_authenticated else 'Desconhecido'
+            ip_origem = request.remote_addr # Captura o IP de origem da requisição
+
+            response = None
+            exception_occurred = False
+
+            try:
+                # Executa a função original da rota
+                response = f(*args, **kwargs)
+            except Exception as e:
+                # Loga o erro, mas permite que o traceback original seja propagado
+                current_app.logger.error(f"Erro na função decorada '{f.__name__}': {e}", exc_info=True)
+                exception_occurred = True
+                raise # Re-lança a exceção para que o Flask a trate
+
+            # Apenas loga a atividade se a função decorada não gerou uma exceção
+            if not exception_occurred:
+                # Determina se a resposta é considerada um "sucesso" para fins de log
+                is_successful_response = False
+                if isinstance(response, (str, dict)): # Render_template retorna str, jsonify retorna dict
+                    is_successful_response = True
+                elif isinstance(response, tuple) and len(response) > 1 and isinstance(response[1], int) and response[1] < 400:
+                    # Para tuplas (response, status_code)
+                    is_successful_response = True
+                elif hasattr(response, 'status_code') and response.status_code < 400: # Para objetos Response, RedirectResponse
+                    is_successful_response = True
+                elif isinstance(response, type(redirect(''))): # Para objetos de redirect
+                    is_successful_response = True
+
+                if is_successful_response:
+                    # Formata a ação principal usando o username capturado
+                    acao = action_template.format(user=initial_username)
+
+                    # Gera os detalhes do log, passando o username capturado para a lambda
+                    detalhes = None
+                    if details_func:
+                        try:
+                            # Chama details_func passando o username capturado
+                            detalhes = details_func(initial_username, *args, **kwargs)
+                        except Exception as e:
+                            current_app.logger.error(f"Erro ao gerar detalhes do log para '{acao}': {e}", exc_info=True)
+                            detalhes = "Detalhes do log indisponíveis devido a um erro."
+                    else:
+                        detalhes = acao # Fallback se não houver details_func
+
+                    # Cria e salva o registro de log
+                    log_entry = LogAtividade(
+                        # === MUDANÇA AQUI: DE 'usuario_id' PARA 'user_id' ===
+                        user_id=initial_user_id, # <--- Corrigido para 'user_id'
+                        acao=acao,
+                        detalhes=detalhes,
+                        timestamp=datetime.now(pytz.utc), # Salva o timestamp em UTC
+                        ip_origem=ip_origem
+                    )
+                    db.session.add(log_entry)
+                    db.session.commit()
+                else:
+                    current_app.logger.warning(f"Atividade '{f.__name__}' não logada: resposta não foi bem-sucedida ou não reconhecida.")
+
+            return response
+        return decorated_function
+    return decorator
+
+
+# --- Funções Auxiliares (que usam constantes ou modelos e não estão em config.py) ---
 def get_status_text(status_code):
     """Traduz o código numérico do status 'em_separacao' para texto amigável."""
     # Criar um mapeamento inverso para facilitar a busca
     status_map = {v: k for k, v in STATUS_EM_SEPARACAO.items()}
     text = status_map.get(status_code, 'DESCONHECIDO')
-    return text.replace('_', ' ').title() # Ex: 'AGUARDANDO_MOTORISTA' -> 'Aguardando Motorista'
-
-# --- Seu Modelo NoShow (certifique-se de que está como abaixo) ---
-class NoShow(db.Model):
-    __tablename__ = 'no_show'
-    id = db.Column(db.Integer, primary_key=True)
-    # **Ajuste:** Garante que o default é UTC e ciente do fuso horário.
-    data_hora_login = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.utcnow().replace(tzinfo=pytz.utc))
-    nome = db.Column(db.String(100))
-    matricula = db.Column(db.String(50))
-    gaiola = db.Column(db.String(50)) # Rota
-    tipo_entrega = db.Column(db.String(50))
-    rua = db.Column(db.String(200))
-    estacao = db.Column(db.String(50))
-    finalizada = db.Column(db.Integer, default=0)
-    cancelado = db.Column(db.Integer, default=0)
-    em_separacao = db.Column(db.Integer, default=STATUS_EM_SEPARACAO['AGUARDANDO_MOTORISTA'])
-    # **Ajuste:** A coluna está correta. A atribuição da hora_finalizacao deve usar UTC.
-    hora_finalizacao = db.Column(db.DateTime(timezone=True)) 
-
-    def __repr__(self):
-        return f"<NoShow {self.id} - {self.nome} - Rota: {self.gaiola}>"
-
-class Registro(db.Model):
-    __tablename__ = 'registros'
-    id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(80), nullable=False)
-    matricula = db.Column(db.String(20), nullable=False)
-    rota = db.Column(db.String(80))
-    tipo_entrega = db.Column(db.String(80))
-    cidade_entrega = db.Column(db.String(80))
-    rua = db.Column(db.String(80))
-    data_hora_login = db.Column(db.DateTime(timezone=True), default=lambda: datetime.utcnow().replace(tzinfo=pytz.utc))
-    tipo_veiculo = db.Column(db.String(80))
-    em_separacao = db.Column(db.Integer, default=0)
-    gaiola = db.Column(db.String(80))
-    estacao = db.Column(db.String(80))
-    finalizada = db.Column(db.Integer, default=0)
-    hora_finalizacao = db.Column(db.DateTime(timezone=True))
-    cancelado = db.Column(db.Integer, default=0)
-    login_id = db.Column(db.Integer, db.ForeignKey('login.id'))
-    login = db.relationship('Login', backref=db.backref('registros', lazy=True))
-    # --- ADICIONE ESTA LINHA NO SEU MODELO REGISTRO ---
-    motivo_cancelamento = db.Column(db.Text, nullable=True) 
-
-    def __repr__(self):
-        return f'<Registro {self.matricula} - {self.nome}>'
-
-class Login(db.Model):
-    __tablename__ = 'login'
-    id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(80), nullable=False)
-    matricula = db.Column(db.String(20), unique=True, nullable=False)
-    tipo_veiculo = db.Column(db.String(80))
-    data_cadastro = db.Column(db.DateTime) # Este pode ser naive se não for importante ter TZ
-
-class Cidade(db.Model):
-    __tablename__ = 'cidades' # Nome da tabela no banco de dados
-    id = db.Column(db.Integer, primary_key=True) # Mapeia para SERIAL PRIMARY KEY
-    cidade = db.Column(db.String(80), unique=True, nullable=False)
-    # ... outras colunas ...
+    return text.replace('_', ' ').title()
 
 
-# --- Inicializar Base de Dados (com Flask-SQLAlchemy) ---
-def init_db():
-    with app.app_context():
-        db.create_all()
-        print("Banco de dados PostgreSQL inicializado (com Flask-SQLAlchemy).")
+# DEFINIÇÃO DAS CONSTANTES DE STATUS (Removido se já estiverem em config.py, mas mantido para contexto se não estiver)
+# ====================================================================
+# STATUS_REGISTRO_PRINCIPAL = {
+#     'AGUARDANDO_CARREGAMENTO': 'Aguardando Carregamento',
+#     'CARREGAMENTO_LIBERADO': 'Carregamento Liberado',
+#     'EM_CARREGAMENTO': 'Em Carregamento',
+#     'EM_ROTA': 'Em Rota',
+#     'FINALIZADO': 'Finalizado',
+#     'CANCELADO': 'Cancelado'
+# }
 
-# --- Suas funções utilitárias (get_data_hora_brasilia, formata_data_hora) ---
-def get_data_hora_brasilia():
-    """
-    Obtém a data e hora atuais no fuso horário de São Paulo (Brasil)
-    como um objeto datetime ciente do fuso horário.
-    """
-    tz_brasilia = pytz.timezone('America/Sao_Paulo')
-    return datetime.now(tz_brasilia) # Retorna o objeto datetime diretamente
+# Constantes para os estados de 'em_separacao' (Removido se já estiverem em config.py)
+# STATUS_EM_SEPARACAO = {
+#     'AGUARDANDO_MOTORISTA': 0,
+#     'SEPARACAO': 1,
+#     'FINALIZADO': 2,
+#     'CANCELADO': 3,
+#     'TRANSFERIDO': 4,
+#     'AGUARDANDO_ENTREGADOR': 5
+# }
+
 
 def formata_data_hora(data_hora):
     if not data_hora:
-        return 'Não Finalizado' 
-
-    # Defina o fuso horário de exibição (Brasil/São Paulo)
+        return 'Não Finalizado'
     tz_destino = pytz.timezone('America/Sao_Paulo')
-
     if isinstance(data_hora, datetime):
-        # Se o objeto datetime NÃO tiver informações de fuso horário (tzinfo is None),
-        # assumimos que ele já está no fuso horário de Muriaé (America/Sao_Paulo),
-        # pois o SQLAlchemy pode retornar datetime 'naive' já ajustado para a timezone da conexão.
         if data_hora.tzinfo is None:
-            # Torna o datetime 'aware' localizando-o no fuso horário de Muriaé.
+            # Se o datetime for naive, assume que já está no fuso horário local e o torna aware.
             data_hora_aware = tz_destino.localize(data_hora)
         else:
-            # Se já tem tzinfo, significa que ele já é 'aware'.
-            # Apenas converte para o fuso horário de destino se ainda não estiver.
+            # Se já for aware, converte para o fuso horário de destino.
             data_hora_aware = data_hora.astimezone(tz_destino)
-        
-        # Como data_hora_aware já está no tz_destino, podemos formatar diretamente.
         return data_hora_aware.strftime('%d/%m/%Y %H:%M:%S')
-    
-    # Se ainda chegar algo que não seja datetime, é um erro.
     return 'Erro de Formato Inesperado'
 
 app.jinja_env.filters['formata_data_hora'] = formata_data_hora
-# --- Suas rotas ---
+
 def capitalize_words(text):
     if text:
         return ' '.join(word.capitalize() for word in text.split())
     return None
+
+
+# --- Suas Rotas Existentes ---
+
+# In a separate file like decorators.py or directly in app.py
+from functools import wraps
+from flask import abort, flash, redirect, url_for
+from flask_login import current_user # Assuming Flask-Login is used
+
+def permission_required(permission_key):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not current_user.is_authenticated:
+                flash('Você precisa estar logado para acessar esta página.', 'warning')
+                return redirect(url_for('login')) # Assuming a login route
+
+            if not current_user.has_permission(permission_key):
+                flash('Você não tem permissão para acessar esta página.', 'danger')
+                abort(403) # Forbidden
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+# You might also have an admin_required if it's simpler for some cases
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            flash('Você precisa estar logado para acessar esta página.', 'warning')
+            return redirect(url_for('login'))
+        if not current_user.is_admin:
+            flash('Você não tem permissão de administrador para acessar esta página.', 'danger')
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated_function
+
+# --- Suas rotas ---
 
 @app.route('/', methods=['GET', 'POST'])
 def login():
@@ -265,6 +384,291 @@ def login():
     return render_template('login.html', erro=erro)
 
 #----Fim da Rota Lgin -----
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login2' # ESSENCIAL: Diz ao Flask-Login qual é a rota de login
+login_manager.login_message_category = 'info' # Categoria para mensagens de flash padrão do Flask-Login
+login_manager.login_message = 'Por favor, faça login para acessar esta página.' # Mensagem padrão
+
+@login_manager.user_loader
+def load_user(user_id):
+    # Esta linha é o problema. TEM QUE SER 'User', NÃO 'Usuario'.
+    return User.query.get(int(user_id))
+
+# --- ROTA /login2 (para referência, ela deve estar no seu app.py) ---
+@app.route('/login2', methods=['GET', 'POST'])
+def login2():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+
+    form = SistemaLoginForm()
+
+    if form.validate_on_submit():
+        print(f"DEBUG: Formulário enviado. Email: {form.email.data}")
+        user = User.query.filter_by(email=form.email.data).first()
+
+        if user:
+            print(f"DEBUG: Usuário encontrado: {user.username}. Tentando verificar senha.")
+            # ATENÇÃO: A comparação de senha em texto puro (user.password == form.password.data)
+            # é EXTREMAMENTE INSEGURA para produção. Use sempre hashing de senhas.
+            if user.password == form.password.data: # AGORA COMPARANDO TEXTO PURO!
+                print("DEBUG: Senha CORRETA (comparação em texto puro)!")
+                
+                if user.is_active:
+                    print("DEBUG: Usuário está ATIVO. Realizando login.")
+                    login_user(user)
+                    
+                    # --- CORREÇÃO AQUI: Salva o timestamp como naive UTC ---
+                    log_entry = LogAtividade(
+                        user_id=user.id,
+                        acao='Login',
+                        detalhes=f'Usuário {user.username} logou no sistema.',
+                        timestamp=datetime.now(pytz.utc).replace(tzinfo=None), # Agora, o timestamp é salvo como naive UTC
+                        ip_origem=request.remote_addr
+                    )
+                    db.session.add(log_entry)
+                    db.session.commit()
+
+                    flash('Login bem-sucedido!', 'success')
+                    next_page = request.args.get('next')
+                    return redirect(next_page or url_for('dashboard'))
+                else:
+                    print("DEBUG: Usuário INATIVO. Login recusado.")
+                    flash('Sua conta está inativa. Entre em contato com o administrador.', 'warning')
+            else:
+                print("DEBUG: Senha INCORRETA.")
+                flash('Login sem sucesso. Verifique seu email e senha.', 'danger')
+        else:
+            print("DEBUG: Usuário NÃO encontrado para o email fornecido.")
+            flash('Login sem sucesso. Verifique seu email e senha.', 'danger')
+    else:
+        print("DEBUG: Formulário NÃO validado. Erros: ", form.errors)
+    return render_template('login2.html', form=form)
+
+
+
+# --- Exemplo de Registro de Usuário (ajustar conforme seu código) ---
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        new_user = User(username=form.username.data, email=form.email.data, 
+                        matricula=form.matricula.data, nome_completo=form.nome_completo.data,
+                        is_admin=form.is_admin.data)
+        # Salva a senha em texto puro diretamente
+        new_user.password = form.password.data 
+        db.session.add(new_user)
+        db.session.commit()
+        flash('Usuário registrado com sucesso!', 'success')
+        return redirect(url_for('login2'))
+    return render_template('cadastro_usuario.html', form=form) # Assumindo que cadastro_usuario.html é para registro
+
+
+@app.route('/logout')
+@login_required # Garante que apenas usuários logados podem acessar esta rota
+@log_activity(
+    action_template='Logout de {user} (Sistema)',
+    # A lambda agora ACEITA UM ARGUMENTO (user_name)
+    details_func=lambda user_name, *args, **kwargs: f'Usuário {user_name} deslogou o sistema de rastreamento.'
+)
+def logout():
+    logout_user() # Esta linha executa o logout. O decorador já capturou o username antes.
+    flash('Você foi desconectado.', 'info')
+    return redirect(url_for('login2'))
+
+
+
+
+# --- Rotas de Gerenciamento de Usuários (APENAS ADMIN) ---
+
+@app.route('/usuarios')
+@login_required 
+@permission_required('Gerenciar Usuários') # Exige permissão para esta página
+def listar_usuarios():
+    usuarios = Usuario.query.all()
+    return render_template('listar_usuarios.html', usuarios=usuarios)
+
+@app.route('/usuario/novo', methods=['GET', 'POST'])
+@login_required 
+@permission_required('Gerenciar Usuários') # Exige permissão para esta página
+def novo_usuario():
+    form = RegistroUsuarioForm()
+    # Preencher as opções de páginas/permissões dinamicamente
+    form.paginas_acesso.choices = [(p.id, p.nome_pagina) for p in Permissao.query.order_by(Permissao.nome_pagina).all()]
+
+    if form.validate_on_submit():
+        user = Usuario(username=form.username.data, email=form.email.data, is_admin=form.is_admin.data, matricula="N/A", nome_completo=form.username.data) # Added matricula and nome_completo as required by Usuario model
+        user.set_password(form.password.data)
+
+        # Adicionar as permissões selecionadas
+        selected_perms = Permissao.query.filter(Permissao.id.in_(form.paginas_acesso.data)).all()
+        user.permissoes.extend(selected_perms)
+
+        db.session.add(user)
+        db.session.commit()
+
+        # Logar a criação do usuário
+        log_entry = LogAtividade(
+            usuario_id=current_user.id if current_user.is_authenticated else None,
+            acao='Criação de Usuário (Sistema)',
+            detalhes=f'Usuário {user.username} (ID: {user.id}) criado por {current_user.username if current_user.is_authenticated else "sistema"}. Permissões: {[p.nome_pagina for p in user.permissoes]}',
+            ip_origem=request.remote_addr
+        )
+        db.session.add(log_entry)
+        db.session.commit()
+
+        flash(f'Usuário {form.username.data} cadastrado com sucesso!', 'success')
+        return redirect(url_for('listar_usuarios'))
+    return render_template('novo_usuario.html', form=form)
+
+# app.py (sua rota de edição de usuário ajustada)
+
+# Certifique-se de que está importando o nome correto do formulário
+from forms import SistemaLoginForm, CadastroUsuarioForm, EditarUsuarioForm, NovaSenhaForm # <-- AQUI!
+#                   ^ Use o nome exato da classe definida em forms.py
+
+
+
+@app.route('/usuario/deletar/<int:usuario_id>', methods=['POST'])
+@login_required 
+@permission_required('Gerenciar Usuários') # Exige permissão para esta página
+def deletar_usuario(usuario_id):
+    usuario = Usuario.query.get_or_404(usuario_id)
+    if usuario.id == current_user.id:
+        flash('Você não pode deletar sua própria conta.', 'danger')
+        return redirect(url_for('listar_usuarios'))
+    
+    # Logar a exclusão do usuário
+    log_entry = LogAtividade(
+        usuario_id=current_user.id if current_user.is_authenticated else None,
+        acao='Exclusão de Usuário (Sistema)',
+        detalhes=f'Usuário {usuario.username} (ID: {usuario.id}) excluído por {current_user.username if current_user.is_authenticated else "sistema"}.',
+        ip_origem=request.remote_addr
+    )
+    db.session.add(log_entry) # Adiciona antes de deletar o usuário
+    db.session.delete(usuario)
+    db.session.commit()
+
+    flash('Usuário deletado com sucesso!', 'success')
+    return redirect(url_for('listar_usuarios'))
+
+@app.route('/usuario/alterar_senha/<int:usuario_id>', methods=['GET', 'POST'])
+@login_required 
+@permission_required('Gerenciar Usuários') # ou 'Alterar Própria Senha' se for para o próprio usuário
+def alterar_senha_usuario(usuario_id):
+    usuario = Usuario.query.get_or_404(usuario_id)
+    form = NovaSenhaForm()
+
+    if form.validate_on_submit():
+        usuario.set_password(form.password.data)
+        db.session.commit()
+
+        log_entry = LogAtividade(
+            usuario_id=current_user.id if current_user.is_authenticated else None,
+            acao='Alteração de Senha (Sistema)',
+            detalhes=f'Senha do usuário {usuario.username} (ID: {usuario.id}) alterada por {current_user.username if current_user.is_authenticated else "sistema"}.',
+            ip_origem=request.remote_addr
+        )
+        db.session.add(log_entry)
+        db.session.commit()
+
+        flash(f'Senha do usuário {usuario.username} atualizada com sucesso!', 'success')
+        return redirect(url_for('listar_usuarios'))
+    return render_template('alterar_senha_usuario.html', form=form, usuario=usuario)
+
+
+# --- Rotas de Log de Atividades ---
+@app.route('/logs')
+@login_required 
+@permission_required('Visualizar Logs') # Uma nova permissão
+def visualizar_logs():
+    logs = LogAtividade.query.order_by(LogAtividade.data_hora.desc()).all()
+    return render_template('visualizar_logs.html', logs=logs)
+
+@app.route('/cadastro_usuario', methods=['GET', 'POST'])
+@login_required # Recomendado: Apenas usuários logados (geralmente admins) podem cadastrar
+@permission_required('cadastro_usuario')
+def cadastro_usuario():
+    # Opcional: Você pode adicionar uma verificação se o usuário atual é admin
+    # if not current_user.is_admin:
+    #    flash('Você não tem permissão para cadastrar usuários.', 'danger')
+    #    return redirect(url_for('painel_gerencial')) # Ou outra rota de sua escolha
+
+    form = CadastroUsuarioForm()
+    if form.validate_on_submit():
+        # ATENÇÃO: Senha agora armazenada em texto puro. EXTREMAMENTE INSEGURO para produção!
+        # REMOVIDA: hashed_password = generate_password_hash(form.password.data)
+        new_user = User( # Alterado de 'Usuario' para 'User' para corresponder ao models.py
+            username=form.username.data,
+            email=form.email.data,
+            password=form.password.data, # ALTERADO: Salva a senha em texto puro no campo 'password'
+            matricula=form.matricula.data,
+            nome_completo=form.nome_completo.data,
+            is_admin=form.is_admin.data
+        )
+        db.session.add(new_user)
+        db.session.commit()
+
+        # Logar a criação do usuário
+        log_entry = LogAtividade(
+            user_id=current_user.id, # ALTERADO: de 'usuario_id' para 'user_id'
+            acao=f'Novo usuário "{new_user.username}" cadastrado',
+            detalhes=f'Email: {new_user.email}, Matrícula: {new_user.matricula}. Admin: {new_user.is_admin}',
+            ip_origem=request.remote_addr
+        )
+        db.session.add(log_entry)
+        db.session.commit()
+
+        flash(f'Usuário {new_user.username} cadastrado com sucesso!', 'success')
+        return redirect(url_for('painel_gerencial')) # Redireciona após o cadastro
+
+    # Se GET ou se o formulário não for validado (erros)
+    return render_template('cadastro_usuario.html', form=form)
+
+
+# --- Integrando as permissões nas suas rotas existentes (exemplos) ---
+# Você precisará adicionar permission_required em todas as rotas que deseja proteger
+
+@app.route('/status_entrega')
+@login_required
+@permission_required('status_entrega')
+def status_entrega():
+    # Você pode adicionar filtros ou paginação aqui se a lista de registros for muito grande
+    registros = Registro.query.order_by(Registro.data_hora_login.desc()).all()
+    return render_template('status_entrega.html', registros=registros)
+
+# --- Rota API para Atualizar Etapa de um Registro (POST) ---
+@app.route('/api/atualizar_etapa_registro/<int:registro_id>', methods=['POST'])
+def api_atualizar_etapa_registro(registro_id):
+    registro = Registro.query.get(registro_id)
+    if not registro:
+        return jsonify({"success": False, "message": "Registro não encontrado."}), 404
+
+    nova_etapa_id = request.json.get('nova_etapa_id')
+    if nova_etapa_id is None:
+        return jsonify({"success": False, "message": "ID da nova etapa não fornecido."}), 400
+
+    etapa = Etapa.query.get(nova_etapa_id)
+    if not etapa:
+        return jsonify({"success": False, "message": "Etapa inválida."}), 400
+
+    try:
+        registro.etapa = etapa
+        db.session.commit()
+        # Ao retornar o nome da etapa, garanta que é o nome correto do objeto Etapa
+        return jsonify({"success": True, "message": "Etapa atualizada com sucesso!", "etapa_nome": etapa.nome_etapa}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Erro ao atualizar etapa do registro {registro_id}: {e}")
+        return jsonify({"success": False, "message": f"Erro ao atualizar etapa: {str(e)}"}), 500
+
+# --- Rota API para Listar todas as Etapas (GET) ---
+@app.route('/api/etapas')
+def api_get_etapas():
+    etapas = Etapa.query.order_by(Etapa.id).all()
+    return jsonify([{"id": etapa.id, "nome": etapa.nome_etapa, "descricao": etapa.descricao} for etapa in etapas])
+
 
 
 @app.route('/buscar_nome', methods=['POST'])
@@ -430,7 +834,48 @@ def api_status_registro_by_matricula(matricula):
 ### Rota de atualização
 
 REGISTROS_POR_PAGINA = 10 # Defina o número de registros por página
-@app.route('/registros')
+def permission_required(permission):
+    """
+    Um decorador para verificar se o usuário logado tem uma permissão específica.
+    Redireciona para 'menu_principal' com mensagem de erro se a permissão for negada.
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # --- DEBUG PRINTS INÍCIO ---
+            print(f"\n--- Verificando Permissão para: {f.__name__} ---")
+            print(f"Permissão Requerida: '{permission}'")
+            print(f"Usuário Autenticado: {current_user.is_authenticated}")
+            
+            if current_user.is_authenticated:
+                print(f"ID do Usuário: {current_user.id}")
+                print(f"Nome de Usuário: {current_user.username}")
+                print(f"É Administrador: {current_user.is_admin}")
+                
+                # Para ver as permissões do usuário como uma lista
+                user_perms_list = current_user.get_permissions_list() 
+                print(f"Permissões do Usuário (da coluna JSON): {user_perms_list}")
+                
+                # Verifique se a permissão requerida está na lista do usuário
+                has_req_perm = current_user.has_permission(permission)
+                print(f"User.has_permission('{permission}'): {has_req_perm}")
+            else:
+                print("Usuário não autenticado.")
+            # --- DEBUG PRINTS FIM ---
+
+            if not current_user.is_authenticated or not current_user.has_permission(permission):
+                flash('Você não tem permissão para acessar esta página.', 'danger')
+                print(f"*** Acesso NEGADO para '{current_user.username if current_user.is_authenticated else 'Anônimo'}' à página '{permission}' ***")
+                return redirect(url_for('menu_principal'))
+            
+            print(f"--- Acesso PERMITIDO para '{current_user.username}' à página '{permission}' ---\n")
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+@app.route('/registros') # Ajuste a rota para o seu endpoint
+@login_required # Garante que o usuário esteja logado
+@permission_required('registros') # Exige a permissão 'Acessar Registros'
 def registros():
     
 
@@ -764,6 +1209,8 @@ def cadastro():
 
 #Rota Associacao #
 @app.route('/associacao')
+@login_required
+@permission_required('associacao')
 def associacao():
     registro_id = request.args.get('id', type=int) # Tenta obter o ID da URL
     registros_para_exibir = []
@@ -973,32 +1420,23 @@ def marcar_como_finalizado_id(id):
 
 @app.route('/cancelar_registro/<int:id>', methods=['POST'])
 def cancelar_registro(id):
-    try:
-        # Pega os dados JSON enviados pelo frontend (que contém a observação)
-        data = request.get_json()
-        observacao = data.get('observacao') # Extrai o valor da chave 'observacao'
+    registro = Registro.query.get(id)
+    if not registro:
+        return jsonify({"error": "Registro não encontrado."}), 404
 
-        registro = Registro.query.get(id)
-        if not registro:
-            return jsonify({"error": "Registro não encontrado."}), 404
+    # Adicionando verificação para evitar cancelar registros já finalizados ou cancelados
+    if registro.em_separacao == 3 or registro.em_separacao == 4:
+        return jsonify({"error": "Registro já está finalizado ou cancelado."}), 400
 
-        # Adicionando verificação para evitar cancelar registros já finalizados ou cancelados
-        # Use os status corretos do seu sistema (aqui 3 e 4)
-        if registro.em_separacao == 3 or registro.em_separacao == 4:
-            return jsonify({"error": "Registro já está finalizado ou cancelado."}), 400
+    registro.em_separacao = 4  # Define como Cancelado (status 4)
+    # Opcional: Você pode manter registro.cancelado = 1 se for útil para outros relatórios/filtros
+    # ou remover esta linha se em_separacao for a única fonte da verdade para o status final.
+    registro.cancelado = 1
+    
+    db.session.commit()
+    
+    return jsonify({"message": "Registro cancelado com sucesso!"}), 200
 
-        registro.em_separacao = 4  # Define como Cancelado (status 4)
-        registro.cancelado = 1     # Mantém o campo 'cancelado' para compatibilidade, se necessário
-
-        # Salva a observação na nova coluna
-        registro.motivo_cancelamento = observacao
-
-        db.session.commit()
-
-        return jsonify({"message": "Registro cancelado com sucesso!"}), 200
-    except Exception as e:
-        db.session.rollback() # Em caso de erro, desfaz a transação
-        return jsonify({"error": f"Erro ao cancelar registro: {str(e)}"}), 500
 
 @app.route('/finalizar_carregamento_id_status_separacao/<int:id>', methods=['POST'])
 def finalizar_carregamento_id_status_separacao(id):
@@ -1025,6 +1463,8 @@ def finalizar_carregamento_id_status_separacao(id):
 # ... (seus imports, definições de STATUS_EM_SEPARACAO, get_status_text, e o modelo NoShow) ...
 
 @app.route('/registro_no_show', methods=['GET'])
+@login_required
+@permission_required('registro_no_show')
 def registro_no_show():
     data_filtro_str = request.args.get('data')
     nome_filtro = request.args.get('nome')
@@ -1421,6 +1861,8 @@ def rota_verificar_status_e_atualizar(registro_id):
 
 
 @app.route('/registros', methods=['GET', 'POST'])
+@login_required
+@permission_required('registros')
 def criar_registro_principal():
     if request.method == 'POST':
         print(f"DEBUG_REG_CRIAR: [Passo 1] Rota de criação acessada via POST!")
@@ -1597,11 +2039,15 @@ def transferir_no_show_para_registro(no_show_id):
 # ---- Criar Registro No Show ----
 
 @app.route('/associacao_no_show', methods=['GET'])
+@login_required
+@permission_required('associacao_no_show')
 def associacao_no_show():
     # Esta rota simplesmente renderiza o formulário
     return render_template('associacao_no_show.html')
 
 @app.route('/criar_registro_no_show', methods=['POST'])
+@login_required
+@permission_required('associacao_no_show')
 def criar_registro_no_show():
     from pytz import timezone
     fuso_brasil = timezone('America/Sao_Paulo')
@@ -1723,6 +2169,8 @@ def finalizar_no_show(id):
         return redirect(url_for('registro_no_show', _anchor=f'no-show-registro-{id}'))
     
 @app.route('/midia')
+@login_required
+@permission_required('midia')
 def exibir_midia():
     """Renderiza a página HTML com a exibição de mídia (vídeos e slides)."""
     print("DEBUG: Rota /midia acessada. Renderizando midia.html")
@@ -1730,6 +2178,7 @@ def exibir_midia():
 
 # --- Rota para exibir o menu principal ---
 @app.route('/menu_principal')
+@login_required
 def menu_principal():
     """Renderiza a página do menu principal."""
     print("DEBUG: /menu_principal - Rota acessada.")
@@ -1890,13 +2339,141 @@ def get_operational_info():
     return jsonify({"info": operational_texts})
 
 # -------- FIM DA ROTA PAINEL --------
+# --- NOVA ROTA: Adicionar Etapa ---
+@app.route('/adicionar_etapa', methods=['GET', 'POST'])
+@login_required
+@permission_required('adicionar_etapa')
+def adicionar_etapa():
+    if request.method == 'POST':
+        nome_etapa = request.form.get('nome_etapa')
+        descricao = request.form.get('descricao')
 
+        if nome_etapa:
+            nova_etapa = Etapa(nome_etapa=nome_etapa, descricao=descricao)
+            try:
+                db.session.add(nova_etapa)
+                db.session.commit()
+                flash(f'Etapa "{nome_etapa}" adicionada com sucesso!', 'success')
+                # No need to redirect, we'll display on the same page
+                # return redirect(url_for('adicionar_etapa'))
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Erro ao adicionar etapa: {str(e)}', 'danger')
+        else:
+            flash('Nome da etapa é obrigatório.', 'warning')
+
+    # Query all existing etapas to display them
+    etapas = Etapa.query.order_by(Etapa.nome_etapa).all()
+    return render_template('adicionar_etapa.html', etapas=etapas)
+
+
+@app.route('/apagar_etapa/<int:etapa_id>', methods=['POST'])
+@login_required
+@permission_required('adicionar_etapa')
+def apagar_etapa(etapa_id):
+    etapa = Etapa.query.get_or_404(etapa_id)
+    try:
+        db.session.delete(etapa)
+        db.session.commit()
+        flash(f'Etapa "{etapa.nome_etapa}" apagada com sucesso!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao apagar etapa: {str(e)}', 'danger')
+    return redirect(url_for('adicionar_etapa'))
+
+# --- ROTAS: Editar Etapa ---
+@app.route('/editar_etapa/<int:etapa_id>', methods=['GET', 'POST'])
+@login_required
+@permission_required('adicionar_etapa')
+def editar_etapa(etapa_id):
+    etapa = Etapa.query.get_or_404(etapa_id)
+    if request.method == 'POST':
+        nome_etapa = request.form.get('nome_etapa')
+        descricao = request.form.get('descricao')
+
+        if nome_etapa:
+            etapa.nome_etapa = nome_etapa
+            etapa.descricao = descricao
+            try:
+                db.session.commit()
+                flash(f'Etapa "{nome_etapa}" atualizada com sucesso!', 'success')
+                return redirect(url_for('adicionar_etapa'))
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Erro ao atualizar etapa: {str(e)}', 'danger')
+        else:
+            flash('Nome da etapa é obrigatório.', 'warning')
+    return render_template('editar_etapa.html', etapa=etapa)
+
+
+
+# --- ROTA: Apagar Situação do Pedido ---
+@app.route('/apagar_situacao_pedido/<int:situacao_id>', methods=['POST'])
+def apagar_situacao_pedido(situacao_id):
+    situacao = SituacaoPedido.query.get_or_404(situacao_id)
+    try:
+        db.session.delete(situacao)
+        db.session.commit()
+        flash(f'Situação do Pedido "{situacao.nome_situacao}" apagada com sucesso!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao apagar situação do pedido: {str(e)}', 'danger')
+    return redirect(url_for('adicionar_situacao_pedido'))
+
+# --- ROTAS: Editar Situação do Pedido ---
+@app.route('/editar_situacao_pedido/<int:situacao_id>', methods=['GET', 'POST'])
+def editar_situacao_pedido(situacao_id):
+    situacao = SituacaoPedido.query.get_or_404(situacao_id)
+    if request.method == 'POST':
+        nome_situacao = request.form.get('nome_situacao')
+        descricao = request.form.get('descricao')
+
+        if nome_situacao:
+            situacao.nome_situacao = nome_situacao
+            situacao.descricao = descricao
+            try:
+                db.session.commit()
+                flash(f'Situação do Pedido "{nome_situacao}" atualizada com sucesso!', 'success')
+                return redirect(url_for('adicionar_situacao_pedido'))
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Erro ao atualizar situação do pedido: {str(e)}', 'danger')
+        else:
+            flash('Nome da situação é obrigatório.', 'warning')
+    return render_template('editar_situacao_pedido.html', situacao=situacao)
+
+# --- NOVA ROTA: Adicionar Situação do Pedido (MODIFICADA para exibir existing) ---
+@app.route('/adicionar_situacao_pedido', methods=['GET', 'POST'])
+@login_required
+@permission_required('adicionar_situacao_pedido')
+def adicionar_situacao_pedido():
+    if request.method == 'POST':
+        nome_situacao = request.form.get('nome_situacao')
+        descricao = request.form.get('descricao')
+
+        if nome_situacao:
+            nova_situacao = SituacaoPedido(nome_situacao=nome_situacao, descricao=descricao)
+            try:
+                db.session.add(nova_situacao)
+                db.session.commit()
+                flash(f'Situação do Pedido "{nome_situacao}" adicionada com sucesso!', 'success')
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Erro ao adicionar situação do pedido: {str(e)}', 'danger')
+        else:
+            flash('Nome da situação é obrigatório.', 'warning')
+
+    # Query all existing situações de pedido to display them
+    situacoes = SituacaoPedido.query.order_by(SituacaoPedido.nome_situacao).all()
+    return render_template('adicionar_situacao_pedido.html', situacoes=situacoes)
 
 
 
 # ------ Registros Finalizados ------
 
 @app.route('/registros_finalizados', methods=['GET'])
+@login_required
+@permission_required('registros_finalizados')
 def registros_finalizados():
     # Parâmetro para selecionar o banco de dados
     db_name = request.args.get('db_name', 'all') # Padrão: 'all' para exibir ambos
@@ -1998,10 +2575,1095 @@ def registros_finalizados():
                             db_name=db_name, # Passa o nome do DB selecionado para o template
                             display_db_name=display_db_name) # Nome amigável para exibição
 
-# ... o restante do seu app.py ...
-# (Todas as suas outras rotas aqui: /sucesso, /boas_vindas, /todos_registros, /registros, /historico, /associacao, etc.)
 
 
+# app.py
+# --- NOVA ROTA: Painel Gerencial ---
+# --- Rota: Painel Gerencial (AGORA COM TODOS OS FILTROS) ---
+
+from sqlalchemy import func, distinct
+from datetime import datetime, timedelta
+
+# ... (seu código de importação e configuração do Flask/SQLAlchemy)
+
+from flask import Flask, render_template, request, redirect, url_for, flash
+from datetime import datetime, timedelta
+from sqlalchemy import distinct, func, or_ # Certifique-se de importar 'or_'
+from sqlalchemy.dialects import sqlite # Importar o dialeto correto para SQLite
+
+# Importe seus modelos e utilitários (ajuste o caminho conforme sua estrutura)
+# from seu_app.models import db, Registro, Etapa, SituacaoPedido, PacoteRastreado
+# from seu_app.utils import get_data_hora_brasilia
+
+# ... (sua instância do app Flask e db) ...
+
+# --- ROTA /painel_gerencial (COM DECORADOR @login_required) ---
+# --- Rota para o Painel Gerencial (Ajustada) ---
+@app.route('/painel_gerencial')
+@login_required
+@permission_required('painel_gerencial')
+def painel_gerencial():
+    """
+    Renderiza o Painel Gerencial, exibindo apenas registros do dia atual.
+    Se não houver registros para o dia, a lista estará vazia.
+    """
+    print(f"\nDEBUG: Acessando /painel_gerencial. Usuário atual: {current_user.username if current_user.is_authenticated else 'Não Autenticado'}")
+    
+    data_hoje = get_data_hora_brasilia().date()
+
+    # Coleta os valores dos filtros da URL
+    data_hora_login_filtro = request.args.get('data_hora_login', '')
+    matricula_filtro = request.args.get('matricula', '')
+    nome_filtro = request.args.get('nome', '')
+    cidade_selecionada = request.args.get('cidade_filtro', 'todos')
+    rota_selecionada = request.args.get('rota_filtro', '')
+    tipo_entrega_selecionada = request.args.get('tipo_entrega_filtro', 'todos')
+    etapa_selecionada_id_str = request.args.get('etapa_id_filtro', 'todos')
+    situacao_pedido_selecionada_id_str = request.args.get('situacao_pedido_id_filtro', 'todos')
+
+    # Coleta os dados para os dropdowns dos filtros
+    rotas_registros_query = db.session.query(distinct(Registro.rota)).filter(Registro.rota != None).all()
+    rotas_pacotes_query = db.session.query(distinct(PacoteRastreado.rota_vinculada)).filter(PacoteRastreado.rota_vinculada != None).all()
+    todas_rotas = sorted(list(set([r[0] for r in rotas_registros_query] + [r[0] for r in rotas_pacotes_query if r[0]])))
+
+    cidades_unicas = sorted([c[0] for c in db.session.query(distinct(Registro.cidade_entrega)).filter(Registro.cidade_entrega != None).order_by(Registro.cidade_entrega).all() if c[0]])
+    tipos_entrega_unicos = sorted([t[0] for t in db.session.query(distinct(Registro.tipo_entrega)).filter(Registro.tipo_entrega != None).order_by(Registro.tipo_entrega).all() if t[0]])
+    etapas = Etapa.query.order_by(Etapa.nome_etapa).all()
+    situacoes_pedido = SituacaoPedido.query.order_by(SituacaoPedido.nome_situacao).all()
+
+    # Construção da query principal
+    query = db.session.query(
+        Registro,
+        Etapa.nome_etapa.label('etapa_nome'),
+        SituacaoPedido.nome_situacao.label('situacao_pedido_nome')
+    ).join(Etapa, Registro.etapa, isouter=True)\
+     .join(SituacaoPedido, Registro.situacao_pedido, isouter=True)
+
+    # Aplicação dos filtros
+    if data_hora_login_filtro:
+        try:
+            data_filtro_dt = datetime.strptime(data_hora_login_filtro, '%Y-%m-%d').date()
+            query = query.filter(func.date(Registro.data_hora_login) == data_filtro_dt)
+        except ValueError:
+            flash("Formato de data inválido.", 'danger')
+            # Se a data do filtro for inválida, não devemos exibir nada (ou talvez a data de hoje, dependendo da UX)
+            # Para o requisito de "não exibir nada", uma data inválida fará com que a query não retorne resultados.
+            registros_filtrados = [] # Garante que a lista de registros fique vazia
+            dados_painel_ordenados = [] # E a lista de dados do painel também
+            # Renderiza o template com listas vazias
+            return render_template('painel_gerencial.html',
+                                   dados_painel=dados_painel_ordenados,
+                                   data_hora_login_filtro=data_hora_login_filtro,
+                                   matricula_filtro=matricula_filtro,
+                                   nome_filtro=nome_filtro,
+                                   cidades_unicas=cidades_unicas,
+                                   cidade_selecionada=cidade_selecionada,
+                                   rotas_ordenadas=todas_rotas,
+                                   rota_selecionada=rota_selecionada,
+                                   tipos_entrega_unicos=tipos_entrega_unicos,
+                                   tipo_entrega_selecionada=tipo_entrega_selecionada,
+                                   etapas=etapas,
+                                   etapa_selecionada_id=int(etapa_selecionada_id_str) if etapa_selecionada_id_str.isdigit() else 'todos',
+                                   situacoes_pedido=situacoes_pedido,
+                                   situacao_pedido_selecionada_id=int(situacao_pedido_selecionada_id_str) if situacao_pedido_selecionada_id_str.isdigit() else 'todos',
+                                   today=data_hoje # Passa a data de hoje para o template
+                                   )
+    else: # Sempre filtra pela data de hoje se nenhuma data específica for selecionada
+        query = query.filter(func.date(Registro.data_hora_login) == data_hoje)
+
+    if matricula_filtro:
+        query = query.filter(Registro.matricula.ilike(f'%{matricula_filtro}%'))
+
+    if nome_filtro:
+        query = query.filter(Registro.nome.ilike(f'%{nome_filtro}%'))
+
+    if cidade_selecionada != 'todos':
+        if cidade_selecionada == 'N/A_VALUE':
+            query = query.filter(Registro.cidade_entrega == None)
+        else:
+            query = query.filter(Registro.cidade_entrega.ilike(cidade_selecionada))
+
+    if rota_selecionada: 
+        query = query.filter(Registro.rota.ilike(f'%{rota_selecionada}%'))
+
+    if tipo_entrega_selecionada != 'todos':
+        if tipo_entrega_selecionada == 'N/A_VALUE':
+            query = query.filter(Registro.tipo_entrega == None)
+        else:
+            query = query.filter(Registro.tipo_entrega == tipo_entrega_selecionada)
+
+    if etapa_selecionada_id_str != 'todos':
+        try:
+            etapa_id = int(etapa_selecionada_id_str)
+            query = query.filter(Etapa.id == etapa_id)
+        except (ValueError, TypeError):
+            flash("ID de etapa inválido.", 'danger')
+
+    if situacao_pedido_selecionada_id_str != 'todos':
+        try:
+            situacao_id = int(situacao_pedido_selecionada_id_str)
+            query = query.filter(SituacaoPedido.id == situacao_id)
+        except (ValueError, TypeError):
+            flash("ID de situação inválido.", 'danger')
+
+    # --- INÍCIO DO BLOCO DE DEPURAÇÃO (útil para ver os filtros aplicados) ---
+    print("\n--- VALORES DOS FILTROS RECEBIDOS ---")
+    print(f"data_hora_login_filtro: '{data_hora_login_filtro}'")
+    print(f"matricula_filtro: '{matricula_filtro}'")
+    print(f"nome_filtro: '{nome_filtro}'")
+    print(f"cidade_selecionada: '{cidade_selecionada}'")
+    print(f"rota_selecionada: '{rota_selecionada}'")
+    print(f"tipo_entrega_selecionada: '{tipo_entrega_selecionada}'")
+    print(f"etapa_selecionada_id_str: '{etapa_selecionada_id_str}'")
+    print(f"situacao_pedido_selecionada_id_str: '{situacao_pedido_selecionada_id_str}'")
+    print("-------------------------------------\n")
+
+    # Importa o dialeto SQLite para depuração, se ainda não estiver importado
+    from sqlalchemy.dialects import sqlite
+    print("\n--- DEPURANDO A QUERY SQL (Dialeto SQLite) ---")
+    try:
+        compiled_query = query.statement.compile(dialect=sqlite.dialect())
+        print("SQL Gerado:", compiled_query)
+        print("Parâmetros:", compiled_query.params)
+    except Exception as e:
+        print(f"Erro ao compilar a query: {e}")
+    print("--------------------------------------------\n")
+    # --- FIM DO BLOCO DE DEPURAÇÃO ---
+
+    registros_filtrados = query.order_by(Registro.rota, Registro.data_hora_login).all()
+
+    print("\n--- REGISTROS RETORNADOS DA CONSULTA ---")
+    if registros_filtrados:
+        for r, etapa_nome, situacao_nome in registros_filtrados:
+            print(f"ID: {r.id}, Matrícula: {r.matricula}, Rota: {r.rota}, Cidade: {r.cidade_entrega}, Data Login: {r.data_hora_login}, Etapa: {etapa_nome}, Situação: {situacao_nome}")
+    else:
+        print("Nenhum registro encontrado com os filtros aplicados.")
+    print("----------------------------------------\n")
+
+    # Contagem de pacotes otimizada (uma única query)
+    contagem_pacotes_query = db.session.query(
+        PacoteRastreado.rota_vinculada,
+        func.count(PacoteRastreado.id)
+    ).filter(PacoteRastreado.rota_vinculada.in_(todas_rotas))\
+     .group_by(PacoteRastreado.rota_vinculada).all()
+    pacotes_por_rota = dict(contagem_pacotes_query)
+
+    # Montagem dos dados do painel
+    dados_painel = []
+    # Não vamos mais adicionar rotas vazias com 'N/A' se não houver registros reais
+    # Apenas processa os registros filtrados
+    for r, etapa_nome, situacao_nome in registros_filtrados:
+        rota_nome = r.rota if r.rota else 'N/A'
+
+        previsao_entrega = (r.data_hora_login + timedelta(days=1)).strftime('%d-%m-%Y %H:%M:%S') if r.data_hora_login else 'N/A'
+        data_de_entrega = r.data_de_entrega.strftime('%d-%m-%Y') if r.data_de_entrega else 'N/A'
+
+        dados_painel.append({
+            'id': r.id,
+            'data_hora_login': r.data_hora_login.strftime('%d-%m-%Y %H:%M:%S') if r.data_hora_login else 'N/A',
+            'matricula': r.matricula,
+            'nome': r.nome,
+            'cidade': r.cidade_entrega,
+            'rota': rota_nome,
+            'qtde_pacotes': pacotes_por_rota.get(rota_nome, 0),
+            'tipo_entrega': r.tipo_entrega,
+            'previsao_entrega': previsao_entrega,
+            'etapa': etapa_nome if etapa_nome else 'N/A',
+            'data_de_entrega': data_de_entrega,
+            'situacao_pedido': situacao_nome if situacao_nome else 'N/A',
+        })
+
+    # Ordenação final por rota (garante que 'N/A' venha por último, se houver)
+    dados_painel_ordenados = sorted(dados_painel, key=lambda x: (x['rota'] == 'N/A', x['rota']))
+
+    # Renderiza o template
+    return render_template('painel_gerencial.html',
+                           dados_painel=dados_painel_ordenados,
+                           data_hora_login_filtro=data_hora_login_filtro,
+                           matricula_filtro=matricula_filtro,
+                           nome_filtro=nome_filtro,
+                           cidades_unicas=cidades_unicas,
+                           cidade_selecionada=cidade_selecionada,
+                           rotas_ordenadas=todas_rotas,
+                           rota_selecionada=rota_selecionada,
+                           tipos_entrega_unicos=tipos_entrega_unicos,
+                           tipo_entrega_selecionada=tipo_entrega_selecionada,
+                           etapas=etapas,
+                           etapa_selecionada_id=int(etapa_selecionada_id_str) if etapa_selecionada_id_str.isdigit() else 'todos',
+                           situacoes_pedido=situacoes_pedido,
+                           situacao_pedido_selecionada_id=int(situacao_pedido_selecionada_id_str) if situacao_pedido_selecionada_id_str.isdigit() else 'todos',
+                           today=data_hoje # Passa a data de hoje para o template
+                           )
+
+
+# --- NOVA ROTA API: Atualizar Situação do Pedido de um Registro (POST) ---
+@app.route('/api/atualizar_situacao_pedido/<int:registro_id>', methods=['POST'])
+def api_atualizar_situacao_pedido(registro_id):
+    registro = Registro.query.get(registro_id)
+    if not registro:
+        return jsonify({"success": False, "message": "Registro não encontrado."}), 404
+
+    nova_situacao_id = request.json.get('nova_situacao_id')
+    if nova_situacao_id is None:
+        return jsonify({"success": False, "message": "ID da nova situação não fornecido."}), 400
+
+    situacao = SituacaoPedido.query.get(nova_situacao_id)
+    if not situacao:
+        return jsonify({"success": False, "message": "Situação inválida."}), 400
+
+    try:
+        registro.situacao_pedido = situacao
+        db.session.commit()
+        return jsonify({"success": True, "message": "Situação do pedido atualizada com sucesso!", "situacao_nome": situacao.nome_situacao}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Erro ao atualizar situação do pedido do registro {registro_id}: {e}")
+        return jsonify({"success": False, "message": f"Erro ao atualizar situação do pedido: {str(e)}"}), 500
+
+# --- NOVA ROTA API: Atualizar Data de Entrega de um Registro (POST) ---
+@app.route('/api/atualizar_data_entrega/<int:registro_id>', methods=['POST'])
+def api_atualizar_data_entrega(registro_id):
+    registro = Registro.query.get(registro_id)
+    if not registro:
+        return jsonify({"success": False, "message": "Registro não encontrado."}), 404
+
+    nova_data_str = request.json.get('nova_data') # Espera "YYYY-MM-DD HH:MM:SS" ou "YYYY-MM-DD"
+    
+    if not nova_data_str:
+        # Se for nulo ou vazio, limpa o campo
+        registro.data_de_entrega = None
+    else:
+        try:
+            # Tenta converter para datetime.datetime
+            # Pode ser necessário um parser mais robusto se o formato variar muito
+            registro.data_de_entrega = datetime.strptime(nova_data_str, '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            try:
+                registro.data_de_entrega = datetime.strptime(nova_data_str, '%Y-%m-%d')
+            except ValueError:
+                return jsonify({"success": False, "message": "Formato de data inválido. Use YYYY-MM-DD HH:MM:SS ou YYYY-MM-DD."}), 400
+
+    try:
+        db.session.commit()
+        return jsonify({"success": True, "message": "Data de entrega atualizada com sucesso!"}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Erro ao atualizar data de entrega do registro {registro_id}: {e}")
+        return jsonify({"success": False, "message": f"Erro ao atualizar data de entrega: {str(e)}"}), 500
+    
+    # --- Nova Rota para Importar Pacotes de TXT ---
+@app.route('/importar_pacotes_txt', methods=['POST'])
+@login_required
+@permission_required('pacotes_rota')
+def importar_pacotes_txt():
+    if 'file' not in request.files:
+        flash('Nenhum arquivo enviado.', 'danger')
+        return redirect(url_for('pacotes_rota'))
+
+    file = request.files['file']
+    rota_selecionada_do_form = request.form.get('rota_para_importar') # A rota virá do formulário de upload
+
+    if file.filename == '':
+        flash('Nenhum arquivo selecionado.', 'danger')
+        return redirect(url_for('pacotes_rota'))
+
+    if not rota_selecionada_do_form: # Agora verificamos se a rota do form é válida
+        flash('A rota para importação é obrigatória.', 'danger')
+        return redirect(url_for('pacotes_rota'))
+
+    if file and allowed_file(file.filename):
+        filename = file.filename
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+
+        pacotes_importados_com_sucesso = 0
+        pacotes_duplicados = 0
+        erros_importacao = []
+
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                next(f) # Pular a primeira linha (cabeçalho)
+
+                for line_num, line in enumerate(f, 2):
+                    line_stripped = line.strip()
+                    if not line_stripped:
+                        continue
+
+                    parts = line_stripped.split(',')
+                    # Esperamos pelo menos ID Pacote, Rota, Etapa, Observação, Data
+                    if len(parts) < 5:
+                        erros_importacao.append(f'Linha {line_num}: Formato inválido (menos de 5 campos). Linha ignorada: "{line_stripped}"')
+                        continue
+
+                    id_pacote = parts[0].strip()
+                    rota_pacote = parts[1].strip() # Assume que a rota está na segunda coluna
+                    nome_etapa_do_arquivo = parts[2].strip()
+                    observacao = parts[3].strip() if parts[3].strip().lower() != 'null' else None
+                    data_cadastro_str = parts[4].strip()
+                    acoes_do_arquivo = parts[5].strip() if len(parts) > 5 else None
+
+                    etapa_obj = Etapa.query.filter_by(nome_etapa=nome_etapa_do_arquivo).first()
+                    etapa_id = etapa_obj.id if etapa_obj else None
+
+                    situacao_pedido_obj = SituacaoPedido.query.filter_by(nome_situacao=nome_etapa_do_arquivo).first()
+                    situacao_pedido_id = situacao_pedido_obj.id if situacao_pedido_obj else None
+
+                    data_cadastro = None
+                    try:
+                        data_cadastro = get_data_hora_brasilia().replace(
+                            year=datetime.strptime(data_cadastro_str, '%d/%m/%Y').year,
+                            month=datetime.strptime(data_cadastro_str, '%d/%m/%Y').month,
+                            day=datetime.strptime(data_cadastro_str, '%d/%m/%Y').day
+                        )
+                    except ValueError:
+                        erros_importacao.append(f'Linha {line_num}: Formato de data inválido para "{data_cadastro_str}". Usando data/hora atual de Brasília.')
+                        data_cadastro = get_data_hora_brasilia()
+
+                    existing_pacote = PacoteRastreado.query.filter_by(
+                        id_pacote=id_pacote,
+                        rota_vinculada=rota_selecionada_do_form # Usa a rota do FORMULÁRIO para verificação
+                    ).first()
+
+                    if not existing_pacote:
+                        try:
+                            novo_pacote = PacoteRastreado(
+                                id_pacote=id_pacote,
+                                rota_vinculada=rota_selecionada_do_form,
+                                etapa_id=etapa_id,
+                                observacao=observacao,
+                                data_cadastro=data_cadastro,
+                                acoes=acoes_do_arquivo # Incluindo o valor de Ações
+                            )
+                            db.session.add(novo_pacote)
+                            pacotes_importados_com_sucesso += 1
+
+                            # Encontra ou cria o registro correspondente (usando a rota do arquivo)
+                            data_hoje = get_data_hora_brasilia().date()
+                            registro_principal = Registro.query.filter(
+                                Registro.rota == rota_pacote,
+                                func.date(Registro.data_hora_login) == data_hoje
+                            ).first()
+                            if registro_principal:
+                                registro_principal.etapa_id = etapa_id
+                                registro_principal.situacao_pedido_id = situacao_pedido_id
+                                db.session.add(registro_principal)
+
+                        except Exception as e:
+                            db.session.rollback()
+                            erros_importacao.append(f'Linha {line_num}: Erro ao adicionar pacote "{id_pacote}": {str(e)}')
+                    else:
+                        pacotes_duplicados += 1
+                        erros_importacao.append(f'Linha {line_num}: Pacote "{id_pacote}" já existe para a rota "{rota_selecionada_do_form}".')
+
+            db.session.commit()
+
+            flash(f'Importação concluída: {pacotes_importados_com_sucesso} pacotes novos importados. {pacotes_duplicados} pacotes duplicados ignorados.', 'success')
+            for erro in erros_importacao:
+                flash(erro, 'warning')
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro geral durante a leitura ou importação do arquivo: {str(e)}', 'danger')
+        finally:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+                print(f"Valor de acoes_do_arquivo: '{acoes_do_arquivo}'")
+
+    return redirect(url_for('pacotes_rota', rota_selecionada_importacao=rota_selecionada_do_form))
+
+# --- Rota /pacotes_rota (Mantenha o código existente, mas adicione rotas_existentes ao render_template) ---
+@app.route('/pacotes_rota', methods=['GET', 'POST'])
+@login_required
+@permission_required('pacotes_rota')
+def pacotes_rota():
+    etapas = Etapa.query.order_by(Etapa.nome_etapa).all()
+
+    # CORREÇÃO: Mude a forma de acessar a rota para a primeira (e única) coluna da tupla
+    # ou use .scalars() se estiver disponível e você quiser apenas os valores
+    rotas_existentes_query = db.session.query(distinct(Registro.rota)).filter(Registro.rota != None).order_by(Registro.rota).all()
+    rotas_existentes = [r[0] for r in rotas_existentes_query if r[0] is not None]
+    # Ou, uma forma mais moderna e que retorna os valores diretamente:
+    # rotas_existentes = db.session.query(distinct(Registro.rota)).filter(Registro.rota != None).order_by(Registro.rota).scalars().all()
+
+    situacoes_pedido = SituacaoPedido.query.order_by(SituacaoPedido.nome_situacao).all() # Adicione esta linha
+
+    if request.method == 'POST':
+        # ... (sua lógica existente para adicionar pacote manualmente) ...
+        id_pacote = request.form.get('id_pacote')
+        etapa_id = request.form.get('etapa')
+        observacao = request.form.get('observacao')
+        rota_selecionada = request.form.get('rota_selecionada_importacao')
+        acoes = request.form.get('acoes') # O valor virá do select agora
+
+        if id_pacote and rota_selecionada:
+            existing_pacote = PacoteRastreado.query.filter_by(id_pacote=id_pacote, rota_vinculada=rota_selecionada).first()
+            if existing_pacote:
+                flash(f'Pacote com ID "{id_pacote}" já existe para a rota "{existing_pacote.rota_vinculada}".', 'warning')
+            else:
+                try:
+                    novo_pacote = PacoteRastreado(
+                        id_pacote=id_pacote,
+                        etapa_id=int(etapa_id) if etapa_id and etapa_id != 'None' else None,
+                        observacao=observacao,
+                        rota_vinculada=rota_selecionada,
+                        acoes=acoes if acoes else None # Salva o ID da situação de pedido
+                    )
+                    db.session.add(novo_pacote)
+                    db.session.commit()
+                    flash(f'Pacote "{id_pacote}" adicionado com sucesso para a rota "{rota_selecionada}"!', 'success')
+                except Exception as e:
+                    db.session.rollback()
+                    flash(f'Erro ao adicionar pacote: {str(e)}', 'danger')
+        else:
+            flash('ID Pacote e Rota são campos obrigatórios para adicionar um pacote.', 'danger')
+
+        return redirect(url_for('pacotes_rota', rota_selecionada_importacao=rota_selecionada))
+
+    rota_para_exibir = request.args.get('rota_selecionada_importacao')
+    pacotes = []
+    if rota_para_exibir and rota_para_exibir != 'todos':
+        pacotes = PacoteRastreado.query.filter_by(rota_vinculada=rota_para_exibir).order_by(PacoteRastreado.data_cadastro.desc()).all()
+    else:
+        pacotes = PacoteRastreado.query.order_by(PacoteRastreado.data_cadastro.desc()).all()
+
+    return render_template(
+        'pacotes_rota.html',
+        etapas=etapas,
+        rotas_existentes=rotas_existentes,
+        pacotes=pacotes,
+        rota_selecionada_no_form=rota_para_exibir,
+        situacoes_pedido=situacoes_pedido # Passe a lista de situações para o template
+    )
+    
+# --- Nova Rota API: Buscar Pacotes por Rota (para importação) ---
+@app.route('/api/pacotes_por_rota/<string:rota_nome>')
+def get_pacotes_por_rota(rota_nome):
+    if rota_nome == 'todos':
+        pacotes_data = PacoteRastreado.query.all()
+    else:
+        pacotes_data = PacoteRastreado.query.filter_by(rota_vinculada=rota_nome).all()
+
+    pacotes_json = []
+    for p in pacotes_data:
+        etapa = p.etapa_texto if hasattr(p, 'etapa_texto') else (p.etapa.nome_etapa if p.etapa else 'Não definida')
+        acoes = ''
+        if etapa == 'Entregue 100%':
+            acoes = 'Entregue no prazo'
+        elif etapa == 'In Sucesso' or etapa == 'Atrasado' or etapa == 'Devolvido' or etapa == 'Recusado entrega':
+            acoes = 'Não Entregue'
+        elif etapa == 'Entregue com Atraso':
+            acoes = 'Entregue com Atraso'
+
+        brasil_tz = pytz.timezone('America/Sao_Paulo')
+        data_cadastro_brasil = p.data_cadastro.astimezone(brasil_tz)
+
+        pacotes_json.append({
+            'id': p.id,
+            'id_pacote': p.id_pacote,
+            'etapa': etapa,
+            'observacao': p.observacao,
+            'data_cadastro': formata_data_hora(data_cadastro_brasil),
+            'rota_vinculada': p.rota_vinculada,
+            'acoes': acoes
+        })
+    return jsonify(pacotes_json)
+
+    #### ----- DashBoard ------
+
+@app.route('/dashboard')
+@login_required # Protege a rota, exigindo login
+@permission_required('dashboard') # Exige a permissão 'dashboard'
+def dashboard():
+    """Renderiza a página principal do dashboard."""
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    return render_template('dashboard.html', start_date=start_date, end_date=end_date)
+
+@app.route('/api/dashboard_data')
+def get_dashboard_data():
+    """
+    Retorna os dados para o dashboard em formato JSON.
+    Inclui a contagem de pedidos da tabela PacoteRastreado com filtros de data.
+    """
+    # Coleta os parâmetros de filtro de data da requisição (se houver)
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    # Inicializa a query base para PacoteRastreado
+    query_base_pacotes = PacoteRastreado.query
+
+    # Aplica os filtros de data à query base
+    if start_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+            query_base_pacotes = query_base_pacotes.filter(PacoteRastreado.data_cadastro >= start_date)
+        except ValueError:
+            pass
+
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d') + timedelta(days=1) - timedelta(microseconds=1)
+            query_base_pacotes = query_base_pacotes.filter(PacoteRastreado.data_cadastro <= end_date)
+        except ValueError:
+            pass
+
+    # 1. CONTA O TOTAL DE PEDIDOS (TODOS OS REGISTROS FILTRADOS POR DATA)
+    total_pedidos = query_base_pacotes.count()
+
+    # 2. CONTA A QUANTIDADE DE PACOTES ENTREGUES (EXCLUINDO 'Não Entregue')
+    # Esta é a base para "entregas realizadas" no período
+    query_pacotes_entregues_realizadas = query_base_pacotes.filter(
+        PacoteRastreado.acoes != 'Não Entregue'
+    )
+    qtd_pacotes_entregues_realizadas = query_pacotes_entregues_realizadas.count()
+
+    # 3. CONTA A QUANTIDADE DE ROTAS CARREGADAS (NA TABELA REGISTRO)
+    # Inicializa a query para a tabela Registro
+    query_rotas_carregadas = Registro.query
+
+    # Aplica os filtros de data à query de Registro (usando data_hora_login)
+    if start_date_str:
+        try:
+            start_date_reg = datetime.strptime(start_date_str, '%Y-%m-%d')
+            query_rotas_carregadas = query_rotas_carregadas.filter(Registro.data_hora_login >= start_date_reg)
+        except ValueError:
+            pass
+
+    if end_date_str:
+        try:
+            end_date_reg = datetime.strptime(end_date_str, '%Y-%m-%d') + timedelta(days=1) - timedelta(microseconds=1)
+            query_rotas_carregadas = query_rotas_carregadas.filter(Registro.data_hora_login <= end_date_reg)
+        except ValueError:
+            pass
+            
+    # Filtra registros onde 'finalizada' é igual a 1
+    qtd_rotas_carregadas = query_rotas_carregadas.filter(Registro.finalizada == 1).count()
+
+    # 4. CONTA PEDIDOS ENTREGUES 100% (etapa_id = 12 na tabela PacoteRastreado)
+    # Reutiliza a query_base_pacotes (que já tem os filtros de data)
+    pedidos_entregues_100 = query_base_pacotes.filter(
+        PacoteRastreado.etapa_id == 12
+    ).count()
+
+    # 5. CONTA PEDIDOS NA ETAPA 11 (nova variável)
+    pedidos_etapa_11 = query_base_pacotes.filter(
+        PacoteRastreado.etapa_id == 11
+    ).count()
+
+    # 6. CALCULA ON TIME (OTD)
+    # Numerador: Quantidade de pacotes com a ação 'Entregue no prazo'
+    on_time_deliveries_count = query_base_pacotes.filter(
+        PacoteRastreado.acoes == 'Entregue no prazo'
+    ).count()
+
+    # Denominador: TOTAL DE PEDIDOS (total_pedidos)
+    on_time_percentage = 0.0
+    if total_pedidos > 0:
+        on_time_percentage = (float(on_time_deliveries_count) / total_pedidos) * 100
+    
+    # 7. CALCULA IN FULL
+    # Numerador: Pedidos Entregues 100%
+    in_full_numerator = pedidos_entregues_100
+    
+    # Denominador: Total de Pedidos (total_pedidos)
+    in_full_percentage = 0.0
+    if total_pedidos > 0:
+        in_full_percentage = (float(in_full_numerator) / total_pedidos) * 100
+    
+    # 8. CALCULA OTIF (On Time In Full)
+    otif_percentage = 0.0
+    # O cálculo OTIF é (On Time * In Full) / 100, para já ter o resultado em porcentagem
+    if on_time_percentage > 0 and in_full_percentage > 0:
+        otif_percentage = (on_time_percentage * in_full_percentage) / 100
+    
+    # 9. CALCULA TX. ATRASO (utilizando etapa_id = 11)
+    # Retorna a contagem total de pacotes com etapa_id = 11
+    delayed_deliveries_count_by_etapa_11 = query_base_pacotes.filter(
+        PacoteRastreado.etapa_id == 11
+    ).count()
+    taxa_atraso_formatted = str(delayed_deliveries_count_by_etapa_11)
+
+    # 10. CALCULA TX. AVARIA
+    # Numerador: Total de pacotes com etapa_id = 13
+    damaged_deliveries_count = query_base_pacotes.filter(
+        PacoteRastreado.etapa_id == 13
+    ).count()
+
+    # Denominador: TOTAL DE PEDIDOS (total_pedidos)
+    taxa_avaria_percentage = 0.0
+    if total_pedidos > 0:
+        taxa_avaria_percentage = (float(damaged_deliveries_count) / total_pedidos) * 100
+
+    # 11. CALCULA % IN SUCESSO
+    # Numerador: Total de pacotes com etapa_id = 2
+    in_sucesso_etapa_count = query_base_pacotes.filter(
+        PacoteRastreado.etapa_id == 2
+    ).count()
+
+    percentual_in_sucesso_calculated = 0.0
+    if total_pedidos > 0:
+        percentual_in_sucesso_calculated = (float(in_sucesso_etapa_count) / total_pedidos) * 100
+
+    # 12. CALCULA % DEVOLVIDOS
+    # Numerador: Total de pacotes com etapa_id = 14
+    devolvidos_etapa_count = query_base_pacotes.filter(
+        PacoteRastreado.etapa_id == 14
+    ).count()
+
+    percentual_devolvidos_calculated = 0.0
+    if total_pedidos > 0: # Usando total_pedidos como denominador para consistência
+        percentual_devolvidos_calculated = (float(devolvidos_etapa_count) / total_pedidos) * 100
+
+    # 13. NOVO DADO: Total de Entregas no Prazo
+    # Já temos on_time_deliveries_count que é a contagem de pacotes com acoes == 'Entregue no prazo'
+    total_entregas_no_prazo = on_time_deliveries_count
+
+    # 14. NOVO DADO: Total Devolvidos (valor absoluto)
+    # Já temos 'devolvidos_etapa_count' que é a contagem de pacotes com etapa_id = 14
+    total_devolvidos_count = devolvidos_etapa_count
+
+    # 15. NOVO DADO: Total Não Entregue (valor absoluto)
+    total_nao_entregue_count = query_base_pacotes.filter(
+        PacoteRastreado.acoes == 'Não Entregue'
+    ).count()
+
+
+    # Formata ON TIME
+    if on_time_percentage % 1 == 0: # Se for um número inteiro
+        on_time_formatted = f"{int(on_time_percentage)}%"
+    else:
+        on_time_formatted = f"{on_time_percentage:.1f}%".replace('.', ',') # Uma casa decimal e vírgula
+
+    # Formata IN FULL
+    if in_full_percentage % 1 == 0: # Se for um número inteiro
+        in_full_formatted = f"{int(in_full_percentage)}%"
+    else:
+        in_full_formatted = f"{in_full_percentage:.1f}%".replace('.', ',') # Uma casa decimal e vírgula
+
+    # Formata OTIF (mantém o formato anterior ou ajusta se necessário)
+    otif_formatted = f"{otif_percentage:.2f}%".replace('.', ',')
+
+    # Formata TX. AVARIA
+    if taxa_avaria_percentage % 1 == 0: # Se for um número inteiro
+        taxa_avaria_formatted = f"{int(taxa_avaria_percentage)}%"
+    else:
+        taxa_avaria_formatted = f"{taxa_avaria_percentage:.1f}%".replace('.', ',') # Uma casa decimal e vírgula
+
+    # Formata % IN SUCESSO
+    if percentual_in_sucesso_calculated % 1 == 0: # Se for um número inteiro
+        percentual_in_sucesso_formatted = f"{int(percentual_in_sucesso_calculated)}%"
+    else:
+        percentual_in_sucesso_formatted = f"{percentual_in_sucesso_calculated:.1f}%".replace('.', ',')
+
+    # Formata % DEVOLVIDOS
+    if percentual_devolvidos_calculated % 1 == 0: # Se for um número inteiro
+        percentual_devolvidos_formatted = f"{int(percentual_devolvidos_calculated)}%"
+    else:
+        percentual_devolvidos_formatted = f"{percentual_devolvidos_calculated:.1f}%".replace('.', ',')
+
+    # OCT (h) foi substituído por Total de In Sucesso
+    total_in_sucesso_count = in_sucesso_etapa_count
+
+    # --- Dados para Gráficos (agora calculados dinamicamente) ---
+
+    # Gráfico de Status (Painel Gerencial)
+    painel_gerencial_labels = [
+        'Total de Pacotes', 'Qtd. Pacotes Entregues', 'Total de Entregas no Prazo',
+        'Pedidos Entregues 100%', 'Qtd. Pacotes Entregues com Atraso',
+        'Total de In Sucesso', 'Total Devolvidos', 'Total Avaria Motorista'
+    ]
+    painel_gerencial_counts = [
+        total_pedidos,
+        qtd_pacotes_entregues_realizadas,
+        on_time_deliveries_count,
+        pedidos_entregues_100,
+        pedidos_etapa_11, # Corresponde a 'Qtd. Pacotes Entregues com Atraso'
+        in_sucesso_etapa_count, # Corresponde a 'Total de In Sucesso'
+        devolvidos_etapa_count, # Corresponde a 'Total Devolvidos'
+        damaged_deliveries_count # Corresponde a 'Total Avaria Motorista'
+    ]
+
+    # Gráfico de Entregas por Mês (Barra) - Dados agrupados por mês
+    entregas_mes_data = db.session.query(
+        func.strftime('%Y-%m', PacoteRastreado.data_cadastro), # Agrupa por ano-mês
+        func.count(PacoteRastreado.id)
+    ).filter(
+        PacoteRastreado.acoes != 'Não Entregue',
+        PacoteRastreado.data_cadastro.isnot(None) # Garante que a data não é nula
+    ).group_by(
+        func.strftime('%Y-%m', PacoteRastreado.data_cadastro)
+    ).order_by(
+        func.strftime('%Y-%m', PacoteRastreado.data_cadastro) # Ordena cronologicamente
+    ).all()
+
+    entregas_mes_labels = [row[0] for row in entregas_mes_data]
+    entregas_mes_counts = [row[1] for row in entregas_mes_data]
+
+    # Gráfico de Entregas por Dia (Rosca) - NOVOS DADOS agrupados por dia
+    entregas_dia_data = db.session.query(
+        func.strftime('%Y-%m-%d', PacoteRastreado.data_cadastro), # Agrupa por ano-mês-dia
+        func.count(PacoteRastreado.id)
+    ).filter(
+        PacoteRastreado.acoes != 'Não Entregue',
+        PacoteRastreado.data_cadastro.isnot(None)
+    ).group_by(
+        func.strftime('%Y-%m-%d', PacoteRastreado.data_cadastro)
+    ).order_by(
+        func.strftime('%Y-%m-%d', PacoteRastreado.data_cadastro)
+    ).all()
+
+    entregas_dia_labels = [row[0] for row in entregas_dia_data]
+    entregas_dia_counts = [row[1] for row in entregas_dia_data]
+
+
+    # Gráfico 'In Sucesso' por Mês
+    # Conta pacotes com etapa_id = 2, agrupados por ano-mês de data_cadastro
+    in_sucesso_mes_data = db.session.query(
+        func.strftime('%Y-%m', PacoteRastreado.data_cadastro), # Agrupa por ano-mês
+        func.count(PacoteRastreado.id)
+    ).filter(
+        PacoteRastreado.etapa_id == 2,
+        PacoteRastreado.data_cadastro.isnot(None) # Garante que a data não é nula
+    ).group_by(
+        func.strftime('%Y-%m', PacoteRastreado.data_cadastro)
+    ).order_by(
+        func.strftime('%Y-%m', PacoteRastreado.data_cadastro) # Ordena cronologicamente
+    ).all()
+
+    in_sucesso_mes_labels = [row[0] for row in in_sucesso_mes_data]
+    in_sucesso_mes_counts = [row[1] for row in in_sucesso_mes_data]
+
+
+    return jsonify({
+        'kpis': {
+            'totalPedidos': total_pedidos,
+            'qtdPacotesEntregues': qtd_pacotes_entregues_realizadas,
+            'qtdRotasCarregadas': qtd_rotas_carregadas,
+            'pedidosEntregues100': pedidos_entregues_100,
+            'onTime': on_time_formatted,
+            'inFull': in_full_formatted,
+            'otif': otif_formatted,
+            'taxaAtraso': taxa_atraso_formatted,
+            'taxaAvaria': taxa_avaria_formatted,
+            'percentualInSucesso': percentual_in_sucesso_formatted,
+            'percentualDevolvidos': percentual_devolvidos_formatted,
+            'totalInSucesso': total_in_sucesso_count,
+            'totalEntregasNoPrazo': total_entregas_no_prazo,
+            'totalDevolvidos': total_devolvidos_count,
+            'totalNaoEntregue': total_nao_entregue_count
+        },
+        'charts': {
+            'painelGerencialLabels': painel_gerencial_labels,
+            'painelGerencialCounts': painel_gerencial_counts,
+            'entregasMesLabels': entregas_mes_labels,
+            'entregasMesCounts': entregas_mes_counts,
+            'entregasDiaLabels': entregas_dia_labels, # Novos dados diários
+            'entregasDiaCounts': entregas_dia_counts, # Novos dados diários
+            'inSucessoMesLabels': in_sucesso_mes_labels,
+            'inSucessoMes_counts': in_sucesso_mes_counts
+        }
+    })
+
+
+
+@app.route('/gerenciar_usuarios')
+@login_required
+@permission_required('gerenciar_usuarios')
+# @login_required # Descomente se estiver usando Flask-Login
+# @admin_required # Descomente se estiver usando o decorator admin_required
+def gerenciar_usuarios():
+    # Verifica se o usuário atual é um administrador
+    # Assumindo que permission_required('Gerenciar Usuários') já faz essa verificação
+    # if not current_user.is_admin:
+    #    flash('Você não tem permissão para acessar a página de gerenciamento de usuários.', 'danger')
+    #    abort(403) # Retorna um erro 403 (Acesso Negado)
+
+    # Inicializa a consulta base de usuários
+    query = User.query # CORRIGIDO: de Usuario.query para User.query
+
+    # Obtém os parâmetros de filtro da URL
+    filter_matricula = request.args.get('matricula', '').strip()
+    filter_username = request.args.get('username', '').strip()
+
+    # Aplica os filtros se eles existirem
+    if filter_matricula:
+        # Use .ilike() para busca case-insensitive e % para correspondência parcial
+        query = query.filter(User.matricula.ilike(f'%{filter_matricula}%'))
+    if filter_username:
+        query = query.filter(User.username.ilike(f'%{filter_username}%'))
+
+    # Executa a consulta e obtém os usuários filtrados
+    usuarios = query.all()
+
+    return render_template('gerenciar_usuarios.html', usuarios=usuarios)
+
+
+@app.route('/alterar_senha/<int:user_id>', methods=['GET', 'POST'])
+# @login_required # Descomente se estiver usando Flask-Login
+def alterar_senha(user_id):
+    user_to_edit = User.query.get_or_404(user_id)
+
+    # Opcional: Verifique se o usuário atual tem permissão para alterar esta senha
+    # if not current_user.is_admin and current_user.id != user_to_edit.id:
+    #     flash('Você não tem permissão para alterar a senha deste usuário.', 'danger')
+    #     return redirect(url_for('dashboard'))
+
+    form = ChangePasswordForm()
+
+    if form.validate_on_submit():
+        user_to_edit.set_password(form.new_password.data) # Criptografa e salva a nova senha
+        db.session.commit()
+        flash('Senha alterada com sucesso!', 'success')
+        return redirect(url_for('gerenciar_usuarios')) # Redireciona para a página de gerenciamento
+
+    return render_template('alterar_senha.html', form=form, user=user_to_edit) # Passa 'user' para o template
+
+
+# Rota para alternar o status do usuário (ativar/desativar)
+@app.route('/alternar_status_usuario/<int:user_id>', methods=['GET', 'POST'])
+@login_required
+@permission_required('gerenciar_usuarios')
+# @login_required # Descomente se estiver usando Flask-Login
+# @admin_required # Considere adicionar um decorador para garantir que apenas admins possam fazer isso
+def alternar_status_usuario(user_id):
+    """
+    Alterna o status (ativo/inativo) de um usuário.
+    """
+    user = User.query.get_or_404(user_id) # Busca o usuário pelo ID ou retorna 404
+
+    # Evita que um admin desative a própria conta por acidente (opcional)
+    # if current_user.is_authenticated and user.id == current_user.id and user.is_admin:
+    #    flash('Você não pode desativar sua própria conta de administrador.', 'danger')
+    #    return redirect(url_for('gerenciar_usuarios'))
+
+    user.ativo = not user.ativo # Inverte o status atual
+    try:
+        db.session.commit()
+        flash(f'Usuário {user.username} foi {"ativado" if user.ativo else "desativado"} com sucesso.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        # current_app.logger.error(f"Erro ao alternar status do usuário {user.username}: {e}") # Usar current_app requer estar dentro de um app_context
+        app.logger.error(f"Erro ao alternar status do usuário {user.username}: {e}")
+        flash('Erro ao alternar o status do usuário.', 'danger')
+
+    return redirect(url_for('gerenciar_usuarios')) # Redireciona de volta para a página de gerenciamento
+
+# Apenas UMA definição final da rota editar_usuario
+@app.route('/editar_usuario/<int:usuario_id>', methods=['GET', 'POST'])
+@login_required # Garante que apenas usuários logados podem acessar
+# @admin_required # Considere adicionar este decorador para garantir que só admins podem editar usuários
+def editar_usuario(usuario_id):
+    user_to_edit = User.query.get_or_404(usuario_id)
+
+    # === CORREÇÃO CRÍTICA AQUI: Passe os valores originais para o construtor do formulário ===
+    form = EditarUsuarioForm(
+        obj=user_to_edit, # Pré-popula os campos do formulário com os dados do usuário
+        original_username=user_to_edit.username,
+        original_email=user_to_edit.email,
+        original_matricula=user_to_edit.matricula
+    )
+
+    # Preenche as escolhas do campo de permissões a partir do seu dicionário PERMISSIONS
+    # A coerção para string (`coerce=str`) já deve estar em forms.py
+    form.paginas_acesso.choices = [(key, value) for key, value in PERMISSIONS.items()]
+
+    if form.validate_on_submit():
+        # A lógica de validação de unicidade agora funcionará,
+        # pois o formulário conhece os valores originais.
+
+        # Atualiza os dados básicos do usuário
+        user_to_edit.username = form.username.data
+        user_to_edit.email = form.email.data
+        user_to_edit.matricula = form.matricula.data
+        user_to_edit.nome_completo = form.nome_completo.data
+        user_to_edit.is_admin = form.is_admin.data
+        user_to_edit.ativo = form.ativo.data
+
+        # Lógica para alterar a senha, SE fornecida no formulário
+        # RECOMENDAÇÃO IMPORTANTE: Sempre faça hashing da senha.
+        # Se você reintroduzir o 'set_password' no modelo User (com hashing), use-o aqui.
+        if form.password.data:
+            # EXEMPLO COM HASHING (RECOMENDADO):
+            # from werkzeug.security import generate_password_hash # Importe isso no topo
+            # user_to_edit.password = generate_password_hash(form.password.data)
+            #
+            # SE VOCÊ REALMENTE QUER TEXTO PURO (NÃO RECOMENDADO):
+            user_to_edit.password = form.password.data # CUIDADO: Senha em texto puro no DB!
+
+        # Lógica para salvar as permissões de acesso
+        if user_to_edit.is_admin:
+            # Se for admin, o campo JSON 'permissions' pode ficar vazio,
+            # pois o método has_permission no modelo User já retorna True para admins.
+            user_to_edit.set_permissions_list([]) # Usa o método do modelo para lidar com JSON
+            # E, se você também usa a relação many-to-many 'permissoes_objeto', limpe-a:
+            user_to_edit.permissoes_objeto = []
+        else:
+            # Salva as permissões selecionadas no campo JSON 'permissions'
+            user_to_edit.set_permissions_list(form.paginas_acesso.data)
+            # E, se você usa a relação many-to-many 'permissoes_objeto', atualize-a:
+            selected_perm_names = form.paginas_acesso.data
+            selected_perm_objects = Permissao.query.filter(Permissao.nome_pagina.in_(selected_perm_names)).all()
+            user_to_edit.permissoes_objeto = selected_perm_objects
+
+
+        try:
+            db.session.commit()
+            flash('Usuário atualizado com sucesso!', 'success')
+            return redirect(url_for('gerenciar_usuarios'))
+        except Exception as e:
+            db.session.rollback()
+            # Use current_app.logger para logar erros em Flask
+            current_app.logger.error(f"Erro ao atualizar usuário: {e}", exc_info=True)
+            flash(f'Erro ao atualizar usuário: {str(e)}', 'danger')
+    else:
+        # Se for uma requisição GET (primeira vez carregando a página)
+        # ou se a validação do formulário falhou no POST:
+        # Pré-popula os checkboxes de permissão com as permissões atuais do usuário.
+        if user_to_edit.is_admin:
+            form.is_admin.data = True
+            form.paginas_acesso.data = [] # Desmarcar tudo, o JS no template irá desabilitar
+        else:
+            form.is_admin.data = False
+            # Carrega as permissões do campo JSON 'permissions' do usuário
+            form.paginas_acesso.data = user_to_edit.get_permissions_list()
+
+    return render_template('editar_usuario.html', form=form, user=user_to_edit)
+
+
+
+import pytz # Importe pytz para manipulação de fuso horário
+
+
+@app.route('/log_de_atividades')
+@login_required # Garante que apenas usuários logados podem acessar
+# @permission_required('log_atividades') # Considere adicionar esta permissão se tiver um sistema granular
+def log_atividades():
+    """
+    Exibe uma lista de todas as atividades registradas no sistema,
+    com opção de filtro por intervalo de datas e exibição em fuso horário de Brasília.
+    """
+    # 1. Captura dos parâmetros de filtro de data da requisição GET
+    data_inicial_str = request.args.get('data_inicial')
+    data_final_str = request.args.get('data_final')
+
+    # Inicia a consulta ao banco de dados, carregando o relacionamento 'user'
+    # --- CORREÇÃO AQUI: 'LogAtatividade' corrigido para 'LogAtividade' ---
+    query = LogAtividade.query.options(joinedload(LogAtividade.user))
+
+    # Variáveis para armazenar os objetos datetime das datas filtradas
+    data_inicial_dt = None
+    data_final_dt = None
+
+    # 2. Converte as strings de data para objetos datetime e trata erros
+    if data_inicial_str:
+        try:
+            # Converte a string para datetime e define a hora para o início do dia (00:00:00)
+            data_inicial_dt = datetime.strptime(data_inicial_str, '%Y-%m-%d').replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+        except ValueError:
+            flash('Data inicial inválida. Por favor, use o formato AAAA-MM-DD.', 'danger')
+            data_inicial_dt = None # Reseta para não aplicar um filtro inválido
+
+    if data_final_str:
+        try:
+            # Converte a string para datetime e define a hora para o final do dia (23:59:59.999999)
+            # Isso garante que todos os logs do dia final sejam incluídos.
+            data_final_dt = datetime.strptime(data_final_str, '%Y-%m-%d').replace(
+                hour=23, minute=59, second=59, microsecond=999999
+            )
+        except ValueError:
+            flash('Data final inválida. Por favor, use o formato AAAA-MM-DD.', 'danger')
+            data_final_dt = None # Reseta para não aplicar um filtro inválido
+
+    # 3. Aplica os filtros de data à consulta
+    if data_inicial_dt:
+        # Filtra logs onde o timestamp é maior ou igual à data inicial
+        query = query.filter(LogAtividade.timestamp >= data_inicial_dt)
+    if data_final_dt:
+        # Filtra logs onde o timestamp é menor ou igual à data final
+        query = query.filter(LogAtividade.timestamp <= data_final_dt)
+
+    try:
+        # 4. Ordena os logs (do mais recente para o mais antigo) e executa a consulta
+        logs = query.order_by(LogAtividade.timestamp.desc()).all()
+
+        # Define o fuso horário de Brasília para conversão
+        tz_brasilia = pytz.timezone('America/Sao_Paulo')
+        
+        # Itera sobre os logs para ajustar o fuso horário para exibição
+        for log in logs:
+            if log.timestamp:
+                # --- Lógica de conversão de fuso horário ---
+                # Se o timestamp do DB for um datetime ingênuo (sem tzinfo),
+                # assumimos que ele foi salvo em UTC (como corrigimos nas rotas de escrita).
+                if log.timestamp.tzinfo is None:
+                    # Primeiro, localize-o como UTC.
+                    log.timestamp = pytz.utc.localize(log.timestamp)
+                
+                # Em seguida, converta para o fuso horário de Brasília.
+                log.timestamp = log.timestamp.astimezone(tz_brasilia)
+
+    except Exception as e:
+        # Certifique-se de que app.logger ou current_app.logger está configurado
+        # para que os erros sejam registrados adequadamente em produção.
+        print(f"Erro ao buscar logs de atividades: {e}") # Para depuração rápida
+        logs = [] # Retorna uma lista vazia em caso de erro
+        flash('Não foi possível carregar os logs de atividades.', 'danger')
+
+    # 5. Renderiza o template, passando os logs e as strings de data para manter os filtros nos campos
+    return render_template('log_atividades.html', 
+                            logs=logs,
+                            data_inicial=data_inicial_str, # Passa para pré-preencher o campo de filtro
+                            data_final=data_final_str) # Passa para pré-preencher o campo de filtro
+
+
+
+# --- Bloco de inicialização (no final do app.py) ---
 if __name__ == '__main__':
-    init_db()
+    with app.app_context():
+        db.create_all()
+
+        print("Banco de dados SQLite local inicializado e tabelas criadas/atualizadas.")
+
+        # Popula etapas iniciais, se necessário
+        if not Etapa.query.first():
+            print("Populando tabela de etapas...")
+            etapas_iniciais = [
+                Etapa(nome_etapa="Aguardando Carregamento", descricao="O veículo está aguardando para ser carregado."),
+                Etapa(nome_etapa="Carregamento Iniciado", descricao="O carregamento do veículo está em andamento."),
+                Etapa(nome_etapa="Carregamento Finalizado", descricao="O veículo foi carregado e está pronto para sair."),
+                Etapa(nome_etapa="Em Trânsito", descricao="O veículo está a caminho do destino."),
+                Etapa(nome_etapa="Em Entrega", descricao="O veículo está realizando entregas."),
+                Etapa(nome_etapa="Entregue", descricao="Todas as entregas foram realizadas."),
+                Etapa(nome_etapa="Retorno ao HUB", descricao="O veículo está retornando à base."),
+                Etapa(nome_etapa="Finalizado HUB", descricao="O veículo retornou e foi finalizado no HUB."),
+                Etapa(nome_etapa="Cancelado", descricao="A entrega ou carregamento foi cancelado.")
+            ]
+            db.session.add_all(etapas_iniciais)
+            db.session.commit()
+            print("Etapas populadas com sucesso!")
+        else:
+            print("Tabela de etapas já contém dados.")
+
+        # Popula situações de pedido iniciais, se necessário
+        if not SituacaoPedido.query.first():
+            print("Populando tabela de situações de pedido...")
+            situacoes_iniciais = [
+                SituacaoPedido(nome_situacao="Em Processamento", descricao="O pedido foi recebido e está sendo preparado."),
+                SituacaoPedido(nome_situacao="Em Separação", descricao="Os itens do pedido estão sendo separados no estoque."),
+                SituacaoPedido(nome_situacao="Pronto para Envio", descricao="O pedido está embalado e aguardando coleta da transportadora."),
+                SituacaoPedido(nome_situacao="Em Trânsito", descricao="O pedido está a caminho do destino."),
+                SituacaoPedido(nome_situacao="Saiu para Entrega", descricao="O pedido saiu para entrega final ao cliente."),
+                SituacaoPedido(nome_situacao="Entregue", descricao="O pedido foi entregue com sucesso."),
+                SituacaoPedido(nome_situacao="Cancelado", descricao="O pedido foi cancelado pelo cliente ou empresa."),
+                SituacaoPedido(nome_situacao="Problema na Entrega", descricao="Ocorreu um problema durante a tentativa de entrega (ex: endereço incorreto)."),
+                SituacaoPedido(nome_situacao="Devolvido", descricao="O pedido foi devolvido ao remetente.")
+            ]
+            db.session.add_all(situacoes_iniciais)
+            db.session.commit()
+            print("Situações de pedido populadas com sucesso!")
+        else:
+            print("Tabela de situações de pedido já contém dados.")
+
     app.run(debug=True, port=5000)

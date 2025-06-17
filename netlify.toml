@@ -1,0 +1,9 @@
+[build]
+  command = "pip install -r requirements.txt"  # Instala as dependências gerais (opcional, pode ser feito na função)
+  functions = "functions"                       # Indica a pasta onde suas funções estão
+  publish = "static"                            # Diretório para arquivos estáticos (pode ser uma pasta vazia se você só usa funções)
+
+[[redirects]]
+  from = "/api/*"                               # Exemplo: Redireciona todas as chamadas para /api para sua função
+  to = "/.netlify/functions/minha_app/:splat"  # O Netlify irá rotear para sua função
+  status = 200

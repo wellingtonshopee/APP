@@ -1,0 +1,12 @@
+ID Pacote,Rota,Etapa,Observação,DataCadastro,Ações
+br000001334B,A-10,Entregue 100%,NULL,11/06/2025,Entregue no prazo
+br000001434B,A-10,Entregue 100%,NULL,11/06/2025,Entregue no prazo
+br000001534B,A-10,Entregue 100%,NULL,11/06/2025,Entregue no prazo
+br000001634B,A-10,Entregue 100%,NULL,11/06/2025,Entregue no prazo
+br000001734B,A-10,Entregue 100%,NULL,11/06/2025,Entregue no prazo
+br000001834B,A-10,In Sucesso,Niguem em casa,11/06/2025,Não Entregue
+br000001934B,A-10,Entregue com Atraso,Entregue com avaria,11/06/2025,Entregue Com Atraso
+br000002034B,A-10,Entregue 100%,NULL,11/06/2025,Entregue no prazo
+br000002134B,A-10,Entregue 100%,NULL,11/06/2025,Entregue no prazo
+br000002234B,A-10,Entregue 100%,NULL,11/06/2025,Entregue no prazo
+

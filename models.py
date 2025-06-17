@@ -1,50 +1,29 @@
+# models.py
+
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import or_
-# Importe as constantes e a função de data/hora do config.py
-from config import STATUS_EM_SEPARACAO, STATUS_REGISTRO_PRINCIPAL, get_data_hora_brasilia
+from sqlalchemy import or_ # Mantido, caso esteja em uso em outro lugar que não o modelo
+from datetime import datetime
+import pytz # Para manipulação de fuso horário, se get_data_hora_brasilia precisar
+from flask_login import UserMixin
+import json # NOVO: Importado para lidar com JSON em permissions
 
-# Certifique-se de que 'app' é inicializado em algum lugar antes de importar db
-# Ex: from sua_aplicacao import db
-# Ou, se você inicializar o db aqui, precisará passar o app depois:
+# === ADICIONADO: Importações para hashing de senha ===
+from werkzeug.security import generate_password_hash, check_password_hash
+
+# Importe get_data_hora_brasilia e outras constantes de config.py
+# Certifique-se de que config.py esteja no mesmo nível ou acessível
+from config import STATUS_EM_SEPARACAO, STATUS_REGISTRO_PRINCIPAL, get_data_hora_brasilia, PERMISSIONS
+
+# === INICIALIZE O SQLALCHEMY AQUI ===
+# db é definido AQUI e será associado ao app em app.py
 db = SQLAlchemy()
-
-# --- Constantes de Status ---
-# Você pode colocá-las aqui ou em um arquivo de configuração separado (ex: config.py)
-# Se estiverem aqui, importe-as junto com os modelos.
-
-# Status para o processo de separação/carregamento (usado em Registro e NoShow)
-STATUS_EM_SEPARACAO = {
-    'AGUARDANDO_MOTORISTA': 0, # Motorista chegou, aguardando ser direcionado (ou NoShow inicial)
-    'SEPARACAO': 1,            # Pedido/item em processo de separação/preparação
-    'FINALIZADO': 2,           # Carregamento do registro principal finalizado (ou NoShow processado)
-    'CANCELADO': 3,            # Registro principal ou NoShow cancelado
-    'TRANSFERIDO': 4,          # NoShow transferido para um registro principal
-    'AGUARDANDO_ENTREGADOR': 5 # NoShow associado e aguardando o entregador para retirada
-}
-
-# Status para o registro principal (tabela 'registro')
-STATUS_REGISTRO_PRINCIPAL = {
-    'AGUARDANDO_CARREGAMENTO': 0, # Motorista logado, aguardando atribuição de carregamento
-    'CARREGAMENTO_LIBERADO': 1,   # Carregamento associado e liberado (pode ser "em separação" na prática)
-    'FINALIZADO': 2,              # Carregamento concluído e motorista saiu
-    'CANCELADO': 3                # Registro cancelado
-}
-
-# --- Funções Auxiliares (se necessárias, podem estar em utils.py) ---
-# Se get_data_hora_brasilia() estiver em outro arquivo, importe-o.
-# Caso contrário, você pode definir uma função simples aqui para fins de demonstração.
-def get_data_hora_brasilia():
-    """Retorna a data e hora atual no fuso horário de Brasília."""
-    # Para uma implementação real, você usaria bibliotecas como pytz
-    # Ex: import pytz; return datetime.now(pytz.timezone('America/Sao_Paulo'))
-    return datetime.now()
-
 
 # --- Definição dos Modelos ---
 
 class Login(db.Model):
     __tablename__ = 'login'
-    id = db.Column(db.Integer, primary_key=True)
+    # AJUSTE CRÍTICO: Adicionado autoincrement=True
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     nome = db.Column(db.String(100), nullable=False)
     matricula = db.Column(db.String(50), unique=True, nullable=False)
     tipo_veiculo = db.Column(db.String(50))
@@ -53,68 +32,243 @@ class Login(db.Model):
     def __repr__(self):
         return f"<Login(id={self.id}, nome='{self.nome}')>"
 
+class Etapa(db.Model):
+    __tablename__ = 'etapa'
+    # AJUSTE CRÍTICO: Adicionado autoincrement=True
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    nome_etapa = db.Column(db.String(80), unique=True, nullable=False)
+    descricao = db.Column(db.String(200), nullable=True)
 
+    def __repr__(self):
+        return f"<Etapa {self.nome_etapa}>"
+
+class SituacaoPedido(db.Model):
+    __tablename__ = 'situacao_pedido'
+    # AJUSTE CRÍTICO: Adicionado autoincrement=True
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    nome_situacao = db.Column(db.String(80), unique=True, nullable=False)
+    descricao = db.Column(db.String(200), nullable=True)
+
+    def __repr__(self):
+        return f"<SituacaoPedido {self.nome_situacao}>"
+    
 class Registro(db.Model):
-    __tablename__ = 'registro' # Tabela principal de registros de carregamento
-    id = db.Column(db.Integer, primary_key=True)
+    __tablename__ = 'registro'
+    # AJUSTE CRÍTICO: Adicionado autoincrement=True
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     nome = db.Column(db.String(100), nullable=False)
     matricula = db.Column(db.String(50), nullable=False)
     data_hora_login = db.Column(db.DateTime, default=get_data_hora_brasilia)
-    rota = db.Column(db.String(50)) # Ex: T4, Rota-Azul
-    tipo_entrega = db.Column(db.String(50)) # Ex: 'Normal', 'No-Show'
+    rota = db.Column(db.String(50))
+    tipo_entrega = db.Column(db.String(50))
     cidade_entrega = db.Column(db.String(100))
     rua = db.Column(db.String(100))
     estacao = db.Column(db.String(100))
-    # Status mais granular do processo de separação/carregamento
     em_separacao = db.Column(db.Integer, default=STATUS_EM_SEPARACAO['AGUARDANDO_MOTORISTA'])
-    # Status geral do registro (para relatórios ou filtros de alto nível)
     status = db.Column(db.Integer, default=STATUS_REGISTRO_PRINCIPAL['AGUARDANDO_CARREGAMENTO'])
-    finalizada = db.Column(db.Integer, default=0) # 0 = não finalizado, 1 = finalizado
-    cancelado = db.Column(db.Integer, default=0)  # 0 = não cancelado, 1 = cancelado
-    hora_finalizacao = db.Column(db.DateTime)     # Hora que o carregamento foi FINALIZADO (ou cancelado/transferido)
+    finalizada = db.Column(db.Integer, default=0)
+    cancelado = db.Column(db.Integer, default=0)
+    hora_finalizacao = db.Column(db.DateTime)
+    motivo_cancelamento = db.Column(db.String(255), nullable=True)
 
-    # Campos que podem ser preenchidos se o motorista tiver um 'login_id'
     login_id = db.Column(db.Integer, db.ForeignKey('login.id'), nullable=True)
     login_info = db.relationship('Login', backref='registros_associados', lazy=True)
-    
-    # Campo tipo_veiculo copiado do login, para auditoria (opcional)
-    tipo_veiculo = db.Column(db.String(50)) 
+
+    tipo_veiculo = db.Column(db.String(50))
+    gaiola = db.Column(db.String(50), nullable=True)
+
+    # Relacionamento com Etapa
+    etapa_id = db.Column(db.Integer, db.ForeignKey('etapa.id'), nullable=True)
+    etapa = db.relationship('Etapa', backref='registros_associados_etapa')
+
+    # NOVOS CAMPOS PARA O PAINEL GERENCIAL
+    quantidade_pacotes = db.Column(db.Integer, default=0)
+    data_de_entrega = db.Column(db.DateTime, nullable=True)
+
+    # Relacionamento com SituacaoPedido
+    situacao_pedido_id = db.Column(db.Integer, db.ForeignKey('situacao_pedido.id'), nullable=True)
+    situacao_pedido = db.relationship('SituacaoPedido', backref='registros_associados_situacao')
 
     def __repr__(self):
         return f"<Registro(id={self.id}, matricula='{self.matricula}', rota='{self.rota}', status='{self.status}')>"
 
 class NoShow(db.Model):
-    __tablename__ = 'no_show' # Tabela para registros de 'No-Show'
-    id = db.Column(db.Integer, primary_key=True)
+    __tablename__ = 'no_show'
+    # AJUSTE CRÍTICO: Adicionado autoincrement=True
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     data_hora_login = db.Column(db.DateTime, default=get_data_hora_brasilia)
     nome = db.Column(db.String(100), nullable=False)
     matricula = db.Column(db.String(50), nullable=False)
-    gaiola = db.Column(db.String(50)) # Representa a "rota" do no-show
-    tipo_entrega = db.Column(db.String(50)) # Ex: 'No-Show'
+    gaiola = db.Column(db.String(50))
+    tipo_entrega = db.Column(db.String(50))
     rua = db.Column(db.String(100))
     estacao = db.Column(db.String(100))
-    finalizada = db.Column(db.Integer, default=0) # 0 = não finalizado, 1 = finalizado
-    cancelado = db.Column(db.Integer, default=0)  # 0 = não cancelado, 1 = cancelado
-    
-    # Status granular para o processo do NoShow
+    finalizada = db.Column(db.Integer, default=0)
+    cancelado = db.Column(db.Integer, default=0)
     em_separacao = db.Column(db.Integer, default=STATUS_EM_SEPARACAO['AGUARDANDO_MOTORISTA'])
-    hora_finalizacao = db.Column(db.DateTime)     # Hora que o NoShow foi FINALIZADO/CANCELADO/TRANSFERIDO
+    hora_finalizacao = db.Column(db.DateTime)
 
-    # Campos para auditoria de transferência:
-    # Registra o ID do registro principal para o qual este NoShow foi transferido
     transferred_to_registro_id = db.Column(db.Integer, db.ForeignKey('registro.id'), nullable=True)
     transferred_registro = db.relationship('Registro', backref='no_shows_transferidos', foreign_keys=[transferred_to_registro_id])
 
-    # Dados do motorista/registro principal que "assumiu" este NoShow
     transfer_nome_motorista = db.Column(db.String(100))
     transfer_matricula_motorista = db.Column(db.String(50))
     transfer_cidade_entrega = db.Column(db.String(100))
     transfer_tipo_veiculo = db.Column(db.String(50))
-    transfer_login_id = db.Column(db.Integer) # Não FK para evitar ciclos, apenas registra o ID
-    transfer_gaiola_origem = db.Column(db.String(50)) # Rota do registro principal que assumiu
+    transfer_login_id = db.Column(db.Integer)
+    transfer_gaiola_origem = db.Column(db.String(50))
     transfer_estacao_origem = db.Column(db.String(100))
     transfer_rua_origem = db.Column(db.String(100))
-    transfer_data_hora_login_origem = db.Column(db.DateTime) # Data/hora do login do motorista no registro principal que assumiu
+    transfer_data_hora_login_origem = db.Column(db.DateTime)
 
     def __repr__(self):
         return f"<NoShow(id={self.id}, matricula='{self.matricula}', gaiola='{self.gaiola}', status='{self.em_separacao}')>"
+
+class Cidade(db.Model):
+    __tablename__ = 'cidades'
+    # AJUSTE CRÍTICO: Adicionado autoincrement=True
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    cidade = db.Column(db.String(80), unique=True, nullable=False)
+
+    def __repr__(self):
+        return f"<Cidade {self.cidade}>"
+
+class PacoteRastreado(db.Model):
+    __tablename__ = 'pacote_rastreado'
+    # AJUSTE CRÍTICO: Adicionado autoincrement=True
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    id_pacote = db.Column(db.String(100), unique=True, nullable=False)
+    etapa_id = db.Column(db.Integer, db.ForeignKey('etapa.id'), nullable=True)
+    etapa = db.relationship('Etapa', backref='pacotes_rastreados')
+    observacao = db.Column(db.Text, nullable=True)
+    data_cadastro = db.Column(db.DateTime, default=get_data_hora_brasilia)
+
+    rota_vinculada = db.Column(db.String(100), nullable=False)
+    acoes = db.Column(db.String(255))
+
+    def __repr__(self):
+        return f'<PacoteRastreado {self.id_pacote} - Rota: {self.rota_vinculada}>'
+
+# --- Definição do Modelo de Permissão ---
+class Permissao(db.Model):
+    __tablename__ = 'permissao'
+    # AJUSTE CRÍTICO: Adicionado autoincrement=True
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    nome_pagina = db.Column(db.String(80), unique=True, nullable=False)
+    descricao = db.Column(db.String(200), nullable=True)
+
+    def __repr__(self):
+        return f'<Permissao {self.nome_pagina}>'
+
+# Tabela de associação para User e Permissao
+user_permissoes = db.Table('user_permissoes',
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
+    db.Column('permissao_id', db.Integer, db.ForeignKey('permissao.id'), primary_key=True)
+)
+
+# --- CLASSE USER (Modelo de Usuário Principal) ---
+class User(db.Model, UserMixin):
+    __tablename__ = 'user'
+    # AJUSTE CRÍTICO: Adicionado autoincrement=True
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    username = db.Column(db.String(64), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    
+    # ATENÇÃO: Hashing de senha é fundamental para segurança em produção!
+    password = db.Column(db.String(128), nullable=False) # Armazenará o hash da senha
+
+    # === MÉTODOS DE HASHING DE SENHA REINTRODUZIDOS ===
+    def set_password(self, password):
+        self.password = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password, password)
+
+    matricula = db.Column(db.String(20), unique=True, nullable=True)
+    nome_completo = db.Column(db.String(100), nullable=True)
+    is_admin = db.Column(db.Boolean, default=False) # COLUNA is_admin ÚNICA AGORA
+    ativo = db.Column(db.Boolean, default=True)
+
+    # Coluna que armazena a lista de chaves de permissão em formato JSON (string)
+    permissions = db.Column(db.Text, default='[]') # Use TEXT e manipule JSON
+
+    # Relacionamento para permissões granulares baseadas em Permissao
+    permissoes_objeto = db.relationship('Permissao', secondary=user_permissoes, lazy='subquery',
+                                         backref=db.backref('users_with_access', lazy=True))
+
+    # --- Métodos para UserMixin e Permissões ---
+    def get_id(self):
+        return str(self.id)
+
+    def is_active(self):
+        return self.ativo
+
+    def is_anonymous(self):
+        return False
+
+    def is_authenticated(self):
+        return True
+
+    # Método para obter as permissões da coluna JSON
+    def get_permissions_list(self):
+        """Retorna a lista de chaves de permissão do campo 'permissions' (JSON)."""
+        try:
+            return json.loads(self.permissions)
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    # Método para definir as permissões na coluna JSON
+    def set_permissions_list(self, permissions_list):
+        """Define a lista de chaves de permissão para o campo 'permissions' (JSON)."""
+        self.permissions = json.dumps(permissions_list)
+
+    # === LÓGICA DE HAS_PERMISSION AJUSTADA ===
+    def has_permission(self, permission_key):
+        """
+        Verifica se o usuário tem uma permissão específica.
+        Admins têm todas as permissões.
+        Outros usuários têm permissões baseadas na coluna 'permissions' (JSON).
+        """
+        if self.is_admin:
+            return True
+        # Verifica se a chave está na lista de permissões obtida da coluna JSON
+        return permission_key in self.get_permissions_list()
+
+    def __repr__(self):
+        return f"User('{self.username}', '{self.email}')"
+
+
+class LogAtividade(db.Model):
+    __tablename__ = 'log_atividade' # Adicionado nome da tabela
+    # AJUSTE CRÍTICO: Adicionado autoincrement=True
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    timestamp = db.Column(db.DateTime, default=get_data_hora_brasilia) # Usar get_data_hora_brasilia
+    # Coluna do ID do usuário, nomeada como 'user_id'
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True) 
+    
+    # === DESCOMENTE ESTA LINHA AQUI! ===
+    user = db.relationship('User', backref='logs_atividade') # Relacionamento com o modelo User
+    
+    acao = db.Column(db.String(255), nullable=False)
+    detalhes = db.Column(db.Text, nullable=True)
+    ip_origem = db.Column(db.String(45), nullable=True)
+
+    def __repr__(self):
+        return f"<LogAtividade {self.id} - {self.acao} - {self.timestamp}>"
+
+
+# --- Função para Criar Permissões Iniciais (manter esta) ---
+def criar_permissoes_iniciais():
+    """Cria todas as permissões de página no banco de dados, se ainda não existirem."""
+    # Garante que as PERMISSIONS do config.py estão disponíveis aqui
+    # Esta função será chamada de app.py dentro do app_context
+    paginas_para_permissao = list(PERMISSIONS.keys()) # Usa as chaves do seu dicionário PERMISSIONS
+
+    for nome_pagina in paginas_para_permissao:
+        permissao_existente = Permissao.query.filter_by(nome_pagina=nome_pagina).first()
+        if not permissao_existente:
+            nova_permissao = Permissao(nome_pagina=nome_pagina, descricao=PERMISSIONS[nome_pagina])
+            db.session.add(nova_permissao)
+            print(f"Permissão '{nome_pagina}' adicionada.")
+    db.session.commit()
+    print("Verificação e criação de permissões iniciais concluída.")
