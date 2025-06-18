@@ -1,407 +1,79 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Seu Sistema{% endblock %}</title>
+01
+03
+05
+06
+07
+09
+10
+13
+15
+16
+19
+20
+22
+23
+24
 
-    <!-- Inclusão do Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Inclusão do Font Awesome CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+01
+04
+05
+07
+08
+10
+13
+15
+16
+19
+20
+21
+23
+24
+25
 
-    <style>
-        /* ESTILOS DE LAYOUT GLOBAIS */
-        /* Estes estilos controlam o layout principal da página (body, sidebar, main-content) */
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            background-color: #f4f4f4;
-            color: #333;
-            display: flex; /* Permite layout flexível com sidebar e conteúdo */
-            min-height: 100vh;
-            overflow-x: hidden; /* Evita rolagem horizontal durante a transição */
-        }
+04
+05
+06
+07
+12
+13
+14
+16
+17
+19
+20
+21
+22
+23
+25
 
-        /* Estilos do Menu Lateral (Sidebar) */
-        .sidebar {
-            height: 100%;
-            width: 250px; /* Largura padrão para desktop */
-            position: fixed; /* Fixa o sidebar na tela */
-            z-index: 1000; /* Garante que fique acima de outros elementos */
-            top: 0;
-            left: 0;
-            background-color: #343a40; /* Cor de fundo escura */
-            overflow-x: hidden;
-            transition: transform 0.5s ease; /* Transição suave para esconder/mostrar */
-            padding-top: 20px; /* Espaço do topo */
-            box-shadow: 2px 0 5px rgba(0,0,0,0.5); /* Sombra para profundidade */
-            color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center; /* Centraliza itens como logo e título */
-            justify-content: flex-start;
-            transform: translateX(0); /* Posição inicial: visível em desktop */
-            /* DEBUG REMOVER DEPOIS: */ /* border: 2px solid red; */
-        }
+02
+05
+06
+07
+08
+09
+13
+15
+16
+19
+20
+22
+23
+24
+25
 
-        .sidebar.hidden {
-            transform: translateX(-250px) !important; /* Esconde o sidebar para a esquerda, !important para forçar */
-            /* DEBUG REMOVER DEPOIS: */ /* background-color: #555; */
-            /* DEBUG REMOVER DEPOIS: */ /* border: 2px solid purple; */
-        }
-        .sidebar.visible { /* Essa classe é para controle JS no mobile, se preferir usá-la */
-             transform: translateX(0);
-        }
-
-        .sidebar .logo-sidebar {
-            width: 120px; /* Tamanho da logo na sidebar */
-            margin-bottom: 20px;
-            border-radius: 8px; /* Cantos arredondados */
-            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3); /* Sombra */
-        }
-
-        .sidebar h2.menu-title { /* Título do menu na sidebar */
-            color: white;
-            margin-bottom: 20px;
-            font-size: 1.4em; /* Tamanho do título do menu */
-        }
-
-        .sidebar ul {
-            list-style-type: none;
-            padding: 0;
-            width: 100%;
-        }
-
-        .sidebar ul li a {
-            padding: 15px 25px;
-            text-decoration: none;
-            font-size: 1.1em;
-            color: #f8f9fa;
-            display: block;
-            transition: 0.3s;
-            text-align: center;
-        }
-
-        .sidebar ul li a:hover {
-            background-color: #f30909; /* Cor de destaque ao passar o mouse */
-            color: white;
-        }
-
-        /* Estilos do Conteúdo Principal */
-        .main-content {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            margin-left: 250px; /* Espaço para o sidebar visível em desktop */
-            transition: margin-left 0.5s ease, width 0.5s ease; /* Transição suave */
-            width: calc(100% - 250px); /* Ajusta a largura quando o menu está visível */
-            padding: 0; /* Garante que não há padding extra */
-            /* DEBUG REMOVER DEPOIS: */ /* border: 2px solid blue; */
-        }
-
-        .main-content.expanded {
-            margin-left: 0 !important; /* Ocupa toda a largura quando o sidebar está escondido, !important para forçar */
-            width: 100% !important; /* !important para forçar */
-            /* DEBUG REMOVER DEPOIS: */ /* border: 2px solid green; */
-        }
-
-        /* MEDIA QUERIES PARA RESPONSIVIDADE */
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 180px; /* Reduz a largura do sidebar em telas menores */
-                transform: translateX(-180px) !important; /* Escondido por padrão em mobile, !important para forçar */
-            }
-            .sidebar.hidden {
-                transform: translateX(-180px) !important; /* Permanece escondido, !important para forçar */
-            }
-            .sidebar.visible { /* Classe para mostrar o sidebar em mobile (adicionada via JS) */
-                transform: translateX(0) !important; /* Mostra quando ativado, !important para forçar */
-            }
-            .main-content {
-                margin-left: 0 !important; /* Começa sem margem à esquerda em mobile, !important para forçar */
-                width: 100% !important; /* Ocupa toda a largura, !important para forçar */
-            }
-            .main-content.expanded { /* Mesmo para quando expandido em mobile, não há margem */
-                margin-left: 0 !important;
-                width: 100% !important;
-            }
-            .top-banner { /* Ajustes para o banner em telas menores */
-                width: 100%;
-                left: 0;
-            }
-        }
-
-        /* ESTILOS ESPECÍFICOS DO BANNER */
-        .top-banner {
-            background-color: #f8f9fa; /* Cor de fundo clara */
-            padding: 10px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 1px solid #e0e0e0;
-            position: fixed; /* Fixa o banner no topo */
-            width: calc(100% - 250px); /* Ajusta a largura para o sidebar */
-            top: 0;
-            left: 250px; /* Alinha com o fim do sidebar */
-            z-index: 1010; /* Garante que o banner fique acima do conteúdo */
-            box-shadow: 0 2px 4px rgba(0,0,0,.05);
-            transition: all 0.3s ease-in-out;
-            /* DEBUG REMOVER DEPOIS: */ /* border: 2px solid yellow; */
-        }
-        .top-banner.toggled {
-            width: 100%; /* Ocupa largura total quando sidebar escondido */
-            left: 0; /* Alinha à esquerda */
-        }
-        .top-banner .logo {
-            height: 40px; /* Tamanho da logo */
-            margin-right: 15px;
-        }
-
-        /* Estilos para a seção de filtro no sidebar (se necessário) */
-        .filter-section {
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 5px;
-            margin: 15px;
-            color: #fff;
-        }
-        .filter-section h5 {
-            margin-bottom: 15px;
-            color: #fff;
-        }
-        .filter-section .form-label {
-            color: #fff;
-        }
-        .filter-section .form-control {
-            background-color: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: #fff;
-        }
-        .filter-section .form-control::placeholder {
-            color: rgba(255, 255, 255, 0.7);
-        }
-        .filter-section .form-control:focus {
-            background-color: rgba(255, 255, 255, 0.3);
-            border-color: #88c0d0;
-            box-shadow: 0 0 0 0.25rem rgba(136, 192, 208, 0.25);
-            color: #fff;
-        }
-
-        /* Estilos do Container para o conteúdo principal */
-        .container-fluid {
-            padding: 20px;
-            overflow-x: auto;
-            /* Garante que o conteúdo role abaixo do banner fixo */
-            /* Se houver padding-top no main-content, este container pode não precisar */
-        }
-        /* Estilos da Tabela (se genéricos para todo o sistema) */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            background-color: #fff;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            border-radius: 8px; /* Adiciona cantos arredondados à tabela */
-        }
-        table thead th {
-            background-color: #f2f2f2;
-            color: #333;
-            font-size: 0.9em;
-            border-bottom: 2px solid #ddd;
-        }
-        table th, table td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-            white-space: nowrap;
-        }
-        table tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-        table tr:hover {
-            background-color: #f1f1f1;
-        }
-
-        /* Flash messages */
-        .flashes {
-            list-style-type: none;
-            padding: 0;
-            margin: 20px 0;
-        }
-        .flashes li {
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-            font-weight: bold;
-        }
-        .flash.success { background-color: #d4edda; color: #155724; border-color: #c3e6cb; }
-        .flash.danger { background-color: #f8d7da; color: #721c24; border-color: #f5c6cb; }
-        .flash.warning { background-color: #fff3cd; color: #856404; border-color: #ffeeba; }
-    </style>
-    {% block head_extra %}{% endblock %} {# Para CSS ou meta tags adicionais em páginas filhas #}
-</head>
-
-<body>
-    <div id="wrapper" style="display: flex; width: 100%; min-height: 100vh;">
-        <!-- Sidebar -->
-        <div id="mySidebar" class="sidebar hidden">
-            {# Substitua 'images/your_sidebar_logo.png' pelo caminho real da sua logo para o sidebar #}
-            <img src="{{ url_for('static', filename='images/your_sidebar_logo.png') }}"
-                 onerror="this.onerror=null; this.src='https://placehold.co/120x120/343a40/ffffff?text=LOGO';"
-                 alt="Logo SysSPX" class="logo-sidebar">
-            <h2 class="menu-title">Menu</h2>
-            <ul>
-                <li><a href="{{ url_for('gerenciar_usuarios') }}">Gerenciar Usuários</a></li>
-                <li><a href="{{ url_for('cadastro_usuario') }}">Cadastrar Novo Usuário</a></li>
-                {# Links de menu comuns a todas as páginas #}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
-                </li>
-                {% if current_user.is_authenticated %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('painel_gerencial') }}">Painel Gerencial</a>
-                    </li>
-                {% endif %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('registros_finalizados') }}">Registros Finalizados</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('pacotes_rota') }}">Pacotes por Rota</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('adicionar_situacao_pedido') }}">Situações de Pedido</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('log_atividades') }}">Log de Atividades</a>
-                </li>
-                {# Fim dos links de menu comuns #}
-                <li><a href="#">Status de Entrega</a></li>
-                <li><a href="#">Adicionar Etapa</a></li>
-                <li><a href="#">Adicionar Situação do Pedido</a></li>
-                <li><a href="#">Configurações</a></li>
-                <li><a href="{{ url_for('logout') }}">Sair</a></li> {# Exemplo de link de logout #}
-            </ul>
-
-            {# Filtros de Matrícula e Usuário dentro do Sidebar #}
-            {# Removido: Filtros de Matrícula e Usuário agora são específicos de 'gerenciar_usuarios.html' #}
-            {# Se você quiser filtros globais, eles voltariam aqui. #}
-        </div>
-        <!-- /#sidebar-wrapper -->
-
-        <!-- Page Content -->
-        <div id="mainContent" class="main-content expanded" style="padding-top: 70px;"> {# Adiciona padding-top para o banner fixo #}
-            <!-- Top Banner Fixo -->
-            <div class="top-banner">
-                <div class="d-flex align-items-center">
-                    <img src="{{ url_for('static', filename='images/your_header_logo.png') }}"
-                         onerror="this.onerror=null; this.src='https://placehold.co/40x40/f8f9fa/000000?text=LOGO';"
-                         alt="Logo da Empresa" class="logo">
-                    {# Novo bloco para o título dinâmico do banner #}
-                    {% block top_banner_title %}
-                        <h3 class="mb-0 ms-2">SysSPX - Gerenciamento</h3>
-                    {% endblock %}
-                </div>
-                <button class="btn btn-outline-secondary" id="menuToggle">
-                    <i class="fas fa-bars"></i> Esconder Menu
-                </button>
-            </div>
-
-            <!-- Conteúdo da Página Específica (ex: gerenciar_usuarios.html) -->
-            <div class="container-fluid mt-4">
-                {% block content %}{% endblock %}
-            </div>
-        </div>
-        <!-- /#page-content-wrapper -->
-    </div>
-
-    <!-- Inclusão do Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var sidebar = document.getElementById('mySidebar');
-            var mainContent = document.getElementById('mainContent');
-            var menuToggle = document.getElementById('menuToggle');
-
-            // DEBUG: Log elements found
-            console.log('DOM Content Loaded!');
-            console.log('Sidebar element:', sidebar);
-            console.log('Main Content element:', mainContent);
-            console.log('Menu Toggle element:', menuToggle);
-
-            // Inicialmente, esconde o sidebar em telas pequenas, mostra em telas grandes
-            if (window.innerWidth <= 768) {
-                sidebar.classList.add('hidden');
-                mainContent.classList.add('expanded');
-                // Altera o texto do botão para "Mostrar Menu" em telas pequenas
-                if (menuToggle) {
-                    menuToggle.innerHTML = '<i class="fas fa-bars"></i> Mostrar Menu';
-                }
-            } else {
-                sidebar.classList.remove('hidden');
-                mainContent.classList.remove('expanded');
-                // Altera o texto do botão para "Esconder Menu" em telas grandes
-                if (menuToggle) {
-                    menuToggle.innerHTML = '<i class="fas fa-bars"></i> Esconder Menu';
-                }
-            }
-
-            if (menuToggle) {
-                menuToggle.addEventListener('click', function() {
-                    // DEBUG: Log click event
-                    console.log("Menu toggle clicked!");
-                    console.log("Sidebar classes BEFORE toggle:", sidebar.classList);
-                    console.log("MainContent classes BEFORE toggle:", mainContent.classList);
-
-                    sidebar.classList.toggle('hidden');
-                    mainContent.classList.toggle('expanded');
-                    // O top-banner também precisa ajustar sua largura/posição
-                    document.querySelector('.top-banner').classList.toggle('toggled');
-
-
-                    // DEBUG: Log classes AFTER toggle
-                    console.log("Sidebar classes AFTER toggle:", sidebar.classList);
-                    console.log("MainContent classes AFTER toggle:", mainContent.classList);
-
-                    // Altera o texto e ícone do botão
-                    if (sidebar.classList.contains('hidden')) {
-                        menuToggle.innerHTML = '<i class="fas fa-bars"></i> Mostrar Menu';
-                    } else {
-                        menuToggle.innerHTML = '<i class="fas fa-bars"></i> Esconder Menu';
-                    }
-                });
-            } else {
-                console.error("Erro: O botão menuToggle não foi encontrado!");
-            }
-
-
-            // Opcional: ajustar sidebar e mainContent ao redimensionar a tela
-            window.addEventListener('resize', function() {
-                // DEBUG: Log resize event
-                console.log('Window resized!');
-                var topBanner = document.querySelector('.top-banner');
-                if (window.innerWidth <= 768) {
-                    sidebar.classList.add('hidden');
-                    mainContent.classList.add('expanded');
-                    if (menuToggle) {
-                        menuToggle.innerHTML = '<i class="fas fa-bars"></i> Mostrar Menu';
-                    }
-                    if (topBanner) {
-                        topBanner.classList.add('toggled');
-                    }
-                } else {
-                    sidebar.classList.remove('hidden');
-                    mainContent.classList.remove('expanded');
-                    if (menuToggle) {
-                        menuToggle.innerHTML = '<i class="fas fa-bars"></i> Esconder Menu';
-                    }
-                    if (topBanner) {
-                        topBanner.classList.remove('toggled');
-                    }
-                }
-            });
-        });
-    </script>
-    {% block scripts_extra %}{% endblock %} {# Para scripts adicionais em páginas filhas #}
-</body>
-</html>
+02
+03
+04
+09
+10
+12
+13
+15
+16
+17
+19
+20
+21
+23
+24

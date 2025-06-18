@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Listar Registros de Pacotes</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background-color: #f4f4f4;
+            color: #333;
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Estilos do Menu Lateral (Sidebar) */
+        .sidebar {
+            height: 100%;
+            width: 250px;
+            position: fixed;
+            z-index: 1000;
+            top: 0;
+            left: 0;
+            background-color: #343a40;
+            overflow-x: hidden;
+            transition: transform 0.5s ease;
+            padding-top: 60px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            transform: translateX(0);
+        }
+        .sidebar.hidden {
+            transform: translateX(-250px);
+        }
+        .sidebar.visible {
+            transform: translateX(0);
+        }
+        .sidebar .logo-sidebar {
+            width: 150px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        .sidebar h2 {
+            color: white;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+        }
+        .sidebar ul {
+            list-style-type: none;
+            padding: 0;
+            width: 100%;
+        }
+        .sidebar ul li a {
+            padding: 15px 25px;
+            text-decoration: none;
+            font-size: 1.1em;
+            color: #f8f9fa;
+            display: block;
+            transition: 0.3s;
+            text-align: center;
+        }
+        .sidebar ul li a:hover {
+            background-color: #0056b3;
+            color: white;
+        }
+
+        /* Estilos do Conteúdo Principal */
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            margin-left: 250px;
+            transition: margin-left 0.5s ease;
+            width: calc(100% - 250px);
+            padding: 0;
+        }
+        .main-content.expanded {
+            margin-left: 0;
+            width: 100%;
+        }
+
+        /* Estilos para o banner */
+        .banner {
+            background-color: #f30909;
+            color: white;
+            padding: 70px 20px 20px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .header-banner-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            right: 20px;
+            gap: 10px;
+            z-index: 10;
+            width: auto;
+        }
+        .logo-banner {
+            height: 50px;
+            width: auto;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        .menu-toggle {
+            background: none;
+            border: none;
+            color: #f8f9fa;
+            font-size: 2em;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+        .banner .title {
+            margin-top: 10px;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            color: white;
+            text-align: center;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Estilos do Container e Formulário */
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex-grow: 1;
+        }
+        h1 {
+            text-align: center;
+            color: #0056b3;
+            margin-bottom: 30px;
+        }
+        .flash { padding: 10px; margin-bottom: 15px; border-radius: 4px; }
+        .flash.success { background-color: #d4edda; color: #155724; border-color: #c3e6cb; }
+        .flash.danger { background-color: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+        .flash.warning { background-color: #fff3cd; color: #856404; border-color: #ffeeba; }
+
+        /* Estilos dos Filtros */
+        .filter-section {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
+        }
+        .filter-section .form-group {
+            flex: 1;
+            min-width: 180px; /* Ajuste para ter mais de um campo por linha em desktop */
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end; /* Alinha labels ao topo e inputs/selects à base */
+        }
+        .filter-section label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 0.9em;
+            color: #555;
+        }
+        .filter-section input[type="text"],
+        .filter-section input[type="date"],
+        .filter-section select {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 0.9em;
+            width: 100%;
+        }
+        .filter-section button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: 10px; /* Ajuste para alinhar com os campos quando quebra de linha */
+        }
+        .filter-section button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Estilos da Tabela de Pacotes */
+        .pacotes-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .pacotes-table th, .pacotes-table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        .pacotes-table th {
+            background-color: #007bff;
+            color: white;
+            font-size: 0.9em;
+        }
+        .pacotes-table tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        .pacotes-table button.delete-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.85em;
+        }
+        .pacotes-table button.delete-btn:hover {
+            background-color: #c82333;
+        }
+
+        /* Media Queries para Responsividade */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 180px;
+                transform: translateX(-180px);
+            }
+            .sidebar.hidden {
+                transform: translateX(-180px);
+            }
+            .sidebar.visible {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+            }
+            .main-content.expanded {
+                margin-left: 0;
+            }
+            .banner {
+                padding-top: 60px;
+            }
+            .header-banner-controls {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+            }
+            .logo-banner {
+                height: 40px;
+            }
+            .banner .title {
+                margin-top: 5px;
+                font-size: 1.5em;
+                padding-left: 0;
+            }
+            .filter-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .filter-section .form-group {
+                min-width: unset;
+            }
+            .filter-section button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar hidden" id="mySidebar">
+        <h2>Menu</h2>
+        <ul>
+           <li><a href="{{ url_for('menu_principal') }}"><i class="fas fa-home"></i> Página Inicial</a></li>
+            <li><a href="{{ url_for('registros') }}"><i class="fas fa-clipboard-list"></i> Painel do Operador</a></li>
+            <li><a href="{{ url_for('registro_no_show') }}"><i class="fas fa-times-circle"></i> Listar Registros No-Show</a></li>
+            <li><a href="{{ url_for('associacao_no_show') }}"><i class="fas fa-plus-circle"></i> Criar Registro No-Show</a></li>
+            <li><a href="{{ url_for('registros_finalizados') }}"><i class="fas fa-file-alt"></i> Relatório de Registros</a></li>
+            <li><a href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+            {% if current_user.is_authenticated %}
+                <li><a href="{{ url_for('painel_gerencial') }}"><i class="fas fa-chart-line"></i> Painel Gerencial</a></li>
+            {% endif %}
+            <li><a href="{{ url_for('pacotes_rota') }}"><i class="fas fa-route"></i> Pacotes por Rota</a></li>
+            <li><a href="{{ url_for('listar_registros') }}"><i class="fas fa-list-alt"></i> Listar Registros (Filtro)</a></li>
+            <li><a href="{{ url_for('gerenciar_usuarios') }}"><i class="fas fa-users-cog"></i> Gerenciar Usuários</a></li>
+            <li><a href="{{ url_for('cadastro_usuario') }}"><i class="fas fa-user-plus"></i> Cadastrar Novo Usuário</a></li>
+            <li><a href="{{ url_for('log_atividades') }}"><i class="fas fa-clipboard-list"></i> Log de Atividades</a></li>
+            <li><a href="{{ url_for('status_entrega') }}"><i class="fas fa-shipping-fast"></i> Status de Entrega</a></li>
+            <li><a href="{{ url_for('adicionar_situacao_pedido') }}"><i class="fas fa-tags"></i> Situação dos Pedidos</a></li>
+            <li><a href="{{ url_for('adicionar_etapa') }}"><i class="fas fa-list-ol"></i> Etapas da Entrega</a></li>
+            <li><a href="{{ url_for('menu_principal') }}"><i class="fas fa-cog"></i> Configurações</a></li>
+            {% if current_user.is_authenticated %}
+                <li><a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
+            {% else %}
+                <li><a href="{{ url_for('login2') }}"><i class="fas fa-sign-in-alt"></i> Login Sistema</a></li>
+            {% endif %}
+        </ul>
+    </div>
+
+    <div class="main-content expanded" id="mainContent">
+        <div class="banner">
+            <div class="header-banner-controls">
+                <button class="menu-toggle" id="menuToggle">&#9776;</button>
+                <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" alt="Logo no Banner" class="logo-banner">
+            </div>
+            <h1 class="title">Listar Registros de Pacotes</h1>
+        </div>
+
+        <div class="container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                <ul class="flashes">
+                {% for category, message in messages %}
+                  <li class="flash {{ category }}">{{ message }}</li>
+                {% endfor %}
+                </ul>
+              {% endif %}
+            {% endwith %}
+
+            <h2>Filtros de Pacotes</h2>
+            <div class="filter-section">
+                <div class="form-group">
+                    <label for="filterRota">Rota:</label>
+                    <select id="filterRota" name="filterRota">
+                        <option value="todos">Todas as Rotas</option>
+                        {% for rota in rotas_existentes %}
+                            <option value="{{ rota }}" {% if rota_selecionada_no_form == rota %}selected{% endif %}>{{ rota }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="filterIdPacote">ID Pacote:</label>
+                    <input type="text" id="filterIdPacote" placeholder="Ex: BR123456789">
+                </div>
+                <div class="form-group">
+                    <label for="filterEtapa">Etapa da Entrega:</label>
+                    <select id="filterEtapa">
+                        <option value="">Todas</option>
+                        <option value="Entregue 100%">Entregue 100%</option>
+                        <option value="In Sucesso">In Sucesso</option>
+                        <option value="Entregue com Atraso">Entregue com Atraso</option>
+                        <option value="Avaria - Motorista">Avaria - Motorista</option>
+                        <option value="Devolvido">Devolvido</option>
+                        {% for etapa in etapas %}
+                            <option value="{{ etapa.nome_etapa }}">{{ etapa.nome_etapa }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="filterDataEntrega">Data da Entrega:</label>
+                    <input type="date" id="filterDataEntrega">
+                </div>
+                <div class="form-group">
+                    <label for="filterStatusEntrega">Status da Entrega:</label>
+                    <select id="filterStatusEntrega">
+                        <option value="">Todos</option>
+                        <option value="Não Entregue">Não Entregue</option>
+                        <option value="Entregue com Atraso">Entregue com Atraso</option>
+                        <option value="Entregue no prazo">Entregue no prazo</option>
+                        {% for situacao in situacoes_pedido %}
+                            <option value="{{ situacao.nome_situacao }}">{{ situacao.nome_situacao }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="button" onclick="carregarRegistros()">Aplicar Filtros</button>
+            </div>
+
+            <table class="pacotes-table" id="registrosTable">
+                <thead>
+                    <tr>
+                        <th>ID Pacote</th>
+                        <th>Rota</th>
+                        <th>Etapa da Entrega</th>
+                        <th>Observação</th>
+                        <th>Data/Hora Entrega</th>
+                        <th>Status da Entrega</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="6">Utilize os filtros acima para carregar os registros.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Lógica para alternar o menu lateral
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.getElementById('mySidebar');
+        const mainContent = document.getElementById('mainContent');
+
+        menuToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('hidden');
+            mainContent.classList.toggle('expanded');
+            if (window.innerWidth <= 768) {
+                sidebar.classList.toggle('visible');
+            }
+        });
+
+        // Ocultar o menu quando um link é clicado (útil em mobile)
+        sidebar.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', function() {
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.add('hidden');
+                    sidebar.classList.remove('visible');
+                    mainContent.classList.add('expanded');
+                }
+            });
+        });
+
+        // Função para carregar registros com base nos filtros
+        async function carregarRegistros() {
+            const filterRota = document.getElementById('filterRota').value;
+            const filterIdPacote = document.getElementById('filterIdPacote').value.trim();
+            const filterEtapa = document.getElementById('filterEtapa').value;
+            const filterDataEntrega = document.getElementById('filterDataEntrega').value;
+            const filterStatusEntrega = document.getElementById('filterStatusEntrega').value;
+            
+            const tbody = document.querySelector('#registrosTable tbody');
+            tbody.innerHTML = '<tr><td colspan="6">Carregando registros...</td></tr>';
+
+            let apiUrl = `/api/listar_registros`; // Nova rota para listagem geral de registros
+            const params = new URLSearchParams();
+
+            if (filterRota && filterRota !== 'todos') {
+                params.append('rota', filterRota);
+            }
+            if (filterIdPacote) {
+                params.append('id_pacote', filterIdPacote);
+            }
+            if (filterEtapa) {
+                params.append('etapa', filterEtapa);
+            }
+            if (filterDataEntrega) {
+                params.append('data_entrega', filterDataEntrega);
+            }
+            if (filterStatusEntrega) {
+                params.append('status_entrega', filterStatusEntrega);
+            }
+
+            if (params.toString()) {
+                apiUrl += `?${params.toString()}`;
+            }
+
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const registros = await response.json();
+
+                tbody.innerHTML = '';
+                if (registros.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6">Nenhum registro encontrado com os filtros aplicados.</td></tr>';
+                } else {
+                    registros.forEach(registro => {
+                        const row = `
+                            <tr>
+                                <td>${registro.id_pacote || '-'}</td>
+                                <td>${registro.rota_vinculada || '-'}</td>
+                                <td>${registro.etapa || 'Não definida'}</td>
+                                <td>${registro.observacao || '-'}</td>
+                                <td>${registro.data_cadastro || '-'}</td>
+                                <td>${registro.acoes || '-'}</td>
+                            </tr>
+                        `;
+                        tbody.insertAdjacentHTML('beforeend', row);
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao carregar registros:', error);
+                tbody.innerHTML = '<tr><td colspan="6" style="color: red;">Erro ao carregar registros. Tente novamente.</td></tr>';
+            }
+        }
+
+        // Carrega os registros iniciais ao carregar a página (com filtros padrão, se houver)
+        document.addEventListener('DOMContentLoaded', function() {
+            carregarRegistros(); 
+        });
+    </script>
+</body>
+</html>
