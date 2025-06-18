@@ -1,52 +1,50 @@
 # app.py
 
 # Importações principais do Flask e extensões
-from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, abort,current_app , session # Adicionado 'session'
+from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, abort, current_app, session
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 from flask_migrate import Migrate
-from werkzeug.security import generate_password_hash, check_password_hash # Adicionado/Confirmado ambos os hashes!
+import supabase
+from werkzeug.security import generate_password_hash, check_password_hash
 from collections import Counter
 from io import BytesIO
 
 # Importações de tempo e data
-from datetime import datetime, timedelta, timezone # Adicionado 'timezone' para datetime.now(timezone.utc)
-import pytz # Para fusos horários específicos se necessário para outras lógicas
-from dateutil import tz # Adicionado de volta, pois você pode usá-lo em outros projetos para manipulação de TZ.
-from functools import wraps # Para o decorador role_required (se você usar a lógica de permissões)
+from datetime import datetime, timedelta, timezone
+import pytz
+from dateutil import tz
+from functools import wraps
 
 # Importações de SQLAlchemy e funções de banco de dados
-from sqlalchemy import distinct, func, or_ # Adicionado 'or_' - comum para queries complexas
+from sqlalchemy import distinct, func,cast, Date, or_
+from supabase import create_client, Client
+from dotenv import load_dotenv # Importa para carregar variáveis do .env
 
 # Importações de componentes do seu projeto (models, forms, config)
 from models import db, Login, Registro, NoShow, Etapa, Cidade, SituacaoPedido, PacoteRastreado, User, Permissao, LogAtividade
-from forms import SistemaLoginForm, CadastroUsuarioForm, EditarUsuarioForm, NovaSenhaForm # Ajustado
+from forms import SistemaLoginForm, CadastroUsuarioForm, EditarUsuarioForm, NovaSenhaForm
 from config import STATUS_EM_SEPARACAO, STATUS_REGISTRO_PRINCIPAL, REGISTROS_POR_PAGINA, get_data_hora_brasilia, PERMISSIONS
-from sqlalchemy.orm import joinedload # Importe joinedload para carregar relacionamentos
-
+from sqlalchemy.orm import joinedload
 
 # Outras importações (verifique se realmente usa cada uma no app.py)
-import os
-import threading # Se estiver usando threads no app principal
-import random # Se estiver usando números aleatórios
-import requests # Para requisições HTTP (APIs, feeds)
-import feedparser # Para feeds RSS (se usar)
-from math import ceil # Se usar funções matemáticas como ceil
-from io import BytesIO # Se manipular bytes para streams/arquivos
-import psycopg2 # **ATENÇÃO: Se não estiver usando PostgreSQL, REMOVA esta linha!**
-from bs4 import BeautifulSoup # Para web scraping (se usar)
+import os # Importado para acessar variáveis de ambiente
+import threading
+import random
+import requests
+import feedparser
+from math import ceil
+from io import BytesIO
+import psycopg2
+from bs4 import BeautifulSoup
 from forms import SistemaLoginForm, CadastroUsuarioForm, EditarUsuarioForm, NovaSenhaForm
 
-
-# As linhas abaixo não são importações, são comentários, mas mantidas por sua solicitação.
-# Removidas (Não usadas, duplicadas ou importadas de outro lugar):
-# from mimetypes import inited # Não é um módulo comum para flask apps
-# from flask_sqlalchemy import SQLAlchemy # db é inicializado em models.py
-# current_app # Não é necessário aqui se login_manager for vinculado diretamente
+# Carrega as variáveis de ambiente do arquivo .env
+# ESSA LINHA É CRÍTICA E DEVE ESTAR NO INÍCIO, ANTES DE ACESSAR OS.ENVIRON.GET()
+load_dotenv()
 
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
-
 
 # 2. Initialize Flask app
 app = Flask(__name__)
@@ -54,6 +52,30 @@ app.config['SECRET_KEY'] = 'sua_chave_secreta_aqui'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres.fjurmbfvfuzhyrwkduav:Qaz241059#MLP140308@aws-0-us-east-2.pooler.supabase.com:5432/postgres'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
+
+# --- Configuração e Inicialização do Cliente Supabase ---
+# Lendo as variáveis de ambiente pelos SEUS NOMES
+SUPABASE_URL = os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+
+# Verifica se as variáveis foram carregadas
+if not SUPABASE_URL or not SUPABASE_KEY:
+    print("ERRO: Variáveis de ambiente SUPABASE_URL ou SUPABASE_ANON_KEY não encontradas.")
+    print("Por favor, certifique-se de que estão definidas no seu ambiente ou em um arquivo .env.")
+    # Fallback para valores hardcoded (apenas para desenvolvimento ou se você tem certeza)
+    # Recomendo FORTEMENTE NÃO USAR ISSO EM PRODUÇÃO.
+    # Se você for usar para testes, copie os valores EXATOS do seu .env
+    SUPABASE_URL = "https://fjurmbfvfuzhyrwkduav.supabase.co"
+    SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqdXJtYmZ2ZnV6aHlyd2tkdWF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc4MzA3MzAsImV4cCI6MjA2MzQwNjczMH0.N2mmpuXW6kEkDRINj0WG8KW6Y4JsiPZ0oG-wP0CLBqQ"
+    # Note que se a URL/KEY do fallback for usada, a mensagem de ERRO acima ainda aparecerá.
+    # Você pode querer remover a mensagem de erro se o fallback for um comportamento esperado em dev.
+
+# Inicializa o cliente Supabase GLOBALMENTE
+# É uma boa prática usar um nome de variável diferente para a instância, como 'supabase_client'
+supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+# --- Fim da Configuração do Cliente Supabase ---
+
+
 
 
 # Adicione estas linhas AQUI, após 'app = Flask(__name__)' e antes de qualquer rota
@@ -3091,21 +3113,20 @@ def get_dashboard_data():
     date_filters = {}
     if start_date_str:
         try:
-            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').isoformat() + "Z" # ISO format para Supabase
-            date_filters['gte'] = start_date
+            # Garante que a data inicial inclua o início do dia
+            start_date_obj = datetime.strptime(start_date_str, '%Y-%m-%d')
+            date_filters['gte'] = start_date_obj.isoformat() + "Z"
         except ValueError:
-            pass
+            pass # Ignora datas inválidas
 
     if end_date_str:
         try:
-            # Para incluir o dia inteiro, adicionamos 1 dia e subtraímos 1 microssegundo
-            end_date = (datetime.strptime(end_date_str, '%Y-%m-%d') + timedelta(days=1) - timedelta(microseconds=1)).isoformat() + "Z" # ISO format para Supabase
-            date_filters['lte'] = end_date
+            # Garante que a data final inclua TODO o dia final (até o último microssegundo)
+            end_date_obj = datetime.strptime(end_date_str, '%Y-%m-%d') + timedelta(days=1) - timedelta(microseconds=1)
+            date_filters['lte'] = end_date_obj.isoformat() + "Z"
         except ValueError:
-            pass
+            pass # Ignora datas inválidas
 
-    # --- Funções Auxiliares para Reutilização de Lógica de Filtro ---
-    # Tornando a coluna de data configurável
     def apply_date_filters(query_builder, date_column_name):
         """Aplica filtros de data a um query builder do Supabase para uma coluna específica."""
         if 'gte' in date_filters:
@@ -3114,206 +3135,196 @@ def get_dashboard_data():
             query_builder = query_builder.lte(date_column_name, date_filters['lte'])
         return query_builder
 
+    # Inicializa todos os KPIs com 0 ou valores padrão para evitar erros caso as consultas falhem
+    total_pedidos = 0
+    qtd_pacotes_entregues_realizadas = 0
+    qtd_rotas_carregadas = 0
+    pedidos_entregues_100 = 0
+    pedidos_etapa_11 = 0
+    on_time_deliveries_count = 0
+    damaged_deliveries_count = 0
+    in_sucesso_etapa_count = 0
+    devolvidos_etapa_count = 0
+    total_nao_entregue_count = 0
+
+    # --- CONSULTAS SUPABASE ---
+
     # 1. CONTA O TOTAL DE PEDIDOS (TODOS OS REGISTROS FILTRADOS POR DATA)
     try:
-        query_total_pedidos = supabase.table('PacoteRastreado').select('id', count='exact')
+        query_total_pedidos = supabase_client.table('pacote_rastreado').select('id', count='exact')
         query_total_pedidos = apply_date_filters(query_total_pedidos, 'data_cadastro')
         response_total_pedidos = query_total_pedidos.execute()
-        total_pedidos = response_total_pedidos.count if response_total_pedidos.count is not None else 0
-        print(f"DEBUG: Total Pedidos - Query: {query_total_pedidos.get_url()}, Count: {total_pedidos}")
+        # Acessa o count diretamente do objeto PostgrestAPIResponse
+        total_pedidos = response_total_pedidos.count
+        print(f"DEBUG: Total Pedidos - Query URL: {query_total_pedidos.get_url()}, Count: {total_pedidos}")
     except Exception as e:
         print(f"Erro ao buscar total de pedidos: {e}")
-        total_pedidos = 0
-
 
     # 2. CONTA A QUANTIDADE DE PACOTES ENTREGUES (EXCLUINDO 'Não Entregue')
     try:
-        query_pacotes_entregues_realizadas = supabase.table('PacoteRastreado').select('id', count='exact')
+        query_pacotes_entregues_realizadas = supabase_client.table('pacote_rastreado').select('id', count='exact')
         query_pacotes_entregues_realizadas = apply_date_filters(query_pacotes_entregues_realizadas, 'data_cadastro')
+        # Garanta que 'acoes' seja a coluna correta e o valor 'Não Entregue' seja exato (case-sensitive, espaços)
         query_pacotes_entregues_realizadas = query_pacotes_entregues_realizadas.neq('acoes', 'Não Entregue')
         response_entregues_realizadas = query_pacotes_entregues_realizadas.execute()
-        qtd_pacotes_entregues_realizadas = response_entregues_realizadas.count if response_entregues_realizadas.count is not None else 0
-        print(f"DEBUG: Pacotes Entregues - Query: {query_pacotes_entregues_realizadas.get_url()}, Count: {qtd_pacotes_entregues_realizadas}")
+        qtd_pacotes_entregues_realizadas = response_entregues_realizadas.count
+        print(f"DEBUG: Pacotes Entregues - Query URL: {query_pacotes_entregues_realizadas.get_url()}, Count: {qtd_pacotes_entregues_realizadas}")
     except Exception as e:
         print(f"Erro ao buscar pacotes entregues: {e}")
-        qtd_pacotes_entregues_realizadas = 0
 
     # 3. CONTA A QUANTIDADE DE ROTAS CARREGADAS (NA TABELA REGISTRO)
+    # ATENÇÃO: SE 'Registro' NÃO É UM MODELO DO SUPABASE DIRETO, ESTA PARTE REQUER UM CLIENTE SQLAlchemy/ORM.
+    # Se 'Registro' é uma tabela no Supabase, você DEVE usar supabase_client.table('Registro').
+    # Exemplo (se 'Registro' é uma tabela do Supabase e 'data_hora_login' é uma coluna nela):
     try:
-        query_rotas_carregadas = supabase.table('Registro').select('id', count='exact')
-        query_rotas_carregadas = apply_date_filters(query_rotas_carregadas, 'data_hora_login') # <-- Correção AQUI!
-        query_rotas_carregadas = query_rotas_carregadas.eq('finalizada', 1)
-        response_rotas_carregadas = query_rotas_carregadas.execute()
-        qtd_rotas_carregadas = response_rotas_carregadas.count if response_rotas_carregadas.count is not None else 0
-        print(f"DEBUG: Rotas Carregadas (Registro) - Query: {query_rotas_carregadas.get_url()}, Count: {qtd_rotas_carregadas}")
+        query_rotas = supabase_client.table('registro').select('id', count='exact')
+        # Assumindo que 'data_hora_login' é a coluna de data relevante para o filtro na tabela 'registro'
+        query_rotas = apply_date_filters(query_rotas, 'data_hora_login')
+        # Filtra registros onde 'finalizada' é igual a 1 (assumindo que 'finalizada' é uma coluna)
+        query_rotas = query_rotas.eq('finalizada', 1)
+        response_rotas = query_rotas.execute()
+        qtd_rotas_carregadas = response_rotas.count
+        print(f"DEBUG: Rotas Carregadas - Query URL: {query_rotas.get_url()}, Count: {qtd_rotas_carregadas}")
     except Exception as e:
         print(f"Erro ao buscar rotas carregadas: {e}")
-        qtd_rotas_carregadas = 0
+        # AQUI VOCÊ PODE VERIFICAR SE O ERRO É PORQUE 'Registro' NÃO É SUPABASE
+        # ou se a coluna 'finalizada' ou 'data_hora_login' não existe/não tem dados
 
     # 4. CONTA PEDIDOS ENTREGUES 100% (etapa_id = 12 na tabela PacoteRastreado)
     try:
-        query_pedidos_entregues_100 = supabase.table('PacoteRastreado').select('id', count='exact')
+        query_pedidos_entregues_100 = supabase_client.table('pacote_rastreado').select('id', count='exact')
         query_pedidos_entregues_100 = apply_date_filters(query_pedidos_entregues_100, 'data_cadastro')
         query_pedidos_entregues_100 = query_pedidos_entregues_100.eq('etapa_id', 12)
         response_pedidos_entregues_100 = query_pedidos_entregues_100.execute()
-        pedidos_entregues_100 = response_pedidos_entregues_100.count if response_pedidos_entregues_100.count is not None else 0
-        print(f"DEBUG: Pedidos Entregues 100% - Query: {query_pedidos_entregues_100.get_url()}, Count: {pedidos_entregues_100}")
+        pedidos_entregues_100 = response_pedidos_entregues_100.count
+        print(f"DEBUG: Pedidos Entregues 100% - Query URL: {query_pedidos_entregues_100.get_url()}, Count: {pedidos_entregues_100}")
     except Exception as e:
         print(f"Erro ao buscar pedidos entregues 100%: {e}")
-        pedidos_entregues_100 = 0
 
-    # 5. CONTA PEDIDOS NA ETAPA 11 (nova variável)
+    # 5. CONTA PEDIDOS NA ETAPA 11 (nova variável) - ATRAVEZ DE 'acoes'
+    # Baseado na sua taxonomia de "Tx. Atraso utilizando etapa_id = 11",
+    # se etapa_id 11 significa "com atraso" e está em 'acoes',
+    # você deve filtrar pela ação correta ou pelo etapa_id se for a coluna correta.
     try:
-        query_pedidos_etapa_11 = supabase.table('PacoteRastreado').select('id', count='exact')
+        query_pedidos_etapa_11 = supabase_client.table('pacote_rastreado').select('id', count='exact')
         query_pedidos_etapa_11 = apply_date_filters(query_pedidos_etapa_11, 'data_cadastro')
-        query_pedidos_etapa_11 = query_pedidos_etapa_11.eq('etapa_id', 11)
+        query_pedidos_etapa_11 = query_pedidos_etapa_11.eq('etapa_id', 11) # Ou query_pedidos_etapa_11.eq('acoes', 'Com Atraso') se for o caso
         response_pedidos_etapa_11 = query_pedidos_etapa_11.execute()
-        pedidos_etapa_11 = response_pedidos_etapa_11.count if response_pedidos_etapa_11.count is not None else 0
-        print(f"DEBUG: Pedidos Etapa 11 - Query: {query_pedidos_etapa_11.get_url()}, Count: {pedidos_etapa_11}")
+        pedidos_etapa_11 = response_pedidos_etapa_11.count
+        print(f"DEBUG: Pedidos Etapa 11 (Atraso) - Query URL: {query_pedidos_etapa_11.get_url()}, Count: {pedidos_etapa_11}")
     except Exception as e:
         print(f"Erro ao buscar pedidos etapa 11: {e}")
-        pedidos_etapa_11 = 0
 
     # 6. CALCULA ON TIME (OTD)
     try:
-        query_on_time = supabase.table('PacoteRastreado').select('id', count='exact')
+        query_on_time = supabase_client.table('pacote_rastreado').select('id', count='exact')
         query_on_time = apply_date_filters(query_on_time, 'data_cadastro')
+        # Certifique-se de que 'Entregue no prazo' é o valor exato no banco de dados
         query_on_time = query_on_time.eq('acoes', 'Entregue no prazo')
         response_on_time = query_on_time.execute()
-        on_time_deliveries_count = response_on_time.count if response_on_time.count is not None else 0
-        print(f"DEBUG: On Time Deliveries - Query: {query_on_time.get_url()}, Count: {on_time_deliveries_count}")
+        on_time_deliveries_count = response_on_time.count
+        print(f"DEBUG: On Time Deliveries - Query URL: {query_on_time.get_url()}, Count: {on_time_deliveries_count}")
     except Exception as e:
         print(f"Erro ao buscar entregas no prazo: {e}")
-        on_time_deliveries_count = 0
 
-    on_time_percentage = 0.0
-    if total_pedidos > 0:
-        on_time_percentage = (float(on_time_deliveries_count) / total_pedidos) * 100
-
-    # 7. CALCULA IN FULL
-    in_full_numerator = pedidos_entregues_100
-    in_full_percentage = 0.0
-    if total_pedidos > 0:
-        in_full_percentage = (float(in_full_numerator) / total_pedidos) * 100
-
-    # 8. CALCULA OTIF (On Time In Full)
-    otif_percentage = 0.0
-    if on_time_percentage > 0 and in_full_percentage > 0:
-        otif_percentage = (on_time_percentage * in_full_percentage) / 100
-
-    # 9. CALCULA TX. ATRASO (utilizando etapa_id = 11)
-    taxa_atraso_formatted = str(pedidos_etapa_11)
-
-    # 10. CALCULA TX. AVARIA
+    # 10. CALCULA TX. AVARIA (etapa_id = 13)
     try:
-        query_damaged = supabase.table('PacoteRastreado').select('id', count='exact')
+        query_damaged = supabase_client.table('pacote_rastreado').select('id', count='exact')
         query_damaged = apply_date_filters(query_damaged, 'data_cadastro')
         query_damaged = query_damaged.eq('etapa_id', 13)
         response_damaged = query_damaged.execute()
-        damaged_deliveries_count = response_damaged.count if response_damaged.count is not None else 0
-        print(f"DEBUG: Damaged Deliveries - Query: {query_damaged.get_url()}, Count: {damaged_deliveries_count}")
+        damaged_deliveries_count = response_damaged.count
+        print(f"DEBUG: Damaged Deliveries - Query URL: {query_damaged.get_url()}, Count: {damaged_deliveries_count}")
     except Exception as e:
         print(f"Erro ao buscar entregas com avaria: {e}")
-        damaged_deliveries_count = 0
 
-    taxa_avaria_percentage = 0.0
-    if total_pedidos > 0:
-        taxa_avaria_percentage = (float(damaged_deliveries_count) / total_pedidos) * 100
-
-    # 11. CALCULA % IN SUCESSO
+    # 11. CALCULA % IN SUCESSO (etapa_id = 2)
     try:
-        query_in_sucesso_etapa = supabase.table('PacoteRastreado').select('id', count='exact')
+        query_in_sucesso_etapa = supabase_client.table('pacote_rastreado').select('id', count='exact')
         query_in_sucesso_etapa = apply_date_filters(query_in_sucesso_etapa, 'data_cadastro')
         query_in_sucesso_etapa = query_in_sucesso_etapa.eq('etapa_id', 2)
         response_in_sucesso_etapa = query_in_sucesso_etapa.execute()
-        in_sucesso_etapa_count = response_in_sucesso_etapa.count if response_in_sucesso_etapa.count is not None else 0
-        print(f"DEBUG: In Sucesso (Etapa 2) - Query: {query_in_sucesso_etapa.get_url()}, Count: {in_sucesso_etapa_count}")
+        in_sucesso_etapa_count = response_in_sucesso_etapa.count
+        print(f"DEBUG: In Sucesso (Etapa 2) - Query URL: {query_in_sucesso_etapa.get_url()}, Count: {in_sucesso_etapa_count}")
     except Exception as e:
         print(f"Erro ao buscar in sucesso: {e}")
-        in_sucesso_etapa_count = 0
 
-    percentual_in_sucesso_calculated = 0.0
-    if total_pedidos > 0:
-        percentual_in_sucesso_calculated = (float(in_sucesso_etapa_count) / total_pedidos) * 100
-
-    # 12. CALCULA % DEVOLVIDOS
+    # 12. CALCULA % DEVOLVIDOS (etapa_id = 14)
     try:
-        query_devolvidos_etapa = supabase.table('PacoteRastreado').select('id', count='exact')
+        query_devolvidos_etapa = supabase_client.table('pacote_rastreado').select('id', count='exact')
         query_devolvidos_etapa = apply_date_filters(query_devolvidos_etapa, 'data_cadastro')
         query_devolvidos_etapa = query_devolvidos_etapa.eq('etapa_id', 14)
         response_devolvidos_etapa = query_devolvidos_etapa.execute()
-        devolvidos_etapa_count = response_devolvidos_etapa.count if response_devolvidos_etapa.count is not None else 0
-        print(f"DEBUG: Devolvidos (Etapa 14) - Query: {query_devolvidos_etapa.get_url()}, Count: {devolvidos_etapa_count}")
+        devolvidos_etapa_count = response_devolvidos_etapa.count
+        print(f"DEBUG: Devolvidos (Etapa 14) - Query URL: {query_devolvidos_etapa.get_url()}, Count: {devolvidos_etapa_count}")
     except Exception as e:
         print(f"Erro ao buscar devolvidos: {e}")
-        devolvidos_etapa_count = 0
 
-    percentual_devolvidos_calculated = 0.0
-    if total_pedidos > 0:
-        percentual_devolvidos_calculated = (float(devolvidos_etapa_count) / total_pedidos) * 100
-
-    # 13. NOVO DADO: Total de Entregas no Prazo
-    total_entregas_no_prazo = on_time_deliveries_count
-
-    # 14. NOVO DADO: Total Devolvidos (valor absoluto)
-    total_devolvidos_count = devolvidos_etapa_count
-
-    # 15. NOVO DADO: Total Não Entregue (valor absoluto)
+    # 15. NOVO DADO: Total Não Entregue (valor absoluto, 'acoes' = 'Não Entregue')
     try:
-        query_nao_entregue = supabase.table('PacoteRastreado').select('id', count='exact')
+        query_nao_entregue = supabase_client.table('pacote_rastreado').select('id', count='exact')
         query_nao_entregue = apply_date_filters(query_nao_entregue, 'data_cadastro')
         query_nao_entregue = query_nao_entregue.eq('acoes', 'Não Entregue')
         response_nao_entregue = query_nao_entregue.execute()
-        total_nao_entregue_count = response_nao_entregue.count if response_nao_entregue.count is not None else 0
-        print(f"DEBUG: Não Entregues - Query: {query_nao_entregue.get_url()}, Count: {total_nao_entregue_count}")
+        total_nao_entregue_count = response_nao_entregue.count
+        print(f"DEBUG: Não Entregues - Query URL: {query_nao_entregue.get_url()}, Count: {total_nao_entregue_count}")
     except Exception as e:
         print(f"Erro ao buscar não entregues: {e}")
-        total_nao_entregue_count = 0
 
+    # --- CÁLCULOS DOS PERCENTUAIS E FORMATOS ---
 
-    # Formata ON TIME
-    if on_time_percentage % 1 == 0:
-        on_time_formatted = f"{int(on_time_percentage)}%"
-    else:
-        on_time_formatted = f"{on_time_percentage:.1f}%".replace('.', ',')
+    # 6. CALCULA ON TIME (OTD)
+    on_time_percentage = (on_time_deliveries_count / total_pedidos) * 100 if total_pedidos > 0 else 0.0
+    on_time_formatted = f"{on_time_percentage:.1f}%".replace('.', ',')
 
-    # Formata IN FULL
-    if in_full_percentage % 1 == 0:
-        in_full_formatted = f"{int(in_full_percentage)}%"
-    else:
-        in_full_formatted = f"{in_full_percentage:.1f}%".replace('.', ',')
+    # 7. CALCULA IN FULL
+    in_full_percentage = (pedidos_entregues_100 / total_pedidos) * 100 if total_pedidos > 0 else 0.0
+    in_full_formatted = f"{in_full_percentage:.1f}%".replace('.', ',')
 
-    # Formata OTIF
+    # 8. CALCULA OTIF (On Time In Full)
+    otif_percentage = (on_time_percentage * in_full_percentage) / 100 if on_time_percentage > 0 and in_full_percentage > 0 else 0.0
     otif_formatted = f"{otif_percentage:.2f}%".replace('.', ',')
 
-    # Formata TX. AVARIA
-    if taxa_avaria_percentage % 1 == 0:
-        taxa_avaria_formatted = f"{int(taxa_avaria_percentage)}%"
-    else:
-        taxa_avaria_formatted = f"{taxa_avaria_percentage:.1f}%".replace('.', ',')
+    # 9. CALCULA TX. ATRASO (baseado na contagem da etapa 11, se for essa a lógica)
+    # Se 'taxaAtraso' é a QUANTIDADE de pedidos em atraso, então:
+    taxa_atraso_formatted = str(pedidos_etapa_11)
+    # Se 'taxaAtraso' é uma PORCENTAGEM de atraso, então:
+    # taxa_atraso_percentage = (pedidos_etapa_11 / total_pedidos) * 100 if total_pedidos > 0 else 0.0
+    # taxa_atraso_formatted = f"{taxa_atraso_percentage:.1f}%".replace('.', ',')
 
-    # Formata % IN SUCESSO
-    if percentual_in_sucesso_calculated % 1 == 0:
-        percentual_in_sucesso_formatted = f"{int(percentual_in_sucesso_calculated)}%"
-    else:
-        percentual_in_sucesso_formatted = f"{percentual_in_sucesso_calculated:.1f}%".replace('.', ',')
+    # 10. CALCULA TX. AVARIA
+    taxa_avaria_percentage = (damaged_deliveries_count / total_pedidos) * 100 if total_pedidos > 0 else 0.0
+    taxa_avaria_formatted = f"{taxa_avaria_percentage:.1f}%".replace('.', ',')
 
-    # Formata % DEVOLVIDOS
-    if percentual_devolvidos_calculated % 1 == 0:
-        percentual_devolvidos_formatted = f"{int(percentual_devolvidos_calculated)}%"
-    else:
-        percentual_devolvidos_formatted = f"{percentual_devolvidos_calculated:.1f}%".replace('.', ',')
+    # 11. CALCULA % IN SUCESSO
+    percentual_in_sucesso_calculated = (in_sucesso_etapa_count / total_pedidos) * 100 if total_pedidos > 0 else 0.0
+    percentual_in_sucesso_formatted = f"{percentual_in_sucesso_calculated:.1f}%".replace('.', ',')
 
+    # 12. CALCULA % DEVOLVIDOS
+    percentual_devolvidos_calculated = (devolvidos_etapa_count / total_pedidos) * 100 if total_pedidos > 0 else 0.0
+    percentual_devolvidos_formatted = f"{percentual_devolvidos_calculated:.1f}%".replace('.', ',')
+
+    # KPIs de Totais Absolutos
     total_in_sucesso_count = in_sucesso_etapa_count
+    total_entregas_no_prazo = on_time_deliveries_count
+    total_devolvidos_count = devolvidos_etapa_count
 
 
     # --- Dados para Gráficos (agora calculados dinamicamente) ---
 
     # Gráfico de Status (Painel Gerencial)
+    # Ajustei os rótulos para refletir mais diretamente os dados que você está contando.
+    # É importante que a ordem e o significado correspondam ao que o seu frontend espera.
     painel_gerencial_labels = [
-        'Total de Pacotes', 'Qtd. Pacotes Entregues', 'Total de Entregas no Prazo',
-        'Pedidos Entregues 100%', 'Qtd. Pacotes Entregues com Atraso',
-        'Total de In Sucesso', 'Total Devolvidos', 'Total Avaria Motorista'
+        'Total de Pacotes',
+        'Pacotes Entregues',
+        'Entregas no Prazo',
+        'Entregues 100%',
+        'Pacotes com Atraso',
+        'Pacotes Em Insucesso',
+        'Pacotes Devolvidos',
+        'Pacotes com Avaria',
+        'Pacotes Não Entregues'
     ]
     painel_gerencial_counts = [
         total_pedidos,
@@ -3323,13 +3334,19 @@ def get_dashboard_data():
         pedidos_etapa_11,
         in_sucesso_etapa_count,
         devolvidos_etapa_count,
-        damaged_deliveries_count
+        damaged_deliveries_count,
+        total_nao_entregue_count
     ]
 
     # Gráfico de Entregas por Mês (Barra)
+    # Considera apenas 'entregues' para este gráfico
     try:
-        entregas_mes_query = supabase.table('PacoteRastreado').select("data_cadastro,id").neq('acoes', 'Não Entregue').not_.is_('data_cadastro', 'NULL')
+        entregas_mes_query = supabase_client.table('pacote_rastreado').select("data_cadastro", count='exact')
         entregas_mes_query = apply_date_filters(entregas_mes_query, 'data_cadastro')
+        entregas_mes_query = entregas_mes_query.neq('acoes', 'Não Entregue').not_.is_('data_cadastro', 'NULL')
+        
+        # Para agrupar por mês e ano no Supabase diretamente, seria mais eficiente com RPC/Funções de Banco
+        # Se não for possível, traga os dados e agregue no Python (como você já está fazendo)
         response_entregas_mes = entregas_mes_query.execute()
         entregas_mes_data_raw = response_entregas_mes.data if response_entregas_mes.data is not None else []
         print(f"DEBUG: Entregas Mês (Raw) - Data size: {len(entregas_mes_data_raw)}")
@@ -3337,10 +3354,13 @@ def get_dashboard_data():
         entregas_mes_agregado = {}
         for item in entregas_mes_data_raw:
             if item.get('data_cadastro'):
-                mes_ano = datetime.fromisoformat(item['data_cadastro'].replace('Z', '')).strftime('%Y-%m')
+                # Formatando para 'MMM/YYYY' para um rótulo mais amigável
+                mes_ano = datetime.fromisoformat(item['data_cadastro'].replace('Z', '')).strftime('%b/%Y')
                 entregas_mes_agregado[mes_ano] = entregas_mes_agregado.get(mes_ano, 0) + 1
 
-        entregas_mes_labels = sorted(entregas_mes_agregado.keys())
+        # Ordena por ano-mês para garantir a ordem cronológica
+        entregas_mes_labels_sorted_keys = sorted(entregas_mes_agregado.keys(), key=lambda x: datetime.strptime(x, '%b/%Y'))
+        entregas_mes_labels = entregas_mes_labels_sorted_keys
         entregas_mes_counts = [entregas_mes_agregado[label] for label in entregas_mes_labels]
         print(f"DEBUG: Entregas Mês (Aggregated) - Labels: {entregas_mes_labels}, Counts: {entregas_mes_counts}")
 
@@ -3349,34 +3369,22 @@ def get_dashboard_data():
         entregas_mes_labels = []
         entregas_mes_counts = []
 
-    # Gráfico de Entregas por Dia (Rosca)
-    try:
-        entregas_dia_query = supabase.table('PacoteRastreado').select("data_cadastro,id").neq('acoes', 'Não Entregue').not_.is_('data_cadastro', 'NULL')
-        entregas_dia_query = apply_date_filters(entregas_dia_query, 'data_cadastro')
-        response_entregas_dia = entregas_dia_query.execute()
-        entregas_dia_data_raw = response_entregas_dia.data if response_entregas_dia.data is not None else []
-        print(f"DEBUG: Entregas Dia (Raw) - Data size: {len(entregas_dia_data_raw)}")
-
-        entregas_dia_agregado = {}
-        for item in entregas_dia_data_raw:
-            if item.get('data_cadastro'):
-                dia_mes_ano = datetime.fromisoformat(item['data_cadastro'].replace('Z', '')).strftime('%Y-%m-%d')
-                entregas_dia_agregado[dia_mes_ano] = entregas_dia_agregado.get(dia_mes_ano, 0) + 1
-
-        entregas_dia_labels = sorted(entregas_dia_agregado.keys())
-        entregas_dia_counts = [entregas_dia_agregado[label] for label in entregas_dia_labels]
-        print(f"DEBUG: Entregas Dia (Aggregated) - Labels: {entregas_dia_labels}, Counts: {entregas_dia_counts}")
-
-    except Exception as e:
-        print(f"Erro ao buscar entregas por dia: {e}")
-        entregas_dia_labels = []
-        entregas_dia_counts = []
+    # Gráfico de Entregas por Dia (Rosca) - Ajustado para ser apenas um exemplo,
+    # geralmente rosca é melhor para poucas categorias.
+    # No seu frontend este é o gráfico de velocímetro OTIF, então este bloco é redundante
+    # aqui no backend se não for usar esses dados.
+    # Vou deixar como 'inSucessoMes_counts' para ser o terceiro gráfico, mas renomeei
+    # o de entregas por dia para algo mais significativo para um gráfico de pizza/rosca.
+    # Se você não usa 'entregasDiaLabels' e 'entregasDiaCounts' no frontend, pode remover.
+    entregas_dia_labels = [] # Não sendo usado, ou defina para outro propósito
+    entregas_dia_counts = [] # Não sendo usado, ou defina para outro propósito
 
 
     # Gráfico 'In Sucesso' por Mês
     try:
-        in_sucesso_mes_query = supabase.table('PacoteRastreado').select("data_cadastro,id").eq('etapa_id', 2).not_.is_('data_cadastro', 'NULL')
+        in_sucesso_mes_query = supabase_client.table('pacote_rastreado').select("data_cadastro", count='exact')
         in_sucesso_mes_query = apply_date_filters(in_sucesso_mes_query, 'data_cadastro')
+        in_sucesso_mes_query = in_sucesso_mes_query.eq('etapa_id', 2).not_.is_('data_cadastro', 'NULL')
         response_in_sucesso_mes = in_sucesso_mes_query.execute()
         in_sucesso_mes_data_raw = response_in_sucesso_mes.data if response_in_sucesso_mes.data is not None else []
         print(f"DEBUG: In Sucesso Mês (Raw) - Data size: {len(in_sucesso_mes_data_raw)}")
@@ -3384,10 +3392,11 @@ def get_dashboard_data():
         in_sucesso_mes_agregado = {}
         for item in in_sucesso_mes_data_raw:
             if item.get('data_cadastro'):
-                mes_ano = datetime.fromisoformat(item['data_cadastro'].replace('Z', '')).strftime('%Y-%m')
+                mes_ano = datetime.fromisoformat(item['data_cadastro'].replace('Z', '')).strftime('%b/%Y')
                 in_sucesso_mes_agregado[mes_ano] = in_sucesso_mes_agregado.get(mes_ano, 0) + 1
 
-        in_sucesso_mes_labels = sorted(in_sucesso_mes_agregado.keys())
+        in_sucesso_mes_labels_sorted_keys = sorted(in_sucesso_mes_agregado.keys(), key=lambda x: datetime.strptime(x, '%b/%Y'))
+        in_sucesso_mes_labels = in_sucesso_mes_labels_sorted_keys
         in_sucesso_mes_counts = [in_sucesso_mes_agregado[label] for label in in_sucesso_mes_labels]
         print(f"DEBUG: In Sucesso Mês (Aggregated) - Labels: {in_sucesso_mes_labels}, Counts: {in_sucesso_mes_counts}")
 
@@ -3395,7 +3404,6 @@ def get_dashboard_data():
         print(f"Erro ao buscar in sucesso por mês: {e}")
         in_sucesso_mes_labels = []
         in_sucesso_mes_counts = []
-
 
     return jsonify({
         'kpis': {
@@ -3406,7 +3414,7 @@ def get_dashboard_data():
             'onTime': on_time_formatted,
             'inFull': in_full_formatted,
             'otif': otif_formatted,
-            'taxaAtraso': taxa_atraso_formatted,
+            'taxaAtraso': taxa_atraso_formatted, # Note: este é um COUNT, não uma %
             'taxaAvaria': taxa_avaria_formatted,
             'percentualInSucesso': percentual_in_sucesso_formatted,
             'percentualDevolvidos': percentual_devolvidos_formatted,
@@ -3420,16 +3428,14 @@ def get_dashboard_data():
             'painelGerencialCounts': painel_gerencial_counts,
             'entregasMesLabels': entregas_mes_labels,
             'entregasMesCounts': entregas_mes_counts,
-            'entregasDiaLabels': entregas_dia_labels,
-            'entregasDiaCounts': entregas_dia_counts,
+            # Se você tem um gráfico de rosca para OTIF no frontend, este campo pode ser removido
+            # ou usado para outro propósito, já que o JS gera o velocímetro.
+            'entregasDiaLabels': [], # Ou ajuste para o propósito real
+            'entregasDiaCounts': [], # Ou ajuste para o propósito real
             'inSucessoMesLabels': in_sucesso_mes_labels,
             'inSucessoMes_counts': in_sucesso_mes_counts
         }
     })
-
-
-
-
 
 @app.route('/gerenciar_usuarios')
 @login_required
@@ -3601,7 +3607,7 @@ import pytz # Importe pytz para manipulação de fuso horário
 
 @app.route('/log_de_atividades')
 @login_required # Garante que apenas usuários logados podem acessar
-# @permission_required('log_atividades') # Considere adicionar esta permissão se tiver um sistema granular
+@permission_required('log_atividades') # Considere adicionar esta permissão se tiver um sistema granular
 def log_atividades():
     """
     Exibe uma lista de todas as atividades registradas no sistema,
@@ -3681,6 +3687,82 @@ def log_atividades():
                             logs=logs,
                             data_inicial=data_inicial_str, # Passa para pré-preencher o campo de filtro
                             data_final=data_final_str) # Passa para pré-preencher o campo de filtro
+
+###Rota Listar registros ---@app.route('/listar_registros')
+@app.route('/listar_registros')
+@login_required 
+def listar_registros():
+    # 2. Use PacoteRastreado nas suas consultas:
+    rotas_existentes = db.session.query(PacoteRastreado.rota_vinculada).distinct().all() # << AQUI
+    rotas_existentes = [r[0] for r in rotas_existentes if r[0]]
+    
+    etapas = Etapa.query.all()
+    situacoes_pedido = SituacaoPedido.query.all()
+
+    return render_template('listar_registros.html', 
+                           rotas_existentes=rotas_existentes,
+                           etapas=etapas,
+                           situacoes_pedido=situacoes_pedido)
+
+
+@app.route('/api/listar_registros', methods=['GET'])
+@login_required 
+def api_listar_registros():
+    query = PacoteRastreado.query
+
+    filter_rota = request.args.get('rota')
+    filter_id_pacote = request.args.get('id_pacote')
+    filter_etapa_nome = request.args.get('etapa') 
+    filter_data_cadastro_str = request.args.get('data_cadastro')
+    filter_status_entrega_nome = request.args.get('status_entrega') 
+
+    # Aplicar filtros
+    if filter_rota and filter_rota != 'todos':
+        query = query.filter_by(rota_vinculada=filter_rota)
+
+    if filter_id_pacote:
+        query = query.filter(PacoteRastreado.id_pacote.ilike(f'%{filter_id_pacote}%'))
+
+    if filter_etapa_nome:
+        query = query.join(Etapa).filter(Etapa.nome_etapa == filter_etapa_nome)
+
+    if filter_data_cadastro_str:
+        try:
+            filter_date_obj = datetime.strptime(filter_data_cadastro_str, '%Y-%m-%d').date()
+            query = query.filter(cast(PacoteRastreado.data_cadastro, Date) == filter_date_obj)
+        except ValueError:
+            pass 
+
+    # IMPORTANTE: Aqui você precisa decidir qual campo usar para o filtro 'status_entrega'.
+    # Se você quer filtrar pelo relacionamento:
+    if filter_status_entrega_nome:
+        query = query.join(SituacaoPedido).filter(SituacaoPedido.nome_situacao == filter_status_entreja_nome)
+    # OU se você quer filtrar pela string 'acoes' (menos recomendado para consistência)
+    # if filter_status_entrega_nome:
+    #     query = query.filter(PacoteRastreado.acoes == filter_status_entrega_nome)
+
+
+    registros = query.all()
+
+    registros_json = []
+    for registro in registros:
+        registros_json.append({
+            'id_pacote': registro.id_pacote,
+            'rota_vinculada': registro.rota_vinculada,
+            'etapa': registro.etapa.nome_etapa if registro.etapa else 'Não definida',
+            'observacao': registro.observacao,
+            'data_cadastro': registro.data_cadastro.strftime('%Y-%m-%d %H:%M:%S') if registro.data_cadastro else '-',
+            
+            # AGORA, PARA EXIBIR A STRING DIRETA DO CAMPO 'ACOES':
+            'acoes': registro.acoes if registro.acoes else 'N/A (campo acoes)', # Exibe o valor de 'acoes'
+            
+            # VOCÊ PODE ADICIONAR UM CAMPO SEPARADO SE QUISER EXIBIR O STATUS DO RELACIONAMENTO TAMBÉM:
+            'status_relacionado': registro.situacao_pedido.nome_situacao if registro.situacao_pedido else 'N/A (relacionado)'
+        })
+    return jsonify(registros_json)
+
+
+
 
 
 

@@ -135,16 +135,23 @@ class Cidade(db.Model):
 
 class PacoteRastreado(db.Model):
     __tablename__ = 'pacote_rastreado'
-    # AJUSTE CRÍTICO: Adicionado autoincrement=True
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     id_pacote = db.Column(db.String(100), unique=True, nullable=False)
+    
     etapa_id = db.Column(db.Integer, db.ForeignKey('etapa.id'), nullable=True)
-    etapa = db.relationship('Etapa', backref='pacotes_rastreados')
+    etapa = db.relationship('Etapa', backref='pacotes_rastreados_etapa')
+    
     observacao = db.Column(db.Text, nullable=True)
     data_cadastro = db.Column(db.DateTime, default=get_data_hora_brasilia)
 
     rota_vinculada = db.Column(db.String(100), nullable=False)
-    acoes = db.Column(db.String(255))
+    
+    # MANTENHA ESTE RELACIONAMENTO COM SituacaoPedido
+    situacao_pedido_id = db.Column(db.Integer, db.ForeignKey('situacao_pedido.id'), nullable=True)
+    situacao_pedido = db.relationship('SituacaoPedido', backref='pacotes_rastreados_situacao')
+    
+    # ESTA LINHA ADICIONA O CAMPO 'ACOES' DE VOLTA COMO STRING
+    acoes = db.Column(db.String(255), nullable=True) 
 
     def __repr__(self):
         return f'<PacoteRastreado {self.id_pacote} - Rota: {self.rota_vinculada}>'
