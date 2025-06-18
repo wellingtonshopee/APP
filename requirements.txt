@@ -13,3 +13,4 @@ flask_sqlalchemy
 Flask-Login
 Flask-Migrate 
 Flask-WTF
+python-dotenv
