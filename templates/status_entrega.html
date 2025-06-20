@@ -3,24 +3,219 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Status de Entrega</title>
+    <title>Entregas por Motorista</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <!-- Mantendo o Bootstrap CSS para os componentes existentes na página -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
     <style>
+        /* ESTILOS DE LAYOUT GLOBAIS - Adaptados para o menu lateral */
         body {
-            background-color: #f8f9fa;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            background-color: #f4f4f4;
+            color: #333;
+            display: flex; /* Permite layout flexível com sidebar e conteúdo */
+            min-height: 100vh;
+            overflow-x: hidden; /* Evita rolagem horizontal durante a transição */
+            padding-top: 0; /* Removido padding-top do body, o main-content/header-top-bar gerencia */
         }
+
+        /* Estilos do Menu Lateral (Sidebar) */
+        .sidebar {
+            height: 100%;
+            width: 250px; /* Largura padrão para desktop */
+            position: fixed; /* Fixa o sidebar na tela */
+            z-index: 1000; /* Garante que fique acima de outros elementos */
+            top: 0;
+            left: 0;
+            background-color: #343a40; /* Cor de fundo escura */
+            overflow-x: hidden;
+            transition: transform 0.5s ease; /* Transição suave para esconder/mostrar */
+            padding-top: 20px; /* Espaço do topo */
+            box-shadow: 2px 0 5px rgba(0,0,0,0.5); /* Sombra para profundidade */
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center; /* Centraliza itens como logo e título */
+            justify-content: flex-start;
+            transform: translateX(-250px); /* Padrão: sidebar escondido em mobile e inicialização */
+        }
+
+        .sidebar.open {
+            transform: translateX(0); /* Mostra o sidebar */
+        }
+
+        .sidebar .logo-sidebar {
+            width: 120px; /* Tamanho da logo na sidebar */
+            margin-bottom: 20px;
+            border-radius: 8px; /* Cantos arredondados */
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3); /* Sombra */
+        }
+
+        .sidebar h2.menu-title { /* Título do menu na sidebar */
+            color: white;
+            margin-bottom: 20px;
+            font-size: 1.4em; /* Tamanho do título do menu */
+        }
+
+        .sidebar ul {
+            list-style-type: none;
+            padding: 0;
+            width: 100%;
+        }
+
+        .sidebar ul li a {
+            padding: 15px 25px;
+            text-decoration: none;
+            font-size: 1.1em;
+            color: #f8f9fa;
+            display: flex; /* Para alinhar ícone e texto */
+            align-items: center; /* Para alinhar verticalmente */
+            transition: 0.3s;
+            text-align: left; /* Alinhar texto à esquerda */
+        }
+
+        .sidebar ul li a i { /* Estilo para os ícones */
+            margin-right: 10px; /* Espaço entre ícone e texto */
+        }
+
+        .sidebar ul li a:hover {
+            background-color: #007bff; /* Cor de destaque ao passar o mouse */
+            color: white;
+        }
+        
+        /* Estilos do Conteúdo Principal - Envolve todo o conteúdo que não é o sidebar */
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            margin-left: 0; /* Padrão: sem margem à esquerda */
+            transition: margin-left 0.5s ease, width 0.5s ease; /* Transição suave */
+            width: 100%; /* Padrão: largura total */
+            padding: 0; /* Garante que não há padding extra */
+        }
+
+        .main-content.shifted {
+            margin-left: 250px; /* Espaço para o sidebar visível em desktop */
+            width: calc(100% - 250px); /* Ajusta a largura quando o menu está visível */
+        }
+
+        /* Overlay para fechar o menu ao clicar fora */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999; 
+            display: none; 
+        }
+
+        /* Header/Top Bar para o título e botão de toggle e filtros */
+        .header-top-bar {
+            background-color: #f44336;
+            color: #fff;
+            padding: 10px 20px;
+            display: flex;
+            flex-wrap: wrap; /* Permite que os itens quebrem para a próxima linha */
+            align-items: center;
+            gap: 15px; /* Espaçamento entre os itens do header */
+            box-sizing: border-box;
+            position: sticky; /* Fixa o banner ao topo dentro do main-content */
+            top: 0; /* Posição sticky no topo */
+            width: 100%; /* Ocupa toda a largura do main-content */
+            z-index: 50; /* Garante que o header esteja acima do conteúdo principal */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header-top-bar .header-logo {
+            max-height: 40px; /* Tamanho da logo no header */
+            border-radius: 8px; /* Cantos arredondados */
+            box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.4); /* Sombra */
+        }
+
+        .header-top-bar .header-title {
+            margin: 0;
+            font-size: 1.5em; /* Ajustado para desktop */
+            flex-grow: 1; /* Permite que o título ocupe o espaço restante */
+            text-align: center; /* Centraliza o título no espaço restante */
+        }
+
+        /* Botão de toggle do sidebar */
+        .sidebar-toggle {
+            background: none;
+            border: none;
+            color: #fff; /* Cor branca para o ícone */
+            font-size: 1.5em;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+
+        /* Estilos dos filtros dentro do header-top-bar */
+        .header-filters {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            width: 100%; /* Ocupa a largura total para os filtros */
+            margin-top: 10px; /* Espaço entre o título/logo e os filtros */
+        }
+
+        .header-filters label {
+            color: white;
+            font-size: 0.9em;
+        }
+
+        .header-filters input[type="date"],
+        .header-filters input[type="text"],
+        .header-filters button {
+            padding: 6px 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 0.9em;
+            background-color: #fff;
+            color: #282929;
+            width: auto;
+            min-width: 100px;
+        }
+
+        .header-filters button {
+            background-color: #282929; /* Cor de fundo para os botões de filtro */
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+
+        .header-filters button:hover {
+            background-color: #5b5c5c;
+        }
+
+        .header-filters .clear-filters-btn {
+            background-color: #6b7280;
+        }
+        .header-filters .clear-filters-btn:hover {
+            background-color: #4b5563;
+        }
+        
+        /* Container principal do conteúdo da página original */
         .container {
-            margin-top: 50px;
+            margin-top: 20px; /* Ajuste para não ficar colado no header-top-bar */
+            padding: 20px;
+            max-width: 960px; /* Ajustado para ser um pouco mais amplo para a tabela */
         }
-        .logo {
-            max-width: 150px;
-            margin-bottom: 20px;
-        }
-        .card {
-            margin-bottom: 20px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
+        
+        /* Ajustes para o layout da tabela e modal Bootstrap */
         .table-responsive {
             margin-top: 20px;
         }
@@ -31,85 +226,221 @@
             border-radius: 4px;
             border: 1px solid #ced4da;
         }
+
+        /* Message Box */
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            z-index: 1002;
+            display: none;
+            text-align: center;
+            max-width: 300px;
+            width: 90%;
+        }
+        .message-box button {
+            margin-top: 15px;
+            padding: 8px 15px;
+            background-color: #10b981;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 5px; /* Espaço entre botões OK/Cancelar */
+            margin-right: 5px;
+        }
+
+        /* Media Queries para responsividade */
+        @media screen and (max-width: 768px) {
+            .sidebar {
+                width: 180px;
+                transform: translateX(-180px);
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .main-content.shifted {
+                margin-left: 0; /* Não desloca em mobile */
+                width: 100%;
+            }
+            .header-top-bar {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px; /* Reduz o espaçamento em mobile */
+            }
+            .header-top-bar .header-title {
+                font-size: 1.2em; /* Ajuste para mobile */
+                text-align: left; /* Alinha à esquerda em mobile */
+                width: 100%;
+            }
+            .header-filters {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .header-filters input,
+            .header-filters button {
+                width: 100%;
+                min-width: auto;
+            }
+            .container {
+                padding: 15px; /* Reduz padding em mobile */
+            }
+        }
+
+        @media screen and (max-width: 480px) {
+            .container {
+                margin-left: 10px;
+                margin-right: 10px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="text-center">
-            <img src="{{ url_for('static', filename='imagem/shopee32.png') }}"alt="Logo Empresa" class="logo">
-            <h1>Status de Entrega</h1>
-        </div>
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="mt-3">
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }}" role="alert">
-                            {{ message }}
-                        </div>
-                    {% endfor %}
-                </div>
+    <!-- Menu Lateral (Sidebar) -->
+    <aside class="sidebar" id="sidebar">
+        <!-- Substitua 'imagem/shopee32.png' pelo caminho real da sua logo para o sidebar -->
+        <img src="{{ url_for('static', filename='imagem/shopee32.png') }}"
+             onerror="this.onerror=null; this.src='https://placehold.co/120x120/343a40/ffffff?text=LOGO';"
+             alt="Logo SysSPX" class="logo-sidebar">
+        <h2 class="menu-title">Menu</h2>
+        <ul>
+            <li><a href="{{ url_for('menu_principal') }}"><i class="fas fa-home"></i> Página Inicial</a></li>
+            <li><a href="{{ url_for('registros') }}"><i class="fas fa-clipboard-list"></i> Painel do Operador</a></li>
+            <li><a href="{{ url_for('registro_no_show') }}"><i class="fas fa-list-alt"></i> Listar Registros No-Show</a></li>
+            <li><a href="{{ url_for('associacao_no_show') }}"><i class="fas fa-clipboard-check"></i> Criar Registro No-Show</a></li>
+            <li><a href="{{ url_for('registros_finalizados') }}"><i class="fas fa-file-alt"></i> Relatório de Registros</a></li>
+            <li><a href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+            {% if current_user.is_authenticated %}
+                <li><a href="{{ url_for('painel_gerencial') }}"><i class="fas fa-chart-line"></i> Painel Gerencial</a></li>
             {% endif %}
-        {% endwith %}
+            <li><a href="{{ url_for('pacotes_rota') }}"><i class="fas fa-route"></i> Pacotes por Rota</a></li>
+            <li><a href="{{ url_for('listar_registros') }}"><i class="fas fa-list-alt"></i> Listar Registros (Filtro)</a></li>
+            <li><a href="{{ url_for('gerenciar_usuarios') }}"><i class="fas fa-users-cog"></i> Gerenciar Usuários</a></li>
+            <li><a href="{{ url_for('cadastro_usuario') }}"><i class="fas fa-user-plus"></i> Cadastrar Novo Usuário</a></li>
+            <li><a href="{{ url_for('log_atividades') }}"><i class="fas fa-clipboard-list"></i> Log de Atividades</a></li>
+            <li><a href="{{ url_for('status_entrega') }}"><i class="fas fa-truck"></i> Status de Entrega</a></li>
+            <li><a href="{{ url_for('adicionar_situacao_pedido') }}"><i class="fas fa-tags"></i> Situação dos Pedidos</a></li>
+            <li><a href="{{ url_for('adicionar_etapa') }}"><i class="fas fa-truck-ramp-box"></i> Etapas da Entrega</a></li>
+            <li><a href="{{ url_for('menu_principal') }}"><i class="fas fa-cog"></i> Configurações</a></li>
+            {% if current_user.is_authenticated %}
+                <li><a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
+            {% else %}
+                <li><a href="{{ url_for('login2') }}"><i class="fas fa-sign-in-alt"></i> Login Sistema</a></li>
+            {% endif %}
+        </ul>
+    </aside>
 
-        <div class="table-responsive">
-            <table class="table table-striped table-hover">
-                <thead class="thead-dark">
-                    <tr>
-                        <th>ID</th>
-                        <th>Nome</th>
-                        <th>Rota</th>
-                        <th>Tipo de Entrega</th>
-                        <th>Etapa Atual</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for registro in registros %}
-                    <tr>
-                        <td>{{ registro.id }}</td>
-                        <td>{{ registro.nome }}</td>
-                        <td>{{ registro.rota }}</td>
-                        <td>{{ registro.tipo_entrega }}</td>
-                        <td id="etapa-{{ registro.id }}">
-                            {{ registro.etapa.nome_etapa if registro.etapa else 'Não Definida' }}
-                        </td>
-                        <td>
-                            <button type="button" class="btn btn-sm btn-primary"
-                                data-toggle="modal" data-target="#updateEtapaModal"
-                                data-registro-id="{{ registro.id }}"
-                                data-current-etapa-id="{{ registro.etapa.id if registro.etapa else '' }}">
-                                Atualizar Etapa
-                            </button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    {# Overlay para fechar o menu ao clicar fora #}
+    <div class="overlay" id="overlay"></div>
+
+    <!-- Conteúdo Principal da Página -->
+    <div id="mainContent" class="main-content">
+        <div class="header-top-bar">
+            <button class="sidebar-toggle" id="sidebarToggle">☰</button>
+            <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" onerror="this.onerror=null; this.src='https://placehold.co/40x40/f8f9fa/000000?text=LOGO';" alt="Logo Empresa" class="header-logo">
+            <h1 class="header-title">Entregas por Motorista</h1>
+            
+            <div class="header-filters">
+                <label for="dataFilter">Data:</label>
+                <input type="date" id="dataFilter" value="{{ data_filter or '' }}">
+
+                <label for="nomeFilter">Nome:</label>
+                <input type="text" id="nomeFilter" placeholder="Nome" value="{{ nome_filter or '' }}">
+
+                <label for="rotaFilter">Rota:</label>
+                <input type="text" id="rotaFilter" placeholder="Rota" value="{{ rota_filter or '' }}">
+
+                <button id="applyFiltersBtn">Filtrar</button>
+                <button id="clearFiltersBtn" class="clear-filters-btn">Limpar Filtros</button>
+            </div>
         </div>
-    </div>
 
-    <div class="modal fade" id="updateEtapaModal" tabindex="-1" role="dialog" aria-labelledby="updateEtapaModalLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="updateEtapaModalLabel">Atualizar Etapa do Registro</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" id="modalRegistroId">
-                    <label for="etapaSelect">Selecione a Nova Etapa:</label>
-                    <select class="form-control" id="etapaSelect">
+        <div class="container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="mt-3">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}" role="alert">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Data</th> {# Nova coluna para a Data #}
+                            <th>Nome</th>
+                            <th>Rota</th>
+                            <th>Tipo de Entrega</th>
+                            <th>Etapa Atual</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for registro in registros %}
+                        <tr>
+                            <td>{{ registro.id }}</td>
+                            <td>{{ registro.data_hora_login | formata_data_hora }}</td> {# Exibindo a data #}
+                            <td>{{ registro.nome }}</td>
+                            <td>{{ registro.rota }}</td>
+                            <td>{{ registro.tipo_entrega }}</td>
+                            <td id="etapa-{{ registro.id }}">
+                                {{ registro.etapa.nome_etapa if registro.etapa else 'Não Definida' }}
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-primary"
+                                    data-toggle="modal" data-target="#updateEtapaModal"
+                                    data-registro-id="{{ registro.id }}"
+                                    data-current-etapa-id="{{ registro.etapa.id if registro.etapa else '' }}">
+                                    Atualizar Etapa
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="modal fade" id="updateEtapaModal" tabindex="-1" role="dialog" aria-labelledby="updateEtapaModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="updateEtapaModalLabel">Atualizar Etapa do Registro</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="modalRegistroId">
+                        <label for="etapaSelect">Selecione a Nova Etapa:</label>
+                        <select class="form-control" id="etapaSelect">
                         </select>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-success" id="saveEtapaBtn">Salvar</button>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-success" id="saveEtapaBtn">Salvar</button>
+                    </div>
                 </div>
             </div>
         </div>
+    </div>
+    
+    {# Message Box HTML (para substituir alert/confirm) #}
+    <div id="messageBox" class="message-box">
+        <p id="messageText"></p>
+        <button id="messageBoxOkBtn">OK</button>
+        <button id="messageBoxCancelBtn" style="display:none;">Cancelar</button>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
@@ -118,8 +449,179 @@
     <script>
         let allEtapas = []; // Para armazenar todas as etapas disponíveis
 
-        $(document).ready(function() {
-            // Carrega as etapas quando a página é carregada
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const overlay = document.getElementById('overlay');
+            const mainContent = document.getElementById('mainContent');
+
+            // Filtros
+            const dataFilterInput = document.getElementById('dataFilter');
+            const nomeFilterInput = document.getElementById('nomeFilter');
+            const rotaFilterInput = document.getElementById('rotaFilter');
+            const applyFiltersBtn = document.getElementById('applyFiltersBtn');
+            const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+
+
+            function openSidebar() {
+                sidebar.classList.add('open');
+                overlay.style.display = 'block';
+                if (window.innerWidth > 768) {
+                    mainContent.classList.add('shifted');
+                }
+            }
+
+            function closeSidebar() {
+                sidebar.classList.remove('open');
+                overlay.style.display = 'none';
+                if (window.innerWidth > 768) {
+                    mainContent.classList.remove('shifted');
+                }
+            }
+
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    if (sidebar.classList.contains('open')) {
+                        closeSidebar();
+                    } else {
+                        openSidebar();
+                    }
+                });
+            }
+            if (overlay) {
+                overlay.addEventListener('click', closeSidebar);
+            }
+
+            function updateLayoutBasedOnScreenSize() {
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.remove('open');
+                    overlay.style.display = 'none';
+                    mainContent.classList.remove('shifted');
+                } else {
+                    // Em desktop, se você quiser o menu aberto por padrão ao carregar:
+                    // sidebar.classList.add('open');
+                    // mainContent.classList.add('shifted');
+                }
+            }
+            window.addEventListener('resize', updateLayoutBasedOnScreenSize);
+            updateLayoutBasedOnScreenSize(); // Chama ao carregar a página
+
+            // --- Funções de Mensagem Personalizada (substitui alert/confirm) ---
+            const messageBox = document.getElementById('messageBox');
+            const messageText = document.getElementById('messageText');
+            const messageBoxOkBtn = document.getElementById('messageBoxOkBtn');
+            const messageBoxCancelBtn = document.getElementById('messageBoxCancelBtn');
+            let confirmResolver = null;
+
+            function showMessage(message) {
+                messageText.innerText = message;
+                messageBoxOkBtn.style.display = 'block';
+                messageBoxCancelBtn.style.display = 'none';
+                messageBox.style.display = 'block';
+                
+                return new Promise(resolve => {
+                    confirmResolver = resolve;
+                });
+            }
+
+            function showConfirm(message) {
+                messageText.innerText = message;
+                messageBoxOkBtn.style.display = 'block';
+                messageBoxCancelBtn.style.display = 'block';
+                messageBox.style.display = 'block';
+
+                return new Promise(resolve => {
+                    confirmResolver = resolve;
+                });
+            }
+
+            if (messageBoxOkBtn) {
+                messageBoxOkBtn.addEventListener('click', () => {
+                    messageBox.style.display = 'none';
+                    if (confirmResolver) {
+                        confirmResolver(true);
+                        confirmResolver = null;
+                    }
+                });
+            }
+
+            if (messageBoxCancelBtn) {
+                messageBoxCancelBtn.addEventListener('click', () => {
+                    messageBox.style.display = 'none';
+                    if (confirmResolver) {
+                        confirmResolver(false);
+                        confirmResolver = null;
+                    }
+                });
+            }
+            // Fim das funções de mensagem personalizada
+
+            // Lógica de filtros
+            function applyFiltersAndNavigate() {
+                const dataFilterValue = dataFilterInput.value;
+                const nomeFilterValue = nomeFilterInput.value;
+                const rotaFilterValue = rotaFilterInput.value;
+
+                // Salvar filtros no localStorage
+                localStorage.setItem('statusEntregaDataFilter', dataFilterValue);
+                localStorage.setItem('statusEntregaNomeFilter', nomeFilterValue);
+                localStorage.setItem('statusEntregaRotaFilter', rotaFilterValue);
+
+                const params = new URLSearchParams();
+                if (dataFilterValue) params.append('data_filter', dataFilterValue);
+                if (nomeFilterValue) params.append('nome_filter', nomeFilterValue);
+                if (rotaFilterValue) params.append('rota_filter', rotaFilterValue);
+
+                window.location.href = `/status_entrega?${params.toString()}`;
+            }
+
+            function clearFiltersAndNavigate() {
+                // Remover filtros do localStorage
+                localStorage.removeItem('statusEntregaDataFilter');
+                localStorage.removeItem('statusEntregaNomeFilter');
+                localStorage.removeItem('statusEntregaRotaFilter');
+
+                // Redirecionar para a página sem filtros
+                window.location.href = '/status_entrega';
+            }
+
+            // Atribuir eventos aos botões e inputs de filtro
+            applyFiltersBtn.addEventListener('click', applyFiltersAndNavigate);
+            clearFiltersBtn.addEventListener('click', clearFiltersAndNavigate);
+
+            // Carregar filtros: prioriza URL, depois localStorage
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlDataFilter = urlParams.get('data_filter');
+            const urlNomeFilter = urlParams.get('nome_filter');
+            const urlRotaFilter = urlParams.get('rota_filter');
+
+            if (urlDataFilter) {
+                dataFilterInput.value = urlDataFilter;
+                localStorage.setItem('statusEntregaDataFilter', urlDataFilter);
+            } else {
+                const storedDataFilter = localStorage.getItem('statusEntregaDataFilter');
+                if (storedDataFilter) dataFilterInput.value = storedDataFilter;
+            }
+
+            if (urlNomeFilter) {
+                nomeFilterInput.value = urlNomeFilter;
+                localStorage.setItem('statusEntregaNomeFilter', urlNomeFilter);
+            } else {
+                const storedNomeFilter = localStorage.getItem('statusEntregaNomeFilter');
+                if (storedNomeFilter) nomeFilterInput.value = storedNomeFilter;
+            }
+
+            if (urlRotaFilter) {
+                rotaFilterInput.value = urlRotaFilter;
+                localStorage.setItem('statusEntregaRotaFilter', urlRotaFilter);
+            } else {
+                const storedRotaFilter = localStorage.getItem('statusEntregaRotaFilter');
+                if (storedRotaFilter) rotaFilterInput.value = storedRotaFilter;
+            }
+
+
+            // Lógica original da página Status de Entrega (mantida)
             fetch('/api/etapas')
                 .then(response => response.json())
                 .then(data => {
@@ -128,20 +630,17 @@
                 })
                 .catch(error => console.error('Erro ao carregar etapas:', error));
 
-            // Quando o modal de atualização de etapa é aberto
             $('#updateEtapaModal').on('show.bs.modal', function (event) {
-                const button = $(event.relatedTarget); // Botão que acionou o modal
+                const button = $(event.relatedTarget);
                 const registroId = button.data('registro-id');
                 const currentEtapaId = button.data('current-etapa-id');
 
                 const modal = $(this);
                 modal.find('#modalRegistroId').val(registroId);
 
-                // Preenche o dropdown com todas as etapas
                 populateEtapasDropdown(currentEtapaId);
             });
 
-            // Lógica para salvar a nova etapa
             $('#saveEtapaBtn').on('click', function() {
                 const registroId = $('#modalRegistroId').val();
                 const novaEtapaId = $('#etapaSelect').val();
@@ -156,24 +655,23 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        alert(data.message);
-                        // Atualiza a célula da tabela na página sem recarregar
+                        showMessage(data.message); // Usando showMessage
                         $(`#etapa-${registroId}`).text(data.etapa_nome);
-                        $('#updateEtapaModal').modal('hide'); // Fecha o modal
+                        $('#updateEtapaModal').modal('hide');
                     } else {
-                        alert('Erro: ' + data.message);
+                        showMessage('Erro: ' + data.message); // Usando showMessage
                     }
                 })
                 .catch(error => {
                     console.error('Erro ao atualizar etapa:', error);
-                    alert('Erro de comunicação com o servidor.');
+                    showMessage('Erro de comunicação com o servidor.'); // Usando showMessage
                 });
             });
         });
 
         function populateEtapasDropdown(currentEtapaId = null) {
             const etapaSelect = $('#etapaSelect');
-            etapaSelect.empty(); // Limpa opções antigas
+            etapaSelect.empty();
 
             allEtapas.forEach(etapa => {
                 const option = $('<option></option>')
@@ -184,6 +682,66 @@
                 }
                 etapaSelect.append(option);
             });
+        }
+
+        // Função de formatação de data (garantindo que esteja disponível globalmente para o Jinja)
+        function formata_data_hora(isoString) {
+            if (!isoString || isoString === 'N/A' || isoString.toString().trim() === '') {
+                return 'Não Finalizado';
+            }
+            try {
+                let date = new Date(isoString);
+
+                if (isNaN(date.getTime())) {
+                    let cleanedIsoString = isoString.replace(' - ', ' ');
+                    const parts = cleanedIsoString.split(' ');
+                    if (parts.length === 2) {
+                        const dateParts = parts[0].split('-');
+                        const timeParts = parts[1].split(':');
+                        if (dateParts.length === 3 && timeParts.length >= 2) {
+                            const year = parseInt(dateParts[0]);
+                            const month = parseInt(dateParts[1]) - 1; 
+                            const day = parseInt(dateParts[2]);
+                            const hours = parseInt(timeParts[0]);
+                            const minutes = parseInt(timeParts[1]);
+                            const seconds = timeParts.length > 2 ? parseInt(timeParts[2]) : 0;
+                            date = new Date(year, month, day, hours, minutes, seconds);
+                        }
+                    }
+                    if (isNaN(date.getTime())) {
+                        const partsDMY = isoString.split(' ');
+                        if (partsDMY.length >= 2) {
+                            const datePartsDMY = partsDMY[0].split('-');
+                            const timePartsDMY = partsDMY[1].split(':');
+                            if (datePartsDMY.length === 3 && timePartsDMY.length >= 2) {
+                                const day = parseInt(datePartsDMY[0]);
+                                const month = parseInt(datePartsDMY[1]) - 1;
+                                const year = parseInt(datePartsDMY[2]);
+                                const hours = parseInt(timePartsDMY[0]);
+                                const minutes = parseInt(timePartsDMY[1]);
+                                const seconds = timePartsDMY.length > 2 ? parseInt(timeParts[2]) : 0;
+                                date = new Date(year, month, day, hours, minutes, seconds);
+                            }
+                        }
+                        if (isNaN(date.getTime())) {
+                            console.warn(`Could not parse date string: ${isoString}`);
+                            return 'Formato Inválido';
+                        }
+                    }
+                }
+
+                const formattedDay = String(date.getDate()).padStart(2, '0');
+                const formattedMonth = String(date.getMonth() + 1).padStart(2, '0');
+                const formattedYear = date.getFullYear();
+                const formattedHours = String(date.getHours()).padStart(2, '0');
+                const formattedMinutes = String(date.getMinutes()).padStart(2, '0');
+                const formattedSeconds = String(date.getSeconds()).padStart(2, '0');
+
+                return `${formattedDay}/${formattedMonth}/${formattedYear} ${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
+            } catch (e) {
+                console.error("Erro ao formatar data/hora:", e);
+                return 'Formato Inválido';
+            }
         }
     </script>
 </body>

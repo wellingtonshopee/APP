@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Registros No Show</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Tailwind gray-100 */
+            margin: 0;
+            padding-top: 120px; /* Ajuste para acomodar o banner fixo */
+            transition: margin-left 0.3s ease; /* Adiciona transição para o conteúdo principal */
+        }
+
+        /* Estilo para o overlay quando o menu está aberto */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999; /* Abaixo do sidebar, mas acima do conteúdo */
+            display: none; /* Inicialmente oculto */
+        }
+
+        /* Estilos para o menu lateral */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -250px; /* Começa fora da tela */
+            width: 250px;
+            height: 100%;
+            background-color: #1f2937; /* Tailwind gray-800 */
+            color: white;
+            transition: left 0.3s ease;
+            z-index: 1000; /* Acima de tudo */
+            padding-top: 60px; /* Espaço para o banner ou topo */
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
+            overflow-y: auto; /* Permite scroll se o conteúdo for longo */
+        }
+
+        .sidebar.open {
+            left: 0; /* Entra na tela */
+        }
+
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar ul li {
+            padding: 15px 20px;
+            border-bottom: 1px solid #374151; /* Tailwind gray-700 */
+        }
+
+        .sidebar ul li:last-child {
+            border-bottom: none;
+        }
+
+        .sidebar ul li a {
+            color: white;
+            text-decoration: none;
+            font-size: 0.95em; /* Fonte diminuída conforme solicitado */
+            display: block; /* Torna o link clicável em toda a área do li */
+            transition: color 0.2s ease;
+        }
+
+        .sidebar ul li a:hover {
+            color: #9ca3af; /* Tailwind gray-400 */
+        }
+
+        /* Estilo para o botão de toggle do menu */
+        .sidebar-toggle {
+            background-color: #3f4140; /* Tailwind emerald-500 */
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1.2em;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.2s ease;
+            margin-right: 10px; /* Espaçamento à direita do botão */
+        }
+
+        .sidebar-toggle:hover {
+            background-color: #404040; /* Tailwind emerald-600 */
+        }
+
+        .banner {
+            background-color: #f30909; /* Tailwind red-700 */
+            padding: 1rem 1.25rem; /* Tailwind p-4 p-5 */
+            display: flex; /* Use flexbox */
+            align-items: center; /* Vertically align items */
+            justify-content: space-between; /* Space out logo, title, and filters */
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+            position: fixed; /* Fixa o banner no topo */
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 998; /* Abaixo do sidebar, mas acima do conteúdo */
+        }
+
+        .banner h1 {
+            color: #fff;
+            font-size: 1.5rem; /* Tailwind text-2xl */
+            font-weight: 700; /* Tailwind font-bold */
+            margin: 0; /* Remove default margin */
+            text-align: right; /* Align text to the right */
+            flex-grow: 1; /* Allow title to take available space */
+            margin-left: 1rem; /* Add some space to the left of the title */
+        }
+
+        .logo {
+            height: 50px;
+            width: auto;
+            margin-right: 1rem; /* Tailwind mr-4 */
+            border-radius: 0.375rem; /* Tailwind rounded-md */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Tailwind shadow-md */
+        }
+
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem; /* Tailwind gap-2 */
+            align-items: center;
+            margin-top: 1rem; /* Add space above filters when wrapped */
+            width: 100%; /* Garante que o formulário ocupa toda a largura */
+            justify-content: flex-start; /* Alinha itens à esquerda */
+        }
+
+        .filters label {
+            color: #fff;
+            font-size: 0.875rem; /* Tailwind text-sm */
+        }
+
+        .filters input[type="date"],
+        .filters input[type="text"],
+        .filters select {
+            border: 1px solid #d1d5db; /* Tailwind gray-300 */
+            border-radius: 0.375rem; /* Tailwind rounded-md */
+            padding: 0.3rem 0.5rem; /* Reduced padding */
+            font-size: 0.8rem; /* Slightly reduced font size */
+            width: auto; /* Auto width */
+            max-width: 120px; /* Added max-width for inputs */
+            background-color: #fff; /* White background for inputs */
+            color: #374151; /* Tailwind gray-700 */
+        }
+
+        .filters input[type="date"] {
+            max-width: 150px; /* Slightly wider for date picker */
+        }
+
+        .filters select {
+            max-width: 180px; /* Give select a bit more space */
+        }
+
+        .filters input:focus,
+        .filters select:focus {
+            outline: none;
+            border-color: #3b82f6; /* Tailwind blue-500 */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); /* Tailwind blue-500 com opacidade */
+        }
+
+        .filters button {
+            background-color: #282929; /* Tailwind emerald-500 */
+            color: white;
+            font-weight: 600; /* Tailwind font-semibold */
+            padding: 0.5rem 1rem; /* Tailwind py-2 px-4 */
+            border-radius: 0.375rem; /* Tailwind rounded-md */
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* Tailwind shadow-md */
+            transition: background-color 0.2s ease-in-out;
+            cursor: pointer;
+        }
+
+        .filters button:hover {
+            background-color: #059669; /* Tailwind emerald-600 */
+        }
+
+        .filters .clear-filters {
+            background-color: #282929; /* Tailwind gray-500 */
+            color: white;
+            font-weight: 600; /* Tailwind font-semibold */
+            padding: 0.5rem 1rem; /* Tailwind py-2 px-4 */
+            border-radius: 0.375rem; /* Tailwind rounded-md */
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* Tailwind shadow-md */
+            transition: background-color 0.2s ease-in-out;
+            cursor: pointer;
+            text-decoration: none; /* Remove underline from anchor button */
+            display: inline-block; /* Make anchor behave like a button */
+            text-align: center;
+        }
+
+        .filters .clear-filters:hover {
+            background-color: #4b5563; /* Tailwind gray-600 */
+        }
+
+        .container {
+            max-width: 1200px; /* Tailwind max-w-7xl */
+            margin: 1.25rem auto; /* Tailwind my-5 mx-auto */
+            padding: 0 1.25rem; /* Tailwind px-5 */
+        }
+
+        .cards {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center; /* Center cards */
+            gap: 1.5rem; /* Increased gap for larger cards */
+            margin-top: 1.5rem; /* Tailwind mt-6 */
+        }
+
+        .card {
+            background-color: #fff; /* White background */
+            border-radius: 0.5rem; /* Tailwind rounded-md */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Tailwind shadow-md */
+            width: 100%;
+            max-width: 400px; /* Increased max width for cards */
+            padding: 1.5rem; /* Increased padding */
+            transition: transform 0.3s ease;
+            position: relative;
+            border: 2px solid transparent; /* Default border */
+            display: flex; /* Use flexbox for internal layout */
+            flex-direction: column; /* Stack content vertically */
+        }
+
+        .card:hover {
+            transform: translateY(-5px); /* Slight lift on hover */
+            box-shadow: 0 6px 8px -1px rgba(0, 0, 0, 0.15), 0 3px 6px -1px rgba(0, 0, 0, 0.07);
+        }
+
+        .card p {
+            margin-bottom: 0.6rem; /* Slightly increased margin-bottom */
+            font-size: 0.9rem; /* Slightly increased font size */
+            color: #374151; /* Tailwind gray-700 */
+        }
+
+        .card p strong {
+            font-weight: 600; /* Tailwind font-semibold */
+            color: #1f2937; /* Tailwind gray-800 */
+        }
+
+        .status-label {
+            position: absolute;
+            top: 0.75rem; /* Tailwind top-3 */
+            right: 0.75rem; /* Tailwind right-3 */
+            padding: 0.125rem 0.5rem; /* Tailwind px-2 py-0.5 */
+            border-radius: 0.375rem; /* Tailwind rounded-md */
+            font-weight: 600; /* Tailwind font-semibold */
+            font-size: 0.75rem; /* Tailwind text-xs */
+            color: #fff;
+            z-index: 10; /* Ensure label is on top */
+        }
+
+        .status-aguardando { background-color: #f59e0b; } /* Tailwind amber-500 */
+        .status-separacao { background-color: #dc2626; } /* Tailwind red-700 */
+        .status-aguardando-entregador { background-color: #f59e0b; } /* Tailwind amber-500 - Changed to yellow */
+        .status-finalizado { background-color: #10b981; } /* Tailwind emerald-500 */
+        .status-cancelado { background-color: #ef4444; } /* Tailwind red-500 */
+        .status-no-show { background-color: #d97706; } /* Tailwind amber-700 */
+        .status-transferido { background-color: #3b82f6; } /* Tailwind blue-500 - New status color */
+
+
+        .card-actions {
+            margin-top: 1rem; /* Space above action forms */
+            border-top: 1px solid #e5e7eb; /* Tailwind gray-200 */
+            padding-top: 1rem; /* Space inside border */
+            display: flex; /* Use flexbox */
+            flex-wrap: wrap; /* Allow wrapping */
+            gap: 0.75rem; /* Espaçamento entre os botões de ação */
+            justify-content: center; /* Centraliza os botões */
+        }
+
+        .card-actions form {
+            margin-bottom: 0; /* No margin after the last form */
+            display: flex; /* Use flex for form elements */
+            flex-wrap: wrap; /* Allow wrapping */
+            gap: 0.5rem; /* Space between form elements */
+            align-items: center;
+            /* Removido w-full aqui para que os botões tenham o tamanho fixo */
+        }
+
+        .card-actions form input[type="text"] {
+            border: 1px solid #d1d5db; /* Tailwind gray-300 */
+            border-radius: 0.25rem; /* Tailwind rounded */
+            padding: 0.375rem 0.75rem; /* Increased padding */
+            font-size: 0.875rem; /* Tailwind text-sm */
+            width: calc(50% - 0.25rem); /* Adjust width for two inputs per row */
+            box-sizing: border-box;
+        }
+        .card-actions form input[type="text"]:last-child {
+            margin-right: 0;
+        }
+
+        /* AJUSTES AQUI para os botões dos cards */
+        .card-actions form button {
+            color: white;
+            padding: 0.5rem 1rem; /* Increased padding for larger buttons */
+            border-radius: 0.25rem; /* Tailwind rounded */
+            font-size: 0.875rem; /* Tailwind text-sm (increased from text-xs) */
+            font-weight: 500; /* Tailwind font-medium */
+            transition: background-color 0.2s ease-in-out;
+            cursor: pointer;
+            border: none; /* Remove default button border */
+            width: 150px; /* Largura fixa para todos os botões */
+            box-sizing: border-box;
+            /* Removido flex-grow aqui para garantir largura fixa */
+            text-align: center;
+        }
+
+        .card-actions form button:hover {
+            filter: brightness(90%); /* General hover effect for all buttons */
+        }
+
+        /* Specific button styles for actions */
+        .card-actions .btn-associar { background-color: #22c55e; } /* Tailwind green-500 */
+        .card-actions .btn-associar:hover { background-color: #16a34a; } /* Tailwind green-600 */
+
+        /* Style for disabled associate button */
+        .card-actions .btn-associar:disabled {
+            background-color: #a5d6a7; /* Lighter green for disabled */
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .card-actions .btn-desassociar { background-color: #f59e0b; } /* Tailwind amber-500 */
+        .card-actions .btn-desassociar:hover { background-color: #d97706; } /* Tailwind amber-600 */
+
+        .card-actions .btn-finalizar-carregamento { background-color: #6b7280; } /* Tailwind gray-500 */
+        .card-actions .btn-finalizar-carregamento:hover { background-color: #4b5563; } /* Tailwind gray-600 */
+
+        .card-actions .btn-finalizar { background-color: #02ea15; } /* Brighter Green */
+        .card-actions .btn-finalizar:hover { background-color: #01b00e; } /* Darker Green */
+
+        .card-actions .btn-cancelar { background-color: #ef4444; } /* Tailwind red-500 */
+        .card-actions .btn-cancelar:hover { background-color: #dc2626; } /* Tailwind red-600 */
+
+        .card-actions .btn-voltar { background-color: #a855f7; } /* Tailwind purple-500 */
+        .card-actions .btn-voltar:hover { background-color: #9333ea; } /* Tailwind purple-600 */
+
+        .btn-transferir {
+            background-color: #3b82f6; /* Tailwind blue-500 */
+            color: white;
+            padding: 0.5rem 1rem; /* Increased padding */
+            border-radius: 0.25rem; /* Tailwind rounded */
+            font-size: 0.875rem; /* Tailwind text-sm */
+            font-weight: 500; /* Tailwind font-medium */
+            transition: background-color 0.2s ease-in-out;
+            cursor: pointer;
+            border: none; /* Remove default button border */
+            width: 150px; /* Largura fixa para todos os botões */
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        .btn-transferir:hover {
+            background-color: #2563eb; /* Tailwind blue-600 */
+        }
+
+        /* New style for the "Aguardando Entregador" button */
+        .btn-aguardando-entregador {
+            background-color: #f59e0b; /* Tailwind amber-500 (matching status color) */
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: background-color 0.2s ease-in-out;
+            cursor: pointer;
+            border: none;
+            width: 150px; /* Largura fixa para todos os botões */
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        .btn-aguardando-entregador:hover {
+            background-color: #d97706; /* Tailwind amber-600 */
+        }
+
+        /* Styles for flash messages */
+        .flashes {
+            list-style: none;
+            padding: 0;
+            margin: 1rem 0;
+        }
+
+        .flashes li {
+            padding: 0.75rem 1.25rem;
+            margin-bottom: 1rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+        }
+
+        .flashes .success {
+            background-color: #d1fae5; /* Tailwind green-100 */
+            color: #065f46; /* Tailwind green-900 */
+            border: 1px solid #34d399; /* Tailwind green-400 */
+        }
+
+        .flashes .error {
+            background-color: #fee2e2; /* Tailwind red-100 */
+            color: #991b1b; /* Tailwind red-900 */
+            border: 1px solid #f87171; /* Tailwind red-400 */
+        }
+
+        .flashes .warning {
+            background-color: #fffbeb; /* Tailwind yellow-100 */
+            color: #92400e; /* Tailwind yellow-900 */
+            border: 1px solid #fbbf24; /* Tailwind yellow-400 */
+        }
+
+
+        @media (max-width: 768px) {
+            body {
+                padding-top: 180px; /* Ajusta padding do body para o banner maior em telas pequenas */
+            }
+            .banner {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .banner h1 {
+                font-size: 1.25rem; /* Adjust title size on smaller screens */
+                text-align: center; /* Center title when stacked */
+                width: 100%; /* Allow title to take full width when stacked */
+                margin-left: 0; /* Remove left margin when stacked */
+                margin-top: 0.5rem; /* Add space above title when stacked */
+            }
+            .logo {
+                height: 40px; /* Adjust logo size on smaller screens */
+                margin-right: 0.5rem; /* Adjust margin on smaller screens */
+            }
+            .filters {
+                flex-direction: column;
+                width: 100%;
+                gap: 0.75rem; /* Increase gap for vertical layout */
+                margin-top: 1rem; /* Ensure space above filters */
+                align-items: stretch; /* Estica os itens para preencher a largura */
+            }
+            .filters input,
+            .filters select,
+            .filters button,
+            .filters .clear-filters,
+            .sidebar-toggle { /* Inclui o botão de menu */
+                width: 100%; /* Full width on small screens */
+                margin-right: 0; /* Remove margin para alinhamento */
+            }
+            .card {
+                max-width: 95%; /* Allow cards to be wider on small screens */
+                margin: 0.5rem auto; /* Center cards and add vertical space */
+            }
+            .card-actions form input[type="text"] {
+                width: 100%; /* Inputs de texto em largura total */
+                margin-right: 0;
+            }
+            .card-actions form button {
+                width: 100%; /* Full width for buttons in stacked forms */
+                /* Removido flex-grow: unset; pois width: 100% já garante isso */
+            }
+            .card-actions form {
+                flex-direction: column; /* Stack form elements vertically */
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    {# Menu Lateral #}
+    <aside class="sidebar" id="sidebar">
+        <ul>
+<li><a href="{{ url_for('menu_principal') }}">Página Inicial</a></li>
+<li><a href="{{ url_for('registros') }}">Painel do Operador</a></li>
+<li><a href="{{ url_for('registro_no_show') }}">Listar Registros No-Show</a></li>
+<li><a href="{{ url_for('associacao_no_show') }}">Criar Registro No-Show</a></li>
+<li><a href="{{ url_for('registros_finalizados') }}">Relatório de Registros</a></li>
+                <li><a href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                {% if current_user.is_authenticated %}
+                    <li><a href="{{ url_for('painel_gerencial') }}"><i class="fas fa-chart-line"></i> Painel Gerencial</a></li>
+                {% endif %}
+                <li><a href="{{ url_for('pacotes_rota') }}"><i class="fas fa-route"></i> Pacotes por Rota</a></li>
+                <li><a href="{{ url_for('listar_registros') }}"><i class="fas fa-list-alt"></i> Listar Registros (Filtro)</a></li>
+                <li><a href="{{ url_for('gerenciar_usuarios') }}"><i class="fas fa-users-cog"></i> Gerenciar Usuários</a></li>
+                <li><a href="{{ url_for('cadastro_usuario') }}"><i class="fas fa-user-plus"></i> Cadastrar Novo Usuário</a></li>
+                <li><a href="{{ url_for('log_atividades') }}"><i class="fas fa-clipboard-list"></i> Log de Atividades</a></li>
+                <li><a href="{{ url_for('status_entrega') }}"></i> Status de Entrega</a></li>
+                <li><a href="{{ url_for('adicionar_situacao_pedido') }}"></i>Situação dos Pedidos</a></li>
+                <li><a href="{{ url_for('adicionar_etapa') }}"></i>Etapas da Entrega</a></li>
+                <li><a href="{{ url_for('menu_principal') }}"></i> Configurações</a></li>
+                {% if current_user.is_authenticated %}
+                    <li><a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
+                {% else %}
+                    <li><a href="{{ url_for('login2') }}"><i class="fas fa-sign-in-alt"></i> Login Sistema</a></li>
+                {% endif %}
+
+        </ul>
+    </aside>
+
+    {# Overlay para fechar o menu ao clicar fora #}
+    <div class="overlay" id="overlay"></div>
+
+    <div class="banner">
+    <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" class="logo" alt="Logo Shopee">
+    <h1>Registros No Show - Sistema de Gerenciamento Operacional</h1>
+    <form action="{{ url_for('registro_no_show') }}" method="GET" class="filters">
+        <button type="button" class="sidebar-toggle" id="sidebarToggle">☰</button>
+
+        <label for="data">Data:</label>
+        <input type="date" id="data" name="data" value="{{ data_filtro or '' }}">
+
+        <label for="nome">Nome:</label>
+        <input type="text" id="nome" name="nome" placeholder="Nome" value="{{ nome_filtro or '' }}">
+
+        <label for="matricula">Matrícula:</label>
+        <input type="text" id="matricula" name="matricula" placeholder="Matrícula" value="{{ matricula_filtro or '' }}">
+
+        <label for="rota">Rota:</label>
+        <input type="text" id="rota" name="rota" placeholder="Rota" value="{{ rota_filtro or '' }}">
+
+        <label for="status">Status:</label>
+        <select id="status" name="status">
+            <option value="">Todos</option>
+            <option value="finalizado" {% if status_filtro == 'finalizado' %}selected{% endif %}>Finalizado</option>
+            <option value="transferido" {% if status_filtro == 'transferido' %}selected{% endif %}>Transferido</option>
+            <option value="cancelado" {% if status_filtro == 'cancelado' %}selected{% endif %}>Cancelado</option>
+        </select>
+
+        <button type="submit">Filtrar</button>
+        <a href="{{ url_for('registro_no_show') }}" class="clear-filters">Limpar Filtros</a>
+    </form>
+</div>
+
+
+    <div class="container">
+        {# Display flash messages #}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="cards">
+    {% if registros_no_show %}
+        {% for registro in registros_no_show %}
+            {# Condição para exibir o card: só mostra se não for cancelado nem finalizado por padrão, OU se o filtro de status corresponder #}
+            {% if (registro.cancelado != 1 and registro.finalizada != 1) or status_filtro == 'cancelado' or status_filtro == 'finalizado' %}
+                {# Add ID to the card div for scrolling #}
+                <div class="card" id="no-show-registro-{{ registro.id }}">
+                    {# Status Label - This already correctly shows "Cancelado" and "Finalizado" #}
+                    {% if registro.finalizada == 1 %}
+                    <span class="status-label status-finalizado">Finalizado</span>
+                    {% elif registro.cancelado == 1 or registro.em_separacao == 3 %}
+                    <span class="status-label status-cancelado">Cancelado</span>
+                    {% elif registro.em_separacao == 1 %}
+                    <span class="status-label status-separacao">Em Separação</span>
+                    {% elif registro.em_separacao == 2 %}
+                    <span class="status-label status-aguardando-entregador">Aguardando Entregador</span>
+                    {% elif registro.em_separacao == 4 %} {# Novo status para Transferido #}
+                    <span class="status-label status-transferido">Transferido</span>
+                    {% else %}
+                    <span class="status-label status-aguardando">Aguardando Motorista</span>
+                    {% endif %}
+                    {# BEGIN - Display fields in the desired order #}
+                    <p><strong>Data/Hora:</strong> {{ registro.data_hora_login | formata_data_hora }}</p>
+                    <p><strong>Nome:</strong> {{ registro.nome | default('N/A') }}</p>
+                    <p><strong>Matrícula:</strong> {{ registro.matricula | default('N/A') }}</p>
+                    <p><strong>Rota:</strong> {{ registro.gaiola | default('N/A') }}</p> {# Using gaiola as discussed, assuming it's the display Rota #}
+                    <p><strong>Entrega:</strong> {{ registro.tipo_entrega | default('N/A') }}</p>
+                    <p><strong>Rua:</strong> {{ registro.rua | default('N/A') }}</p>
+                    <p><strong>Estação:</strong> {{ registro.estacao | default('N/A') }}</p>
+
+                    {# Modified line for Finalizado text to show time if finalized, "Cancelado" if canceled, or "Não Finalizado" #}
+                    <p><strong>Data \ Hora Fim:</strong>
+                        {% if registro.finalizada == 1 %}
+                            {{ registro.hora_finalizacao|formata_data_hora }}
+                        {% elif registro.cancelado == 1 or registro.em_separacao == 3 %}
+                            Cancelado
+                        {% elif registro.em_separacao == 4 %} {# Adicionada condição para status Transferido #}
+                            {{ registro.hora_finalizacao|formata_data_hora }} {# Exibe a hora de finalização para Transferido #}
+                        {% else %}
+                            Não Finalizado
+                        {% endif %}
+                    </p>
+                    {# END - Display fields in the desired order #}
+
+                    {# Action Forms Section - Display all actions regardless of status #}
+                    <div class="card-actions"> {# Removido flex flex-wrap gap-2 daqui para usar o CSS global #}
+                        {# Forms for active records #}
+                        {% if not registro.gaiola or not registro.estacao %}
+                            {# Form to Associate #}
+                            <form action="{{ url_for('associar_id', id=registro.id) }}" method="POST"> {# Removido class="w-full" #}
+                                <input type="text" name="gaiola" placeholder="Rota:" required class="flex-grow rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                                <input type="text" name="estacao" placeholder="Estação:" required class="flex-grow rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                                <input type="text" name="rua" placeholder="Rua:" value="{% if registro.rua and registro.rua != 'None' %}{{ registro.rua }}{% endif %}" class="flex-grow rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                                {# Removido 'disabled' e 'js-disable-manual-associate' #}
+                                <button type="submit" class="btn-associar rounded-md shadow-sm text-white font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500" {% if registro.em_separacao == 4 or registro.em_separacao == 3 %}disabled{% endif %}>Associar</button>
+                            </form>
+                        {% endif %}
+                        <form action="{{ url_for('cancelar_no_show', id=registro.id, data=data_filtro, nome=nome_filtro, matricula=matricula_filtro, rota=rota_filtro, status=status_filtro) }}" method="POST" class="inline-block mr-2 cancelar-noshow-form" data-registro-id="{{ registro.id }}">
+                            <button type="submit" class="btn-cancelar cancelar-noshow-btn" {% if registro.em_separacao == 4 or registro.em_separacao == 3 %}disabled{% endif %}>Cancelar</button>
+                        </form>
+                        <form action="{{ url_for('transferir_no_show_para_registro', no_show_id=registro.id, data=data_filtro, nome=nome_filtro, matricula=matricula_filtro, rota=rota_filtro, status=status_filtro) }}" method="POST" class="transferir-destaque">
+                            <button type="submit" class="btn-transferir" {% if registro.em_separacao == 4 or registro.em_separacao == 3 %}disabled{% endif %}>Transferir</button>
+                        </form>
+                        {% if registro.em_separacao == 4 %}
+                            {# Botão "Finalizar" só aparece após a transferência #}
+                            <form action="{{ url_for('finalizar_no_show', id=registro.id) }}" method="POST">
+                                <button type="submit" class="btn-finalizar">Finalizar</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %} {# <--- Este {% endif %} FECHA A CONDIÇÃO DE EXIBIÇÃO DO CARD. É crucial que ele esteja aqui, antes do {% endfor %}. #}
+        {% endfor %}
+    {% else %}
+        <p class="text-center text-gray-600 mt-8">Nenhum registro de No-Show encontrado com os filtros aplicados.</p>
+    {% endif %}
+</div>
+        <div class="paginacao">
+            {% if total_paginas > 1 %}
+                <span>Página {{ pagina }} de {{ total_paginas }}</span>
+                <br>
+                {% if pagina > 1 %}
+                    <a href="{{ url_for('associacao', pagina=pagina-1, rota=rota, tipo_entrega=tipo_entrega) }}">Anterior</a>
+                {% endif %}
+                {% for p in range(1, total_paginas + 1) %}
+                    {% if p == pagina %}
+                        <strong>{{ p }}</strong>
+                    {% elif p >= pagina - 2 and p <= pagina + 2 %} {# Limita a exibição de números de página #}
+                        <a href="{{ url_for('associacao', pagina=p, rota=rota, tipo_entrega=tipo_entrega) }}">{{ p }}</a>
+                    {% elif p == 1 or p == total_paginas or (p == pagina - 3 and pagina > 4) or (p == pagina + 3 and pagina < total_paginas - 3) %}
+                        ... {# Adiciona reticências para saltos maiores #}
+                    {% endif %}
+                {% endfor %}
+                {% if pagina < total_paginas %}
+                    <a href="{{ url_for('associacao', pagina=pagina+1, rota=rota, tipo_entrega=tipo_entrega) }}">Próxima</a>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+<script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            // Optional: Scroll to a specific record if an ID is in the URL fragment
+            if (window.location.hash) {
+                try {
+                    const el = document.querySelector(window.location.hash);
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'auto', block: 'center' });
+                        // Focar no primeiro input de texto não desabilitado dentro do card
+                        const firstTextInput = el.querySelector('input[type="text"]:not(:disabled)');
+                        if (firstTextInput) {
+                            firstTextInput.focus();
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to scroll to element:", e);
+                }
+            } else {
+                // Focar no primeiro input de texto não desabilitado na página (se não houver hash)
+                const firstTextInput = document.querySelector('.card:not(.finalizado-definitivo) input[type="text"]:not(:disabled)');
+                if (firstTextInput) {
+                    firstTextInput.focus();
+                }
+            }
+
+            // Add event listeners to disable the "Associar" button and show alert
+            const associateButtons = document.querySelectorAll('.js-disable-manual-associate');
+
+            associateButtons.forEach(button => {
+                button.addEventListener('click', function(event) {
+                    event.preventDefault(); // Prevent the form from submitting
+                    alert("Para associar um registro No-Show, você deve CANCELAR o registro atual e CRIAR um NOVO registro para Associação No-Show.");
+                });
+            });
+
+
+            // Adiciona event listeners para controlar a navegação com Tab/Enter (mantido do código original)
+            document.querySelectorAll('.card-actions form').forEach(form => { // Seleciona todos os formulários dentro de card-actions
+                // Verifica se este é o formulário de associação manual
+                if (form.querySelector('.btn-associar.js-disable-manual-associate')) {
+                    const gaiolaInput = form.querySelector('input[name="gaiola"]');
+                    const estacaoInput = form.querySelector('input[name="estacao"]');
+                    const ruaInput = form.querySelector('input[name="rua"]'); // Captura o input de rua
+                    const salvarButton = form.querySelector('button[type="submit"]'); // Botão de salvar do form de associação
+
+                    // Melhoria na navegação: Tab/Enter do Gaiola vai para Estação, de Estação vai para Rua, de Rua vai para Salvar
+                    if (gaiolaInput) {
+                        gaiolaInput.addEventListener('keydown', function (event) {
+                            if (event.key === 'Enter' || event.key === 'Tab') {
+                                event.preventDefault();
+                                if (estacaoInput) estacaoInput.focus();
+                            }
+                        });
+                    }
+                    if (estacaoInput) {
+                        estacaoInput.addEventListener('keydown', function (event) {
+                            if (event.key === 'Enter' || event.key === 'Tab') {
+                                event.preventDefault();
+                                if (ruaInput) ruaInput.focus(); // Vai para Rua
+                            }
+                        });
+                    }
+                    if (ruaInput) { // Nova navegação do Rua para Salvar
+                        ruaInput.addEventListener('keydown', function (event) {
+                            if (event.key === 'Enter' || event.key === 'Tab') {
+                                event.preventDefault();
+                                if (salvarButton) salvarButton.focus(); // Vai para Salvar
+                            }
+                        });
+                    }
+                }
+            });
+
+            // --- Lógica do Menu Lateral ---
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const overlay = document.getElementById('overlay');
+
+            // Abre o menu
+            function openSidebar() {
+                sidebar.classList.add('open');
+                overlay.style.display = 'block';
+            }
+
+            // Fecha o menu
+            function closeSidebar() {
+                sidebar.classList.remove('open');
+                overlay.style.display = 'none';
+            }
+
+            // Event listeners para abrir/fechar o menu
+            sidebarToggle.addEventListener('click', function(event) {
+                event.stopPropagation(); // Impede que o clique se propague para o overlay
+                openSidebar();
+            });
+            overlay.addEventListener('click', closeSidebar); // Fecha ao clicar no overlay
+
+            // Fecha o menu se a janela for redimensionada para uma largura maior (opcional)
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 768) { // Exemplo: fecha se a tela for maior que 768px
+                    closeSidebar();
+                }
+            });
+
+            const cancelarNoshowForms = document.querySelectorAll('.cancelar-noshow-form'); // Use a nova classe do formulário
+
+            cancelarNoshowForms.forEach(form => {
+                form.addEventListener('submit', function(event) {
+                    event.preventDefault();
+                    const registroId = this.dataset.registroId;
+                    fetch(`/cancelar_no_show/${registroId}`, { // Use a nova rota
+                        method: 'POST'
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            const card = document.getElementById(`no-show-registro-${registroId}`);
+                            if (card) {
+                                const statusLabel = card.querySelector('.status-label');
+                                if (statusLabel) {
+                                    statusLabel.textContent = 'Cancelado';
+                                    statusLabel.className = 'status-label status-cancelado';
+                                }
+                            }
+                            // Redireciona para a página de registros após o cancelamento
+                            window.location.href = '{{ url_for('registro_no_show') }}';
+                        } else {
+                            console.error('Erro ao cancelar o registro No-Show.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro na requisição de cancelamento:', error);
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+</html>

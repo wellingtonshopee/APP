@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <title>Registros Normal</title>
@@ -8,140 +8,211 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
     <style>
+        /* ESTILOS DE LAYOUT GLOBAIS */
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6; /* Tailwind gray-100 */
+            font-family: 'Inter', sans-serif; /* Usando a fonte Inter do dashboard */
             margin: 0;
-            padding-top: 120px; /* Altura do banner + filtros */
-            transition: margin-left 0.3s ease; /* Adiciona transição para o conteúdo principal */
+            background-color: #f4f4f4;
+            color: #333;
+            display: flex; /* Permite layout flexível com sidebar e conteúdo */
+            min-height: 100vh;
+            overflow-x: hidden; /* Evita rolagem horizontal durante a transição */
+            padding-top: 0; /* Removido padding-top do body, agora controlado pelo wrapper do conteúdo */
         }
 
-        /* Estilo para o overlay quando o menu está aberto */
-        .overlay {
-            position: fixed;
+        /* Estilos do Menu Lateral (Sidebar) - Consolidado do dashboard */
+        .sidebar {
+            height: 100%;
+            width: 250px; /* Largura padrão para desktop */
+            position: fixed; /* Fixa o sidebar na tela */
+            z-index: 1000; /* Garante que fique acima de outros elementos */
             top: 0;
             left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 999; /* Abaixo do sidebar, mas acima do conteúdo */
-            display: none; /* Inicialmente oculto */
-        }
-
-        /* Estilos para o menu lateral */
-        .sidebar {
-            position: fixed;
-            top: 0;
-            left: -250px; /* Começa fora da tela */
-            width: 250px;
-            height: 100%;
-            background-color: #1f2937; /* Tailwind gray-800 */
+            background-color: #343a40; /* Cor de fundo escura */
+            overflow-x: hidden;
+            transition: transform 0.5s ease; /* Transição suave para esconder/mostrar */
+            padding-top: 20px; /* Espaço do topo */
+            box-shadow: 2px 0 5px rgba(0,0,0,0.5); /* Sombra para profundidade */
             color: white;
-            transition: left 0.3s ease;
-            z-index: 1000; /* Acima de tudo */
-            padding-top: 60px; /* Espaço para o banner ou topo */
-            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
-            overflow-y: auto; /* Permite scroll se o conteúdo for longo */
+            display: flex;
+            flex-direction: column;
+            align-items: center; /* Centraliza itens como logo e título */
+            justify-content: flex-start;
+            transform: translateX(-250px); /* Padrão: sidebar escondido em mobile e inicialização */
         }
 
         .sidebar.open {
-            left: 0; /* Entra na tela */
+            transform: translateX(0); /* Mostra o sidebar */
+        }
+
+        .sidebar .logo-sidebar {
+            width: 120px; /* Tamanho da logo na sidebar */
+            margin-bottom: 20px;
+            border-radius: 8px; /* Cantos arredondados */
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3); /* Sombra */
+        }
+
+        .sidebar h2.menu-title { /* Título do menu na sidebar */
+            color: white;
+            margin-bottom: 20px;
+            font-size: 1.4em; /* Tamanho do título do menu */
         }
 
         .sidebar ul {
-            list-style: none;
+            list-style-type: none;
             padding: 0;
-            margin: 0;
-        }
-
-        .sidebar ul li {
-            padding: 15px 20px;
-            border-bottom: 1px solid #374151; /* Tailwind gray-700 */
-        }
-
-        .sidebar ul li:last-child {
-            border-bottom: none;
+            width: 100%;
         }
 
         .sidebar ul li a {
-            color: white;
+            padding: 15px 25px;
             text-decoration: none;
-            font-size: 0.95em; /* Fonte diminuída conforme solicitado */
-            display: block; /* Torna o link clicável em toda a área do li */
-            transition: color 0.2s ease;
+            font-size: 1.1em;
+            color: #f8f9fa;
+            display: flex; /* Para alinhar ícone e texto */
+            align-items: center; /* Para alinhar verticalmente */
+            transition: 0.3s;
+            text-align: left; /* Alinhar texto à esquerda */
+        }
+
+        .sidebar ul li a i { /* Estilo para os ícones */
+            margin-right: 10px; /* Espaço entre ícone e texto */
         }
 
         .sidebar ul li a:hover {
-            color: #9ca3af; /* Tailwind gray-400 */
-        }
-
-        /* Estilo para o botão de toggle do menu */
-        .sidebar-toggle {
-            position: fixed;
-            top: 15px; /* Ajuste conforme a altura do seu banner */
-            left: 15px;
-            z-index: 1001; /* Acima do sidebar */
-            background-color: #3e3f3f; /* Tailwind emerald-500 */
+            background-color: #007bff; /* Cor de destaque ao passar o mouse */
             color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 1.2em;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            transition: background-color 0.2s ease;
+        }
+        
+        /* Estilos do Conteúdo Principal - Consolidado do dashboard */
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            margin-left: 0; /* Padrão: sem margem à esquerda */
+            transition: margin-left 0.5s ease, width 0.5s ease; /* Transição suave */
+            width: 100%; /* Padrão: largura total */
+            padding: 0; /* Garante que não há padding extra */
         }
 
-        .sidebar-toggle:hover {
-            background-color: #444444; /* Tailwind emerald-600 */
+        .main-content.shifted {
+            margin-left: 250px; /* Espaço para o sidebar visível em desktop */
+            width: calc(100% - 250px); /* Ajusta a largura quando o menu está visível */
         }
 
-        .banner {
-            background-color: #f30909;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 120px;
-            z-index: 1000;
-            padding: 0;
-            display: flex; /* Usa flexbox para organizar conteúdo e filtros */
-            flex-direction: column; /* Empilha conteúdo e filtros verticalmente */
-            justify-content: center; /* Centraliza conteúdo verticalmente */
-            align-items: center; /* Centraliza conteúdo horizontalmente */
-        }
-
-        .banner-content {
+        /* ESTILOS ESPECÍFICOS DO BANNER - Consolidado do dashboard */
+        .top-banner {
+            background-color: #f11a0a; /* Cor de fundo clara */
+            padding: 10px 20px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            max-width: 1200px;
-            margin: 0 auto;
-            width: 100%;
-            padding: 0 20px; /* Adiciona padding horizontal */
-            box-sizing: border-box; /* Inclui padding no cálculo da largura */
-            height: 80px; /* Altura para o logo e título */
+            justify-content: space-between; /* Mantém itens nas extremidades */
+            border-bottom: 1px solid #e0e0e0;
+            position: fixed; /* Fixa o banner no topo */
+            width: 100%; /* Começa com largura total */
+            top: 0;
+            left: 0;
+            z-index: 1010; /* Garante que o banner fique acima do conteúdo */
+            box-shadow: 0 2px 4px rgba(233, 231, 231, 0.05);
+            transition: all 0.3s ease-in-out;
+            flex-wrap: wrap; /* Permite quebra de linha em telas menores */
         }
-
-        .banner .logo {
-            height: 50px;
+        .top-banner.shifted { /* Adiciona esta classe para o banner se mover com o sidebar */
+            width: calc(100% - 250px); /* Ajusta a largura quando sidebar visível */
+            left: 250px; /* Desloca o banner para a direita */
+        }
+        
+        /* Estilos da logo do banner */
+        .top-banner .logo {
+            height: 60px; /* Aumentado o tamanho da logo */
             width: auto;
-            margin-right: 20px;
-            border-radius: 8px; /* Adiciona borda arredondada */
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Adiciona sombra */
+            border-radius: 8px; /* Cantos arredondados */
+            box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.4); /* Adicionado sombra */
+            /* Removido margin-right, o flex-direction column na seção cuida do espaçamento */
+        }
+        
+        /* Estilos para o título do banner */
+        .top-banner .banner-title-section h3 {
+            font-size: 2em; /* Aumentado o tamanho da fonte */
+            color: white; /* Cor branca para o texto */
+            margin-bottom: 0; /* Removendo margens extras se houver */
+            text-align: right; /* Alinha o título à direita */
+            flex-grow: 1; /* Permite que o título ocupe o espaço restante */
         }
 
-        .banner h1 {
-            flex: 1;
-            text-align: right;
-            font-size: 24px;
-            margin: 0;
-            color: white;
+        /* Estilo para a seção que contém logo e botão (nova) */
+        .banner-left-section {
+            display: flex;
+            flex-direction: column; /* Organiza logo e botão em coluna */
+            align-items: flex-start; /* Alinha os itens à esquerda dentro da coluna */
+            gap: 10px; /* Espaço entre a logo e o botão */
+        }
+
+        /* Botão para abrir/fechar o menu lateral - Estilo do dashboard */
+        .menu-toggle {
+            background: none;
+            border: none;
+            color: #f8f9fa; /* Cor do texto/ícone branca */
+            font-size: 1.5em; /* Ajustado para ser visível e clicável */
+            cursor: pointer;
+            padding: 0; /* Remover padding padrão para melhor controle de espaçamento */
+            line-height: 1;
+            /* No mobile, o botão vai aparecer, no desktop ele é escondido pelo JS */
+        }
+
+        /* Estilos do Container para o conteúdo principal */
+        .main-page-content-wrapper { /* Novo wrapper para o conteúdo central original */
+            padding: 20px;
+            overflow-x: auto;
+            margin-top: 100px; /* Ajustado para dar mais espaço, considerando a logo maior no banner */
+            flex-grow: 1; /* Permite que ocupe o espaço restante verticalmente */
+            display: flex;
+            flex-direction: column;
+            /* align-items: center; Centraliza o conteúdo (se necessário, remova para alinhamento à esquerda) */
+            /* justify-content: center; Centraliza o conteúdo verticalmente */
+            /* text-align: center; */
+        }
+        
+        /* Estilos do logo central e texto (se aplicável, reajustado do seu código original) */
+        .logo-central {
+            max-width: 250px; /* Tamanho máximo do logo central */
+            height: auto;
+            margin-bottom: 1.5rem; /* Tailwind mb-6 */
+        }
+
+        .central-content h2 { /* Reusando este nome de classe, agora dentro do wrapper */
+            font-size: 2rem; /* Tailwind text-3xl */
             font-weight: 700; /* Tailwind font-bold */
+            color: #1f2937; /* Tailwind gray-800 */
+            margin-bottom: 1rem; /* Tailwind mb-4 */
         }
 
+        .central-content p { /* Reusando este nome de classe, agora dentro do wrapper */
+            font-size: 1.125rem; /* Tailwind text-lg */
+            color: #4b5563; /* Tailwind gray-600 */
+            max-width: 600px; /* Limita a largura do parágrafo */
+        }
+
+        /* Flash messages (mantido do seu código original) */
+        .flashes {
+            list-style-type: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+        .flashes li {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .flash.success { background-color: #d4edda; color: #155724; border-color: #c3e6cb; }
+        .flash.danger { background-color: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+        .flash.warning { background-color: #fff3cd; color: #856404; border-color: #ffeeba; }
+
+        /* Estilos de filtros e cards (mantidos e otimizados do seu código original) */
         .filters {
             display: flex;
             flex-wrap: wrap;
@@ -149,7 +220,7 @@
             gap: 10px;
             justify-content: center; /* Centraliza os filtros */
             width: 100%; /* Ocupa a largura total do banner */
-            padding: 0 20px 10px 20px; /* Padding horizontal e inferior */
+            padding: 10px 20px; /* Padding horizontal e inferior */
             box-sizing: border-box;
         }
 
@@ -185,7 +256,7 @@
             background-color: #5b5c5c; /* Tailwind emerald-600 */
         }
 
-        .container {
+        .container { /* Este container agora é o #cardsContainer, mantendo o estilo */
             padding: 20px;
             max-width: 1200px;
             margin: 0 auto;
@@ -283,7 +354,6 @@
         .finalizado-label { background-color: #6c757d; } /* Cinza */
         .cancelado-label { background-color: #dc2626; } /* Vermelho */
 
-
         /* Estilos para a paginação */
         .paginacao {
             text-align: center;
@@ -328,28 +398,48 @@
             cursor: pointer;
         }
 
-        /* Media Queries para responsividade */
+        /* Media Queries para responsividade - Consolidado do dashboard */
         @media (max-width: 768px) {
-            body {
-                padding-top: 180px; /* Ajusta padding do body para o banner maior em telas pequenas */
+            .sidebar {
+                width: 180px; /* Reduz a largura do sidebar em telas menores */
+                transform: translateX(-180px); /* Escondido por padrão em mobile */
             }
-            .banner {
-                height: auto; /* Altura automática para acomodar filtros empilhados */
+            .sidebar.open {
+                transform: translateX(0);
             }
-            .banner-content {
-                flex-direction: column;
-                align-items: center;
-                text-align: center;
-                height: auto; /* Altura automática */
-                padding-bottom: 10px; /* Espaço entre banner-content e filters */
+            .main-content {
+                margin-left: 0; /* Ocupa toda a largura em mobile */
+                width: 100%;
             }
-            .banner h1 {
-                text-align: center;
+            .main-content.shifted { /* Não desloca em mobile */
                 margin-left: 0;
-                margin-top: 10px;
+                width: 100%;
             }
-            .banner .logo {
-                margin-right: 0;
+            .top-banner { /* Ajustes para o banner em telas menores */
+                width: 100%;
+                left: 0;
+                flex-direction: column; /* Em mobile, o banner pode se tornar uma coluna */
+                align-items: flex-start; /* Alinha os itens do banner no início */
+                padding-top: 15px; /* Ajuste o padding superior se a logo estiver muito alta */
+                padding-bottom: 15px; /* Ajuste o padding inferior */
+            }
+            .top-banner.shifted { /* O banner não se desloca com o sidebar em mobile */
+                width: 100%;
+                left: 0;
+            }
+            .top-banner .logo {
+                height: 50px; /* Ajusta o tamanho da logo no banner para mobile */
+                margin-bottom: 10px; /* Espaço abaixo da logo */
+            }
+            .top-banner .menu-toggle {
+                margin-top: 5px; /* Espaço entre logo e botão em mobile */
+            }
+            .top-banner .banner-title-section {
+                width: 100%; /* Garante que o título ocupe toda a largura disponível */
+                text-align: center; /* Centraliza o título em mobile */
+            }
+            .main-page-content-wrapper {
+                margin-top: 180px; /* Mais espaço para o conteúdo em mobile, considerando o banner com filtros */
             }
             .filters {
                 flex-direction: column;
@@ -366,112 +456,115 @@
             .card {
                 width: 95%; /* Cards ocupam quase toda a largura em telas pequenas */
             }
-            .sidebar {
-                width: 200px; /* Ajusta largura do sidebar em telas menores */
-                left: -200px;
-            }
-            .sidebar.open {
-                left: 0;
-            }
-            .sidebar-toggle {
-                top: 10px; /* Ajusta posição do botão em telas menores */
-                left: 10px;
-            }
         }
     </style>
 </head>
-<body class="pagina-registros">
-
-    {# Botão para abrir/fechar o menu lateral #}
-    <button class="sidebar-toggle" id="sidebarToggle">☰</button>
-  
-
-    {# Menu Lateral #}
-    <aside class="sidebar" id="sidebar">
+<body>
+    <!-- Menu Lateral (Sidebar) -->
+    <div id="mySidebar" class="sidebar">
+        <!-- Substitua 'imagem/shopee32.png' pelo caminho real da sua logo para o sidebar -->
+        <img src="{{ url_for('static', filename='imagem/shopee32.png') }}"
+             onerror="this.onerror=null; this.src='https://placehold.co/120x120/343a40/ffffff?text=LOGO';"
+             alt="Logo SysSPX" class="logo-sidebar">
+        <h2 class="menu-title">Menu</h2>
         <ul>
-<li><a href="{{ url_for('menu_principal') }}">Página Inicial</a></li>
-<li><a href="{{ url_for('menu_principal') }}">Página Inicial</a></li>
-<li><a href="{{ url_for('registros') }}">Painel do Operador</a></li>
-<li><a href="{{ url_for('registro_no_show') }}">Listar Registros No-Show</a></li>
-<li><a href="{{ url_for('associacao_no_show') }}">Criar Registro No-Show</a></li>
-<li><a href="{{ url_for('registros_finalizados') }}">Relatório de Registros</a></li>
-                <li><a href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-                {% if current_user.is_authenticated %}
-                    <li><a href="{{ url_for('painel_gerencial') }}"><i class="fas fa-chart-line"></i> Painel Gerencial</a></li>
-                {% endif %}
-                <li><a href="{{ url_for('pacotes_rota') }}"><i class="fas fa-route"></i> Pacotes por Rota</a></li>
-                <li><a href="{{ url_for('listar_registros') }}"><i class="fas fa-list-alt"></i> Listar Registros (Filtro)</a></li>
-                <li><a href="{{ url_for('gerenciar_usuarios') }}"><i class="fas fa-users-cog"></i> Gerenciar Usuários</a></li>
-                <li><a href="{{ url_for('cadastro_usuario') }}"><i class="fas fa-user-plus"></i> Cadastrar Novo Usuário</a></li>
-                <li><a href="{{ url_for('log_atividades') }}"><i class="fas fa-clipboard-list"></i> Log de Atividades</a></li>
-                <li><a href="{{ url_for('status_entrega') }}"></i> Status de Entrega</a></li>
-                <li><a href="{{ url_for('adicionar_situacao_pedido') }}"></i>Situação dos Pedidos</a></li>
-                <li><a href="{{ url_for('adicionar_etapa') }}"></i>Etapas da Entrega</a></li>
-                <li><a href="{{ url_for('menu_principal') }}"></i> Configurações</a></li>
-                {% if current_user.is_authenticated %}
-                    <li><a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
-                {% else %}
-                    <li><a href="{{ url_for('login2') }}"><i class="fas fa-sign-in-alt"></i> Login Sistema</a></li>
-                {% endif %}
+            {# Links de menu comuns a todas as páginas, usando a estrutura do sidebar com ícones #}
+            <li><a href="{{ url_for('menu_principal') }}"><i class="fas fa-home"></i> Página Inicial</a></li>
+            <li><a href="{{ url_for('registros') }}"><i class="fas fa-clipboard-list"></i> Painel do Operador</a></li>
+            <li><a href="{{ url_for('registro_no_show') }}"><i class="fas fa-list-alt"></i> Listar Registros No-Show</a></li>
+            <li><a href="{{ url_for('associacao_no_show') }}"><i class="fas fa-clipboard-check"></i> Criar Registro No-Show</a></li>
+            <li><a href="{{ url_for('registros_finalizados') }}"><i class="fas fa-file-alt"></i> Relatório de Registros</a></li>
+            <li><a href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+            {% if current_user.is_authenticated %}
+                <li><a href="{{ url_for('painel_gerencial') }}"><i class="fas fa-chart-line"></i>Gerenciamento de Rota</a></li>
+            {% endif %}
+            <li><a href="{{ url_for('pacotes_rota') }}"><i class="fas fa-route"></i> Pacotes por Rota</a></li>
+            <li><a href="{{ url_for('listar_registros') }}"><i class="fas fa-list-alt"></i> Listar Registros (Filtro)</a></li>
+            <li><a href="{{ url_for('gerenciar_usuarios') }}"><i class="fas fa-users-cog"></i> Gerenciar Usuários</a></li>
+            <li><a href="{{ url_for('cadastro_usuario') }}"><i class="fas fa-user-plus"></i> Cadastrar Novo Usuário</a></li>
+            <li><a href="{{ url_for('log_atividades') }}"><i class="fas fa-clipboard-list"></i> Log de Atividades</a></li>
+            <li><a href="{{ url_for('status_entrega') }}"><i class="fas fa-truck"></i> Entregas Por Motorista</a></li>
+            <li><a href="{{ url_for('adicionar_situacao_pedido') }}"><i class="fas fa-tags"></i> Situação dos Pedidos</a></li>
+            <li><a href="{{ url_for('adicionar_etapa') }}"><i class="fas fa-truck-ramp-box"></i> Etapas da Entrega</a></li>
+            <li><a href="{{ url_for('menu_principal') }}"><i class="fas fa-cog"></i> Configurações</a></li>
+            {% if current_user.is_authenticated %}
+                <li><a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
+            {% else %}
+                <li><a href="{{ url_for('login2') }}"><i class="fas fa-sign-in-alt"></i> Login Sistema</a></li>
+            {% endif %}
         </ul>
-    </aside>
+    </div>
 
-    {# Overlay para fechar o menu ao clicar fora #}
+    <!-- Overlay para fechar o menu ao clicar fora em mobile -->
     <div class="overlay" id="overlay"></div>
 
-    <div class="banner">
-        <div class="banner-content">
-            <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" class="logo" alt="Logo">
-            <h1>Fila de Carregamento - Sistema de Gerenciamento Operacional</h1>
-        </div>
-        {# Filtros #}
-        <div class="filters">
-            {# Filtro de Data Range #}
-            <div>
-                <label for="dataInicio">De:</label>
-                <input type="date" id="dataInicio" value="{{ data_inicio }}" onchange="aplicarFiltros()">
+    <!-- Conteúdo Principal da Página -->
+    <div id="mainContent" class="main-content">
+        <div class="top-banner">
+            <!-- Seção esquerda do banner: Logo e Botão de Menu -->
+            <div class="banner-left-section">
+                <img src="{{ url_for('static', filename='imagem/shopee32.png') }}"
+                     onerror="this.onerror=null; this.src='https://placehold.co/60x60/f8f9fa/000000?text=LOGO';"
+                     alt="Logo da Empresa" class="logo">
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i> Esconder Menu
+                </button>
             </div>
-            <div>
-                <label for="dataFim">Até:</label>
-                <input type="date" id="dataFim" value="{{ data_fim }}" onchange="aplicarFiltros()">
+            
+            <!-- Seção do título do banner -->
+            <div class="banner-title-section">
+                <h3>Fila de Carregamento - Sistema de Gerenciamento Operacional</h3>
             </div>
 
-            <input type="text" id="filtroRota" placeholder="Filtrar por Rota" oninput="aplicarFiltros()" value="{{ rota }}">
-            <input type="text" id="filtroCidade" placeholder="Filtrar por Cidade" oninput="aplicarFiltros()" list="listaCidades" value="{{ cidade }}">
-            <datalist id="listaCidades">
-                {% for cidade in cidades %}
-                <option value="{{ cidade }}">
-                {% endfor %}
-            </datalist>
-            <select id="filtroEntrega" onchange="aplicarFiltros()">
-                <option value="" {% if tipo_entrega == '' %}selected{% endif %}>Todos os Tipos</option>
-                <option value="Normal" {% if tipo_entrega == 'Normal' %}selected{% endif %}>Normal</option>
-                <option value="No-Show" {% if tipo_entrega == 'No-Show' %}selected{% endif %}>No-Show</option>
-            </select>
-           <select id="filtroSeparacao" onchange="aplicarFiltros()">
-    <option value="" {% if em_separacao == '' %}selected{% endif %}>Todos</option>
-    <option value="0" {% if em_separacao == '0' %}selected{% endif %}>Aguardando Carregar</option>
-    <option value="2" {% if em_separacao == '2' %}selected{% endif %}>Aguardando Transferência</option> {# <-- Corrigido AQUI! #}
-    <option value="4" {% if em_separacao == '4' %}selected{% endif %}>Cancelado</option>
-    <option value="1" {% if em_separacao == '1' %}selected{% endif %}>Em Separação</option>
-    <option value="3" {% if em_separacao == '3' %}selected{% endif %}>Finalizado</option>
-    {# O status 2 "Aguardando Transferência" não está na UI, mas pode ser um estado interno #}
-</select>
+            {# Filtros - Movidos para dentro do banner para que se movam com ele #}
+            <div class="filters">
+                {# Filtro de Data Range #}
+                <div>
+                    <label for="dataInicio">De:</label>
+                    <input type="date" id="dataInicio" value="{{ data_inicio }}" onchange="aplicarFiltros()">
+                </div>
+                <div>
+                    <label for="dataFim">Até:</label>
+                    <input type="date" id="dataFim" value="{{ data_fim }}" onchange="aplicarFiltros()">
+                </div>
 
-            <button onclick="limparFiltro()">Limpar Filtro</button>
+                <input type="text" id="filtroRota" placeholder="Filtrar por Rota" oninput="aplicarFiltros()" value="{{ rota }}">
+                <input type="text" id="filtroCidade" placeholder="Filtrar por Cidade" oninput="aplicarFiltros()" list="listaCidades" value="{{ cidade }}">
+                <datalist id="listaCidades">
+                    {% for cidade in cidades %}
+                    <option value="{{ cidade }}">
+                    {% endfor %}
+                </datalist>
+                <select id="filtroEntrega" onchange="aplicarFiltros()">
+                    <option value="" {% if tipo_entrega == '' %}selected{% endif %}>Todos os Tipos</option>
+                    <option value="Normal" {% if tipo_entrega == 'Normal' %}selected{% endif %}>Normal</option>
+                    <option value="No-Show" {% if tipo_entrega == 'No-Show' %}selected{% endif %}>No-Show</option>
+                </select>
+                <select id="filtroSeparacao" onchange="aplicarFiltros()">
+                    <option value="" {% if em_separacao == '' %}selected{% endif %}>Todos</option>
+                    <option value="0" {% if em_separacao == '0' %}selected{% endif %}>Aguardando Carregar</option>
+                    <option value="2" {% if em_separacao == '2' %}selected{% endif %}>Aguardando Transferência</option>
+                    <option value="4" {% if em_separacao == '4' %}selected{% endif %}>Cancelado</option>
+                    <option value="1" {% if em_separacao == '1' %}selected{% endif %}>Em Separação</option>
+                    <option value="3" {% if em_separacao == '3' %}selected{% endif %}>Finalizado</option>
+                </select>
+                <button onclick="limparFiltro()">Limpar Filtro</button>
+            </div>
         </div>
-    </div>
 
-    <div class="container">
-        <div class="cards" id="cardsContainer">
-            {# O conteúdo inicial dos cards será carregado via JavaScript #}
-            <p class="text-center text-gray-600 mt-8">Carregando registros...</p>
+        <!-- Conteúdo principal da página de registros (cards e paginação) -->
+        <div class="main-page-content-wrapper">
+            <div class="container">
+                <div class="cards" id="cardsContainer">
+                    <p class="text-center text-gray-600 mt-8">Carregando registros...</p>
+                </div>
+            </div>
+
+            {# Bloco de paginação. Este também será atualizado via JavaScript #}
+            <div class="paginacao" id="paginationContainer">
+                {# O conteúdo da paginação será gerado pelo JavaScript #}
+            </div>
         </div>
-    </div>
-
-    {# Bloco de paginação. Este também será atualizado via JavaScript #}
-    <div class="paginacao" id="paginationContainer">
-        {# O conteúdo da paginação será gerado pelo JavaScript #}
     </div>
 
     {# Message Box HTML #}
@@ -480,565 +573,612 @@
         <button onclick="document.getElementById('messageBox').style.display='none';">OK</button>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-    // Variáveis globais para manter o estado da paginação e filtros
-    let currentPage = {{ pagina | default(1) }};
-    let totalPages = {{ total_paginas | default(1) }};
-    // PER_PAGE deve corresponder ao valor definido no backend Flask (app.py)
-    const PER_PAGE = 10; 
+        // Variáveis globais para manter o estado da paginação e filtros
+        let currentPage = {{ pagina | default(1) }};
+        let totalPages = {{ total_paginas | default(1) }};
+        // PER_PAGE deve corresponder ao valor definido no backend Flask (app.py)
+        const PER_PAGE = 10; 
 
-    // Função para exibir uma mensagem personalizada (substitui alert)
-    function showMessage(message) {
-        const messageBox = document.getElementById('messageBox');
-        const messageText = document.getElementById('messageText');
-        if (messageBox && messageText) {
-            messageText.innerText = message;
-            messageBox.style.display = 'block';
-            setTimeout(() => {
-                messageBox.style.display = 'none';
-            }, 5000); // Esconde após 5 segundos
-        } else {
-            alert(message); // Fallback caso os elementos não existam
+        // Função para exibir uma mensagem personalizada (substitui alert)
+        function showMessage(message) {
+            const messageBox = document.getElementById('messageBox');
+            const messageText = document.getElementById('messageText');
+            if (messageBox && messageText) {
+                messageText.innerText = message;
+                messageBox.style.display = 'block';
+                setTimeout(() => {
+                    messageBox.style.display = 'none';
+                }, 5000); // Esconde após 5 segundos
+            } else {
+                alert(message); // Fallback caso os elementos não existam
+            }
         }
-    }
-// Recarrega após 8 segundos
-  setTimeout(function() {
-    location.reload(true);
-  }, 8000);
-    // Função para formatar data e hora (mantida)
-    function formatarDataHora(isoString) {
-        if (!isoString || isoString === 'N/A' || isoString.toString().trim() === '') {
-            return 'Não Finalizado';
-        }
-        try {
-            let date = new Date(isoString);
+        // Recarrega após 8 segundos (mantido do seu código original)
+        setTimeout(function() {
+            location.reload(true);
+        }, 8000);
 
-            if (isNaN(date.getTime())) {
-                // Tenta parsear formatos "YYYY-MM-DD HH:MM:SS" (JSON do Flask)
-                let cleanedIsoString = isoString.replace(' - ', ' ');
-                const parts = cleanedIsoString.split(' ');
-                if (parts.length === 2) {
-                    const dateParts = parts[0].split('-');
-                    const timeParts = parts[1].split(':');
-                    if (dateParts.length === 3 && timeParts.length >= 2) {
-                        const year = parseInt(dateParts[0]);
-                        const month = parseInt(dateParts[1]) - 1; // Mês é 0-indexado
-                        const day = parseInt(dateParts[2]);
-                        const hours = parseInt(timeParts[0]);
-                        const minutes = parseInt(timeParts[1]);
-                        const seconds = timeParts.length > 2 ? parseInt(timeParts[2]) : 0;
-                        date = new Date(year, month, day, hours, minutes, seconds);
-                    }
-                }
+        // Função para formatar data e hora (mantida)
+        function formatarDataHora(isoString) {
+            if (!isoString || isoString === 'N/A' || isoString.toString().trim() === '') {
+                return 'Não Finalizado';
+            }
+            try {
+                let date = new Date(isoString);
+
                 if (isNaN(date.getTime())) {
-                    // Tenta parsear o formato "DD-MM-YYYY HH:MM:SS" ou "DD-MM-YYYY HH:MM"
-                    const partsDMY = isoString.split(' ');
-                    if (partsDMY.length >= 2) {
-                        const datePartsDMY = partsDMY[0].split('-');
-                        const timePartsDMY = partsDMY[1].split(':');
-                        if (datePartsDMY.length === 3 && timePartsDMY.length >= 2) {
-                            const day = parseInt(datePartsDMY[0]);
-                            const month = parseInt(datePartsDMY[1]) - 1;
-                            const year = parseInt(datePartsDMY[2]);
-                            const hours = parseInt(timePartsDMY[0]);
-                            const minutes = parseInt(timePartsDMY[1]);
-                            const seconds = timePartsDMY.length > 2 ? parseInt(timePartsDMY[2]) : 0;
+                    // Tenta parsear formatos "YYYY-MM-DD HH:MM:SS" (JSON do Flask)
+                    let cleanedIsoString = isoString.replace(' - ', ' ');
+                    const parts = cleanedIsoString.split(' ');
+                    if (parts.length === 2) {
+                        const dateParts = parts[0].split('-');
+                        const timeParts = parts[1].split(':');
+                        if (dateParts.length === 3 && timeParts.length >= 2) {
+                            const year = parseInt(dateParts[0]);
+                            const month = parseInt(dateParts[1]) - 1; // Mês é 0-indexado
+                            const day = parseInt(dateParts[2]);
+                            const hours = parseInt(timeParts[0]);
+                            const minutes = parseInt(timeParts[1]);
+                            const seconds = timeParts.length > 2 ? parseInt(timeParts[2]) : 0;
                             date = new Date(year, month, day, hours, minutes, seconds);
                         }
                     }
                     if (isNaN(date.getTime())) {
-                        console.warn(`Could not parse date string: ${isoString}`);
-                        return 'Formato Inválido';
+                        // Tenta parsear o formato "DD-MM-YYYY HH:MM:SS" ou "DD-MM-YYYY HH:MM"
+                        const partsDMY = isoString.split(' ');
+                        if (partsDMY.length >= 2) {
+                            const datePartsDMY = partsDMY[0].split('-');
+                            const timePartsDMY = partsDMY[1].split(':');
+                            if (datePartsDMY.length === 3 && timePartsDMY.length >= 2) {
+                                const day = parseInt(datePartsDMY[0]);
+                                const month = parseInt(datePartsDMY[1]) - 1;
+                                const year = parseInt(datePartsDMY[2]);
+                                const hours = parseInt(timePartsDMY[0]);
+                                const minutes = parseInt(timePartsDMY[1]);
+                                const seconds = timePartsDMY.length > 2 ? parseInt(timePartsDMY[2]) : 0;
+                                date = new Date(year, month, day, hours, minutes, seconds);
+                            }
+                        }
+                        if (isNaN(date.getTime())) {
+                            console.warn(`Could not parse date string: ${isoString}`);
+                            return 'Formato Inválido';
+                        }
                     }
                 }
+
+                const formattedDay = String(date.getDate()).padStart(2, '0');
+                const formattedMonth = String(date.getMonth() + 1).padStart(2, '0');
+                const formattedYear = date.getFullYear();
+                const formattedHours = String(date.getHours()).padStart(2, '0');
+                const formattedMinutes = String(date.getMinutes()).padStart(2, '0');
+                const formattedSeconds = String(date.getSeconds()).padStart(2, '0');
+
+                return `${formattedDay}/${formattedMonth}/${formattedYear} ${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
+            } catch (e) {
+                console.error("Erro ao formatar data/hora:", e);
+                return 'Formato Inválido';
             }
-
-            const formattedDay = String(date.getDate()).padStart(2, '0');
-            const formattedMonth = String(date.getMonth() + 1).padStart(2, '0');
-            const formattedYear = date.getFullYear();
-            const formattedHours = String(date.getHours()).padStart(2, '0');
-            const formattedMinutes = String(date.getMinutes()).padStart(2, '0');
-            const formattedSeconds = String(date.getSeconds()).padStart(2, '0');
-
-            return `${formattedDay}/${formattedMonth}/${formattedYear} ${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
-        } catch (e) {
-            console.error("Erro ao formatar data/hora:", e);
-            return 'Formato Inválido';
         }
-    }
 
-    // --- FUNÇÃO ORIGINAL: Renderiza um único card a partir de um objeto de registro JSON ---
-    // Ajustado para adicionar os data-attributes necessários para a atualização incremental
-    function renderCard(r) {
-        let cardClasses = 'card';
-        let statusText = '';
-        let statusClass = '';
+        // --- FUNÇÃO ORIGINAL: Renderiza um único card a partir de um objeto de registro JSON ---
+        // Ajustado para adicionar os data-attributes necessários para a atualização incremental
+        function renderCard(r) {
+            let cardClasses = 'card';
+            let statusText = '';
+            let statusClass = '';
 
-        // Lógica para determinar as classes do card e o status label
-        if (r.finalizada === 1) {
-            cardClasses += ' finalizado';
-            statusText = 'Finalizado';
-            statusClass = 'finalizado-label';
-        } else if (r.cancelado === 1) {
-            statusText = 'Cancelado';
-            statusClass = 'cancelado-label';
-        } else {
-            if (r.em_separacao === 0) {
-                cardClasses += ' aguardando-carregamento';
-                statusText = 'Aguardando Carregar';
-                statusClass = 'em-fila-label';
-            } else if (r.em_separacao === 1) {
-                cardClasses += ' separado';
-                statusText = 'Em Separação';
-                statusClass = 'em-separacao-label';
-            } else if (r.em_separacao === 2) {
-                cardClasses += ' aguardando-finalizacao';
-                statusText = 'Aguardando Transferência';
-                statusClass = 'carregamento-concluido-label';
-            } else if (r.em_separacao === 3) { // Este caso deve ser raro se finalizada=1 for prioritário
-                statusText = 'Transferido';
+            // Lógica para determinar as classes do card e o status label
+            if (r.finalizada === 1) {
+                cardClasses += ' finalizado';
+                statusText = 'Finalizado';
                 statusClass = 'finalizado-label';
+            } else if (r.cancelado === 1) {
+                statusText = 'Cancelado';
+                statusClass = 'cancelado-label';
             } else {
-                statusText = 'Status Desconhecido';
-                statusClass = 'aguardando-carregamento-label'; // Fallback
-            }
-        }
-
-        if (r.tipo_entrega && r.tipo_entrega.toLowerCase() === 'no-show') {
-            statusText = statusText + ' (No-Show)';
-            cardClasses += ' noshow-card'; // Adiciona classe para estilo No-Show no card
-        }
-
-        const horaFinalizacaoText = formatarDataHora(r.hora_finalizacao);
-
-        // Retorna o HTML do card
-        // ATENÇÃO: Adicionados data-attributes para 'finalizada', 'em_separacao' e 'cancelado'
-        // Estes são essenciais para a função updateCardsIncrementally comparar e atualizar cards.
-        return `
-            <div class="${cardClasses}"
-                ondblclick="handleCardDoubleClick(${r.id}, ${r.finalizada}, ${r.em_separacao}, '${(r.tipo_entrega || '').toLowerCase()}')"
-                data-id="${r.id}"
-                data-rota="${(r.rota || '').toLowerCase()}"
-                data-cidade="${(r.cidade_entrega || '').toLowerCase()}"
-                data-entrega="${(r.tipo_entrega || '').toLowerCase()}"
-                data-separacao="${r.em_separacao}"
-                data-finalizado="${r.finalizada}"
-                data-cancelado="${r.cancelado}"> <p><strong>Data\\Hora:</strong> ${formatarDataHora(r.data_hora_login)}</p>
-                <p><strong>Nome:</strong> ${r.nome || ''}</p>
-                <p><strong>Matrícula:</strong> ${r.matricula || ''}</p>
-                <p><strong>Rota:</strong> <em>${r.rota || ''}</em></p>
-                <p><strong>Tipo de Entrega:</strong> <em>${r.tipo_entrega || ''}</em></p>
-                <p><strong>Cidade:</strong> <em>${r.cidade_entrega || ''}</em></p>
-                <p><strong>Hora Finalização:</strong> ${horaFinalizacaoText}</p>
-                ${statusText ? `<span class="status-label ${statusClass}">${statusText}</span>` : ''}
-            </div>
-        `;
-    }
-
-    // --- FUNÇÃO NOVA: Atualiza os links de paginação (mantida) ---
-    function updatePagination(paginaAtual, totalPaginas) {
-        const paginationContainer = document.getElementById('paginationContainer');
-        if (!paginationContainer) return;
-
-        let paginationHTML = '';
-        if (totalPaginas > 1) {
-            paginationHTML += `<span>Página ${paginaAtual} de ${totalPaginas}</span><br>`;
-            if (paginaAtual > 1) {
-                paginationHTML += `<a href="#" onclick="changePage(${paginaAtual - 1}); return false;">Anterior</a>`;
-            }
-            // Lógica de exibição de páginas (limita para não sobrecarregar)
-            const maxPagesToShow = 5; // Total de páginas a mostrar ao redor da página atual
-            let startPage = Math.max(1, paginaAtual - Math.floor(maxPagesToShow / 2));
-            let endPage = Math.min(totalPaginas, startPage + maxPagesToShow - 1);
-
-            // Ajusta startPage e endPage se estiver perto dos limites
-            if (endPage - startPage + 1 < maxPagesToShow) {
-                startPage = Math.max(1, endPage - maxPagesToShow + 1);
-            }
-
-            if (startPage > 1) {
-                paginationHTML += `<a href="#" onclick="changePage(1); return false;">1</a>`;
-                if (startPage > 2) {
-                    paginationHTML += `...`;
-                }
-            }
-
-            for (let p = startPage; p <= endPage; p++) {
-                if (p === paginaAtual) {
-                    paginationHTML += `<strong>${p}</strong>`;
+                if (r.em_separacao === 0) {
+                    cardClasses += ' aguardando-carregamento';
+                    statusText = 'Aguardando Carregar';
+                    statusClass = 'em-fila-label';
+                } else if (r.em_separacao === 1) {
+                    cardClasses += ' separado';
+                    statusText = 'Em Separação';
+                    statusClass = 'em-separacao-label';
+                } else if (r.em_separacao === 2) {
+                    cardClasses += ' aguardando-finalizacao';
+                    statusText = 'Aguardando Transferência';
+                    statusClass = 'carregamento-concluido-label';
+                } else if (r.em_separacao === 3) { // Este caso deve ser raro se finalizada=1 for prioritário
+                    statusText = 'Transferido';
+                    statusClass = 'finalizado-label';
                 } else {
-                    paginationHTML += `<a href="#" onclick="changePage(${p}); return false;">${p}</a>`;
+                    statusText = 'Status Desconhecido';
+                    statusClass = 'aguardando-carregamento-label'; // Fallback
                 }
             }
 
-            if (endPage < totalPaginas) {
-                if (endPage < totalPaginas - 1) {
-                    paginationHTML += `...`;
-                }
-                paginationHTML += `<a href="#" onclick="changePage(${totalPaginas}); return false;">${totalPaginas}</a>`;
+            if (r.tipo_entrega && r.tipo_entrega.toLowerCase() === 'no-show') {
+                statusText = statusText + ' (No-Show)';
+                cardClasses += ' noshow-card'; // Adiciona classe para estilo No-Show no card
             }
+
+            const horaFinalizacaoText = formatarDataHora(r.hora_finalizacao);
+
+            // Retorna o HTML do card
+            // ATENÇÃO: Adicionados data-attributes para 'finalizada', 'em_separacao' e 'cancelado'
+            // Estes são essenciais para a função updateCardsIncrementally comparar e atualizar cards.
+            return `
+                <div class="${cardClasses}"
+                    data-id="${r.id}"
+                    data-rota="${(r.rota || '').toLowerCase()}"
+                    data-cidade="${(r.cidade_entrega || '').toLowerCase()}"
+                    data-entrega="${(r.tipo_entrega || '').toLowerCase()}"
+                    data-separacao="${r.em_separacao}"
+                    data-finalizado="${r.finalizada}"
+                    data-cancelado="${r.cancelado}"> 
+                    <p><strong>Data\\Hora:</strong> ${formatarDataHora(r.data_hora_login)}</p>
+                    <p><strong>Nome:</strong> ${r.nome || ''}</p>
+                    <p><strong>Matrícula:</strong> ${r.matricula || ''}</p>
+                    <p><strong>Rota:</strong> <em>${r.rota || ''}</em></p>
+                    <p><strong>Tipo de Entrega:</strong> <em>${r.tipo_entrega || ''}</em></p>
+                    <p><strong>Cidade:</strong> <em>${r.cidade_entrega || ''}</em></p>
+                    <p><strong>Hora Finalização:</strong> ${horaFinalizacaoText}</p>
+                    ${statusText ? `<span class="status-label ${statusClass}">${statusText}</span>` : ''}
+                </div>
+            `;
+        }
+
+        // --- FUNÇÃO NOVA: Atualiza os links de paginação (mantida) ---
+        function updatePagination(paginaAtual, totalPaginas) {
+            const paginationContainer = document.getElementById('paginationContainer');
+            if (!paginationContainer) return;
+
+            let paginationHTML = '';
+            if (totalPaginas > 1) {
+                paginationHTML += `<span>Página ${paginaAtual} de ${totalPaginas}</span><br>`;
+                if (paginaAtual > 1) {
+                    paginationHTML += `<a href="#" onclick="changePage(${paginaAtual - 1}); return false;">Anterior</a>`;
+                }
+                // Lógica de exibição de páginas (limita para não sobrecarregar)
+                const maxPagesToShow = 5; // Total de páginas a mostrar ao redor da página atual
+                let startPage = Math.max(1, paginaAtual - Math.floor(maxPagesToShow / 2));
+                let endPage = Math.min(totalPaginas, startPage + maxPagesToShow - 1);
+
+                // Ajusta startPage e endPage se estiver perto dos limites
+                if (endPage - startPage + 1 < maxPagesToShow) {
+                    startPage = Math.max(1, endPage - maxPagesToShow + 1);
+                }
+
+                if (startPage > 1) {
+                    paginationHTML += `<a href="#" onclick="changePage(1); return false;">1</a>`;
+                    if (startPage > 2) {
+                        paginationHTML += `...`;
+                    }
+                }
+
+                for (let p = startPage; p <= endPage; p++) {
+                    if (p === paginaAtual) {
+                        paginationHTML += `<strong>${p}</strong>`;
+                    } else {
+                        paginationHTML += `<a href="#" onclick="changePage(${p}); return false;">${p}</a>`;
+                    }
+                }
+
+                if (endPage < totalPaginas) {
+                    if (endPage < totalPaginas - 1) {
+                        paginationHTML += `...`;
+                    }
+                    paginationHTML += `<a href="#" onclick="changePage(${totalPaginas}); return false;">${totalPaginas}</a>`;
+                }
+                
+                if (paginaAtual < totalPaginas) {
+                    paginationHTML += `<a href="#" onclick="changePage(${paginaAtual + 1}); return false;">Próxima</a>`;
+                }
+            } else if (totalPaginas === 1 && currentPage === 1) {
+                paginationHTML += `<span>Página 1 de 1</span>`;
+            }
+
+            paginationContainer.innerHTML = paginationHTML;
+        }
+
+        // Função para mudar a página (mantida)
+        function changePage(newPage) {
+            currentPage = newPage;
+            fetchAndUpdateRecords();
+        }
+
+        // --- FUNÇÃO PRINCIPAL: Busca e atualiza os registros via AJAX (mantida) ---
+        // Esta função é para carga inicial, aplicação de filtros e mudança de página.
+        // Ela SEMPRE limpa e recria os cards.
+        async function fetchAndUpdateRecords() {
+            console.log('Iniciando atualização de registros (completa)...', new Date().toLocaleTimeString()); // Feedback no console
+
+            const dataInicio = document.getElementById('dataInicio').value;
+            const dataFim = document.getElementById('dataFim').value;
+            const rotaFiltro = document.getElementById('filtroRota').value;
+            const cidadeFiltro = document.getElementById('filtroCidade').value;
+            const entregaFiltro = document.getElementById('filtroEntrega').value;
+            const separacaoFiltro = document.getElementById('filtroSeparacao').value;
+
+            const params = new URLSearchParams();
+            params.append('pagina', currentPage);
+            if (dataInicio) params.append('data_inicio', dataInicio);
+            if (dataFim) params.append('data_fim', dataFim);
+            if (rotaFiltro) params.append('rota', rotaFiltro);
+            if (cidadeFiltro) params.append('cidade', cidadeFiltro);
+            if (entregaFiltro) params.append('tipo_entrega', entregaFiltro);
+            if (separacaoFiltro) params.append('em_separacao', separacaoFiltro);
+
+            const url = `/api/registros_data?${params.toString()}`;
+            const cardsContainer = document.getElementById('cardsContainer');
             
-            if (paginaAtual < totalPaginas) {
-                paginationHTML += `<a href="#" onclick="changePage(${paginaAtual + 1}); return false;">Próxima</a>`;
-            }
-        } else if (totalPaginas === 1 && currentPage === 1) {
-            paginationHTML += `<span>Página 1 de 1</span>`;
-        }
+            // Adiciona um indicador de carregamento
+            cardsContainer.innerHTML = '<p class="text-center text-gray-600 mt-8">Atualizando registros...</p>';
 
-        paginationContainer.innerHTML = paginationHTML;
-    }
-
-    // Função para mudar a página (mantida)
-    function changePage(newPage) {
-        currentPage = newPage;
-        fetchAndUpdateRecords();
-    }
-
-    // --- FUNÇÃO PRINCIPAL: Busca e atualiza os registros via AJAX (mantida) ---
-    // Esta função é para carga inicial, aplicação de filtros e mudança de página.
-    // Ela SEMPRE limpa e recria os cards.
-    async function fetchAndUpdateRecords() {
-        console.log('Iniciando atualização de registros (completa)...', new Date().toLocaleTimeString()); // Feedback no console
-
-        const dataInicio = document.getElementById('dataInicio').value;
-        const dataFim = document.getElementById('dataFim').value;
-        const rotaFiltro = document.getElementById('filtroRota').value;
-        const cidadeFiltro = document.getElementById('filtroCidade').value;
-        const entregaFiltro = document.getElementById('filtroEntrega').value;
-        const separacaoFiltro = document.getElementById('filtroSeparacao').value;
-
-        const params = new URLSearchParams();
-        params.append('pagina', currentPage);
-        if (dataInicio) params.append('data_inicio', dataInicio);
-        if (dataFim) params.append('data_fim', dataFim);
-        if (rotaFiltro) params.append('rota', rotaFiltro);
-        if (cidadeFiltro) params.append('cidade', cidadeFiltro);
-        if (entregaFiltro) params.append('tipo_entrega', entregaFiltro);
-        if (separacaoFiltro) params.append('em_separacao', separacaoFiltro);
-
-        const url = `/api/registros_data?${params.toString()}`;
-        const cardsContainer = document.getElementById('cardsContainer');
-        
-        // Adiciona um indicador de carregamento
-        cardsContainer.innerHTML = '<p class="text-center text-gray-600 mt-8">Atualizando registros...</p>';
-
-
-        try {
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
-
-            cardsContainer.innerHTML = ''; // Limpa os cards existentes
-
-            if (data.records && data.records.length > 0) {
-                data.records.forEach(record => {
-                    cardsContainer.innerHTML += renderCard(record);
-                });
-            } else {
-                cardsContainer.innerHTML = '<p class="text-center text-gray-600 mt-8">Nenhum registro encontrado com os filtros selecionados.</p>';
-            }
-
-            // Atualiza as variáveis globais de paginação
-            currentPage = data.pagina;
-            totalPages = data.total_paginas;
-            updatePagination(currentPage, totalPages);
-
-            console.log('Registros atualizados com sucesso (completa).'); // Feedback no console
-
-        } catch (error) {
-            console.error('Erro ao buscar e atualizar registros (completa):', error);
-            document.getElementById('cardsContainer').innerHTML = '<p class="text-center text-red-500 mt-8">Erro ao carregar registros.</p>';
-            // Opcional: showMessage('Erro ao carregar registros. Verifique a conexão ou o console para detalhes.');
-        }
-    }
-
-    // --- NOVA FUNÇÃO: Atualiza os cards de forma INCREMENTAL e inteligente ---
-    // Esta função é para ser usada com setInterval para atualizações em tempo real
-    async function updateCardsIncrementally() {
-    // 1. Condição para ignorar a atualização incremental se houver filtros ativos ou paginação
-    const dataInicio = document.getElementById('dataInicio').value;
-    const dataFim = document.getElementById('dataFim').value;
-    const rotaFiltro = document.getElementById('filtroRota').value;
-    const cidadeFiltro = document.getElementById('filtroCidade').value;
-    const entregaFiltro = document.getElementById('filtroEntrega').value;
-    const separacaoFiltro = document.getElementById('filtroSeparacao').value;
-
-    const hasActiveFilters = dataInicio || dataFim || rotaFiltro || cidadeFiltro || entregaFiltro || separacaoFiltro;
-
-    if (hasActiveFilters || currentPage !== 1) { 
-        // console.log('Atualização incremental ignorada devido a filtros ativos ou paginação.');
-        return; 
-    }
-
-    console.log('Iniciando atualização incremental de registros...', new Date().toLocaleTimeString());
-
-    try {
-        // 2. Chama a nova rota no Flask para obter SOMENTE os registros ATIVOS (sem paginação/filtros)
-        const response = await fetch('/api/current_active_records', {
-            cache: 'no-store' // <--- ADICIONE ESTA LINHA!
-        }); 
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const activeRecords = await response.json(); // Lista de todos os registros ativos do BD
-
-        const cardsContainer = document.getElementById('cardsContainer');
-        if (!cardsContainer) {
-            console.error('Elemento #cardsContainer não encontrado para atualização incremental.');
-            return;
-        }
-
-        // Mapeia os cards atualmente visíveis na página para fácil acesso
-        const existingCards = Array.from(cardsContainer.children).map(card => {
-            return {
-                id: parseInt(card.dataset.id), 
-                element: card
-            };
-        });
-
-        const currentActiveIds = new Set(activeRecords.map(record => record.id));
-        
-        let anyChange = false; 
-
-        // 1. REMOVER cards que não estão mais ativos no banco de dados
-        for (const card of existingCards) {
-            if (!currentActiveIds.has(card.id)) {
-                card.element.remove();
-                anyChange = true;
-                console.log(`Card ID ${card.id} removido.`);
-            }
-        }
-
-        // 2. Adicionar/Atualizar cards que pertencem à PRIMEIRA PÁGINA
-        const recordsForCurrentPage = activeRecords.slice(0, PER_PAGE); 
-        
-        for (const newRecord of recordsForCurrentPage) {
-            const existingCardElement = cardsContainer.querySelector(`.card[data-id="${newRecord.id}"]`);
-
-            if (existingCardElement) {
-                // O card já existe, vamos verificar se algum status ou dado relevante mudou
-                const oldEmSeparacao = parseInt(existingCardElement.dataset.separacao); 
-                const oldFinalizada = parseInt(existingCardElement.dataset.finalizado); 
-                const oldCancelado = parseInt(existingCardElement.dataset.cancelado);
-
-                // Verifique outros campos que podem mudar e precisam de atualização visual
-                const oldRota = existingCardElement.dataset.rota;
-                const oldCidade = existingCardElement.dataset.cidade;
-                const oldEntrega = existingCardElement.dataset.entrega;
-                const oldNome = existingCardElement.querySelector('p strong:nth-child(2)').nextSibling.textContent.trim(); // Exemplo: Pegar o nome atual
-
-                // Se houver qualquer mudança nos status ou outros campos importantes, re-renderiza o card
-                if (oldEmSeparacao !== newRecord.em_separacao ||
-                    oldFinalizada !== newRecord.finalizada ||
-                    oldCancelado !== newRecord.cancelado ||
-                    oldRota !== (newRecord.rota || '').toLowerCase() ||
-                    oldCidade !== (newRecord.cidade_entrega || '').toLowerCase() ||
-                    oldEntrega !== (newRecord.tipo_entrega || '').toLowerCase() ||
-                    oldNome !== newRecord.nome // Comparar o nome se ele puder mudar
-                    ) {
-                    
-                    const newCardHTML = renderCard(newRecord);
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = newCardHTML;
-                    const updatedCardElement = tempDiv.firstElementChild; 
-                    cardsContainer.replaceChild(updatedCardElement, existingCardElement); 
-                    anyChange = true;
-                    console.log(`Card ID ${newRecord.id} atualizado.`);
-                }
-            } else {
-                // O card não existe na UI, precisa ser ADICIONADO
-                // Para garantir que novos cards apareçam na ordem correta, a melhor abordagem
-                // é realmente limpar e re-renderizar o container se houver novas adições.
-                // OU, uma lógica de inserção mais complexa (inserir em posição específica).
-                // Por enquanto, vamos manter o innerHTML +=, mas se a ordem for problema, considere a recarga completa.
-                cardsContainer.innerHTML += renderCard(newRecord); 
-                anyChange = true;
-                console.log(`Card ID ${newRecord.id} adicionado.`);
-            }
-        }
-
-        // Opcional: Se a ordem dos cards é crucial e houve adições/remoções que podem
-        // bagunçar a ordem visual, force uma recarga completa. Isso causa um "flicker".
-        // Use com cautela, pois anula parte do benefício da atualização incremental.
-        // Se a quantidade de cards na tela não corresponde ao esperado pela API para a página 1,
-        // pode ser um sinal de que a ordem foi comprometida ou faltam/sobraram cards.
-        if (anyChange && cardsContainer.children.length !== recordsForCurrentPage.length) {
-            console.log("Detectadas grandes mudanças ou inconsistência na contagem de cards. Forçando recarga completa para garantir a ordem.");
-            fetchAndUpdateRecords(); // Chama a função que faz a recarga completa
-        }
-
-
-    } catch (error) {
-        console.error('Erro ao buscar atualizações incrementais:', error);
-    }
-}
-    // Modifica a função aplicarFiltros para não recarregar a página (mantida)
-    function aplicarFiltros() {
-        // Salva os valores dos filtros no localStorage
-        localStorage.setItem('dataInicioFiltro', document.getElementById('dataInicio').value);
-        localStorage.setItem('dataFimFiltro', document.getElementById('dataFim').value);
-        localStorage.setItem('rotaFiltro', document.getElementById('filtroRota').value);
-        localStorage.setItem('cidadeFiltro', document.getElementById('filtroCidade').value);
-        localStorage.setItem('entregaFiltro', document.getElementById('filtroEntrega').value);
-        localStorage.setItem('separacaoFiltro', document.getElementById('filtroSeparacao').value);
-
-        // Redefine a página para 1 ao aplicar novos filtros
-        currentPage = 1;
-        fetchAndUpdateRecords(); // Chama a função para buscar e atualizar os cards
-    }
-
-    // Modifica a função limparFiltro para não recarregar a página (mantida)
-    function limparFiltro() {
-        // Limpa os valores dos filtros do localStorage
-        localStorage.removeItem('dataInicioFiltro');
-        localStorage.removeItem('dataFimFiltro');
-        localStorage.removeItem('rotaFiltro');
-        localStorage.removeItem('cidadeFiltro');
-        localStorage.removeItem('entregaFiltro');
-        localStorage.removeItem('separacaoFiltro');
-
-        // Limpa os campos do formulário
-        document.getElementById('dataInicio').value = '';
-        document.getElementById('dataFim').value = '';
-        document.getElementById('filtroRota').value = '';
-        document.getElementById('filtroCidade').value = '';
-        document.getElementById('filtroEntrega').value = '';
-        document.getElementById('filtroSeparacao').value = '';
-
-        // Redefine a página para 1 e busca os registros
-        currentPage = 1;
-        fetchAndUpdateRecords();
-    }
-
-    // --- Lógica do Menu Lateral (mantida) ---
-    const sidebar = document.getElementById('sidebar');
-    const sidebarToggle = document.getElementById('sidebarToggle');
-    const overlay = document.getElementById('overlay');
-
-    function openSidebar() {
-        sidebar.classList.add('open');
-        overlay.style.display = 'block';
-    }
-
-    function closeSidebar() {
-        sidebar.classList.remove('open');
-        overlay.style.display = 'none';
-    }
-
-    sidebarToggle.addEventListener('click', openSidebar);
-    overlay.addEventListener('click', closeSidebar);
-
-    window.addEventListener('resize', function() {
-        if (window.innerWidth > 768) {
-            closeSidebar();
-        }
-    });
-
-    // Carrega os filtros salvos ao carregar a página e aplica os filtros DOM
-    document.addEventListener('DOMContentLoaded', function() {
-        const rotaFiltroSalvo = localStorage.getItem('rotaFiltro');
-        const cidadeFiltroSalvo = localStorage.getItem('cidadeFiltro');
-        const entregaFiltroSalvo = localStorage.getItem('entregaFiltro');
-        const separacaoFiltroSalvo = localStorage.getItem('separacaoFiltro');
-        const dataInicioFiltroSalvo = localStorage.getItem('dataInicioFiltro');
-        const dataFimFiltroSalvo = localStorage.getItem('dataFimFiltro');
-
-        if (rotaFiltroSalvo) document.getElementById('filtroRota').value = rotaFiltroSalvo;
-        if (cidadeFiltroSalvo) document.getElementById('filtroCidade').value = cidadeFiltroSalvo;
-        if (entregaFiltroSalvo) document.getElementById('filtroEntrega').value = entregaFiltroSalvo;
-        if (separacaoFiltroSalvo) document.getElementById('filtroSeparacao').value = separacaoFiltroSalvo;
-
-        // Se os campos de data já foram preenchidos pelo Jinja na primeira carga,
-        // eles têm prioridade sobre o localStorage para evitar duplicidade.
-        if (dataInicioFiltroSalvo && !document.getElementById('dataInicio').value) {
-            document.getElementById('dataInicio').value = dataInicioFiltroSalvo;
-        }
-        if (dataFimFiltroSalvo && !document.getElementById('dataFim').value) {
-            document.getElementById('dataFim').value = dataFimFiltroSalvo;
-        }
-
-        // Inicia o fetch inicial dos registros (completa)
-        fetchAndUpdateRecords();
-
-        // ATENÇÃO: Agora o setInterval chama a função de atualização INCREMENTAL
-        // Esta função é otimizada para atualizar SOMENTE o que mudou na UI,
-        // mas só funciona na PRIMEIRA PÁGINA e SEM FILTROS ativos.
-        setInterval(updateCardsIncrementally, 8000); 
-    });
-
-    // --- FUNÇÃO ORIGINAL handleCardDoubleClick (mantida e compatibilizada) ---
-    async function handleCardDoubleClick(id, isFinalizada, emSeparacao, tipoEntrega) {
-        console.log(`Duplo clique no registro ID: ${id}, Finalizado: ${isFinalizada}, Em Separação: ${emSeparacao}, Tipo de Entrega: ${tipoEntrega}`);
-
-        if (emSeparacao === 1) {
-            showMessage('Este registro está em separação e não pode ser editado.');
-            return;
-        }
-
-        if (isFinalizada === 1) {
-            showMessage('Este registro já está finalizado e não pode ser alterado.');
-            return;
-        }
-
-        if (emSeparacao === 2 && tipoEntrega === 'no-show') {
-            showMessage('Este registro está aguardando transferência e não pode ser editado.');
-            return;
-        }
-
-        // Se já estiver "Em Separação" (1) ou "Aguardando Transferência" (2),
-        // apenas redireciona para a página de associação.
-        if (emSeparacao === 0) {
             try {
-                const response = await fetch(`/api/update_separacao_status/${id}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ em_separacao_status: 1 }) // Envia o novo status 1 (Em Separação)
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+
+                cardsContainer.innerHTML = ''; // Limpa os cards existentes
+
+                if (data.records && data.records.length > 0) {
+                    data.records.forEach(record => {
+                        cardsContainer.innerHTML += renderCard(record);
+                    });
+                } else {
+                    cardsContainer.innerHTML = '<p class="text-center text-gray-600 mt-8">Nenhum registro encontrado com os filtros selecionados.</p>';
+                }
+
+                // Atualiza as variáveis globais de paginação
+                currentPage = data.pagina;
+                totalPages = data.total_paginas;
+                updatePagination(currentPage, totalPages);
+
+                console.log('Registros atualizados com sucesso (completa).'); // Feedback no console
+
+            } catch (error) {
+                console.error('Erro ao buscar e atualizar registros (completa):', error);
+                document.getElementById('cardsContainer').innerHTML = '<p class="text-center text-red-500 mt-8">Erro ao carregar registros.</p>';
+                // Opcional: showMessage('Erro ao carregar registros. Verifique a conexão ou o console para detalhes.');
+            }
+        }
+
+        // --- NOVA FUNÇÃO: Atualiza os cards de forma INCREMENTAL e inteligente ---
+        // Esta função é para ser usada com setInterval para atualizações em tempo real
+        async function updateCardsIncrementally() {
+            // 1. Condição para ignorar a atualização incremental se houver filtros ativos ou paginação
+            const dataInicio = document.getElementById('dataInicio').value;
+            const dataFim = document.getElementById('dataFim').value;
+            const rotaFiltro = document.getElementById('filtroRota').value;
+            const cidadeFiltro = document.getElementById('filtroCidade').value;
+            const entregaFiltro = document.getElementById('filtroEntrega').value;
+            const separacaoFiltro = document.getElementById('filtroSeparacao').value;
+
+            const hasActiveFilters = dataInicio || dataFim || rotaFiltro || cidadeFiltro || entregaFiltro || separacaoFiltro;
+
+            if (hasActiveFilters || currentPage !== 1) { 
+                // console.log('Atualização incremental ignorada devido a filtros ativos ou paginação.');
+                return; 
+            }
+
+            console.log('Iniciando atualização incremental de registros...', new Date().toLocaleTimeString());
+
+            try {
+                // 2. Chama a nova rota no Flask para obter SOMENTE os registros ATIVOS (sem paginação/filtros)
+                const response = await fetch('/api/current_active_records', {
+                    cache: 'no-store' // <--- ADICIONE ESTA LINHA!
+                }); 
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const activeRecords = await response.json(); // Lista de todos os registros ativos do BD
+
+                const cardsContainer = document.getElementById('cardsContainer');
+                if (!cardsContainer) {
+                    console.error('Elemento #cardsContainer não encontrado para atualização incremental.');
+                    return;
+                }
+
+                // Mapeia os cards atualmente visíveis na página para fácil acesso
+                const existingCards = Array.from(cardsContainer.children).map(card => {
+                    return {
+                        id: parseInt(card.dataset.id), 
+                        element: card
+                    };
                 });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('Status atualizado com sucesso:', data);
-                    showMessage(`Status do registro ${id} atualizado para "Em Separação"!`);
-                    fetchAndUpdateRecords();
-                    window.location.href = `/associacao?id=${id}`; // Redireciona para associação
-                } else {
-                    const errorData = await response.json();
-                    showMessage(`Erro ao atualizar status: ${errorData.error || response.statusText}`);
-                    console.error('Erro na resposta da API:', errorData);
+                const currentActiveIds = new Set(activeRecords.map(record => record.id));
+                
+                let anyChange = false; 
+
+                // 1. REMOVER cards que não estão mais ativos no banco de dados
+                for (const card of existingCards) {
+                    if (!currentActiveIds.has(card.id)) {
+                        card.element.remove();
+                        anyChange = true;
+                        console.log(`Card ID ${card.id} removido.`);
+                    }
                 }
+
+                // 2. Adicionar/Atualizar cards que pertencem à PRIMEIRA PÁGINA
+                const recordsForCurrentPage = activeRecords.slice(0, PER_PAGE); 
+                
+                for (const newRecord of recordsForCurrentPage) {
+                    const existingCardElement = cardsContainer.querySelector(`.card[data-id="${newRecord.id}"]`);
+
+                    if (existingCardElement) {
+                        // O card já existe, vamos verificar se algum status ou dado relevante mudou
+                        const oldEmSeparacao = parseInt(existingCardElement.dataset.separacao); 
+                        const oldFinalizada = parseInt(existingCardElement.dataset.finalizado); 
+                        const oldCancelado = parseInt(existingCardElement.dataset.cancelado);
+
+                        // Verifique outros campos que podem mudar e precisam de atualização visual
+                        const oldRota = existingCardElement.dataset.rota;
+                        const oldCidade = existingCardElement.dataset.cidade;
+                        const oldEntrega = existingCardElement.dataset.entrega;
+                        
+                        // Busque o nome diretamente do elemento HTML para comparação, se ele for um campo que pode mudar
+                        // NOTA: Esta abordagem assume uma estrutura específica dentro do card.
+                        // Se o nome não muda, você pode remover esta linha para otimização.
+                        const oldNomeElement = existingCardElement.querySelector('p:nth-of-type(2)'); // Segunda tag <p> (Nome)
+                        const oldNome = oldNomeElement ? oldNomeElement.textContent.replace('Nome:', '').trim() : '';
+
+
+                        // Se houver qualquer mudança nos status ou outros campos importantes, re-renderiza o card
+                        if (oldEmSeparacao !== newRecord.em_separacao ||
+                            oldFinalizada !== newRecord.finalizada ||
+                            oldCancelado !== newRecord.cancelado ||
+                            oldRota !== (newRecord.rota || '').toLowerCase() ||
+                            oldCidade !== (newRecord.cidade_entrega || '').toLowerCase() ||
+                            oldEntrega !== (newRecord.tipo_entrega || '').toLowerCase() ||
+                            oldNome !== (newRecord.nome || '') // Comparar o nome se ele puder mudar
+                            ) {
+                            
+                            const newCardHTML = renderCard(newRecord);
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = newCardHTML;
+                            const updatedCardElement = tempDiv.firstElementChild; 
+                            cardsContainer.replaceChild(updatedCardElement, existingCardElement); 
+                            anyChange = true;
+                            console.log(`Card ID ${newRecord.id} atualizado.`);
+                        }
+                    } else {
+                        // O card não existe na UI, precisa ser ADICIONADO
+                        // Para garantir que novos cards apareçam na ordem correta, a melhor abordagem
+                        // é realmente limpar e re-renderizar o container se houver novas adições.
+                        // OU, uma lógica de inserção mais complexa (inserir em posição específica).
+                        // Por enquanto, vamos manter o innerHTML +=, mas se a ordem for problema, considere a recarga completa.
+                        cardsContainer.innerHTML += renderCard(newRecord); 
+                        anyChange = true;
+                        console.log(`Card ID ${newRecord.id} adicionado.`);
+                    }
+                }
+
+                // Opcional: Se a ordem dos cards é crucial e houve adições/remoções que podem
+                // bagunçar a ordem visual, force uma recarga completa. Isso causa um "flicker".
+                // Use com cautela, pois anula parte do benefício da atualização incremental.
+                // Se a quantidade de cards na tela não corresponde ao esperado pela API para a página 1,
+                // pode ser um sinal de que a ordem foi comprometida ou faltam/sobraram cards.
+                if (anyChange && cardsContainer.children.length !== recordsForCurrentPage.length) {
+                    console.log("Detectadas grandes mudanças ou inconsistência na contagem de cards. Forçando recarga completa para garantir a ordem.");
+                    fetchAndUpdateRecords(); // Chama a função que faz a recarga completa
+                }
+
             } catch (error) {
-                console.error('Erro na requisição fetch:', error);
-                showMessage('Erro de rede ou interno ao tentar atualizar o status. Verifique o console para mais detalhes.');
+                console.error('Erro ao buscar atualizações incrementais:', error);
             }
-        } else if (emSeparacao === 2) {
-            console.log(`Registro ID: ${id} já está aguardando transferência.`);
-            window.location.href = `/associacao?id=${id}`;
-        } else {
-            console.warn(`Estado de separação desconhecido ou não tratável para clique: ${emSeparacao}. Redirecionando mesmo assim.`);
-            window.location.href = `/associacao?id=${id}`;
         }
-    }
 
-    document.addEventListener('DOMContentLoaded', function() {
-        // ... seu código existente dentro do DOMContentLoaded ...
+        // Modifica a função aplicarFiltros para não recarregar a página (mantida)
+        function aplicarFiltros() {
+            // Salva os valores dos filtros no localStorage
+            localStorage.setItem('dataInicioFiltro', document.getElementById('dataInicio').value);
+            localStorage.setItem('dataFimFiltro', document.getElementById('dataFim').value);
+            localStorage.setItem('rotaFiltro', document.getElementById('filtroRota').value);
+            localStorage.setItem('cidadeFiltro', document.getElementById('filtroCidade').value);
+            localStorage.setItem('entregaFiltro', document.getElementById('filtroEntrega').value);
+            localStorage.setItem('separacaoFiltro', document.getElementById('filtroSeparacao').value);
 
-        // Cole o novo código aqui:
-        const cards = document.querySelectorAll('.card');
-        cards.forEach(card => {
-            card.addEventListener('dblclick', function() {
-                const id = this.dataset.id;
-                const finalizado = this.dataset.finalizado === '1';
-                const emSeparacao = parseInt(this.dataset.separacao);
-                const tipoEntrega = this.dataset.entrega;
-                handleCardDoubleClick(id, finalizado, emSeparacao, tipoEntrega);
+            // Redefine a página para 1 ao aplicar novos filtros
+            currentPage = 1;
+            fetchAndUpdateRecords(); // Chama a função para buscar e atualizar os cards
+        }
+
+        // Modifica a função limparFiltro para não recarregar a página (mantida)
+        function limparFiltro() {
+            // Limpa os valores dos filtros do localStorage
+            localStorage.removeItem('dataInicioFiltro');
+            localStorage.removeItem('dataFimFiltro');
+            localStorage.removeItem('rotaFiltro');
+            localStorage.removeItem('cidadeFiltro');
+            localStorage.removeItem('entregaFiltro');
+            localStorage.removeItem('separacaoFiltro');
+
+            // Limpa os campos do formulário
+            document.getElementById('dataInicio').value = '';
+            document.getElementById('dataFim').value = '';
+            document.getElementById('filtroRota').value = '';
+            document.getElementById('filtroCidade').value = '';
+            document.getElementById('filtroEntrega').value = '';
+            document.getElementById('filtroSeparacao').value = '';
+
+            // Redefine a página para 1 e busca os registros
+            currentPage = 1;
+            fetchAndUpdateRecords();
+        }
+
+        // --- Lógica do Menu Lateral (DO DASHBOARD) ---
+        const sidebar = document.getElementById('mySidebar');
+        const menuToggle = document.getElementById('menuToggle'); // Renomeado de sidebarToggle para menuToggle
+        const mainContent = document.getElementById('mainContent');
+        const overlay = document.getElementById('overlay');
+
+        // Função para atualizar a visibilidade do sidebar e classes de conteúdo
+        function updateLayoutBasedOnScreenSize() {
+            if (window.innerWidth <= 768) { // Mobile
+                sidebar.classList.remove('open'); // Garante que o sidebar está fechado
+                mainContent.classList.remove('shifted'); // Garante que o conteúdo não está deslocado
+                topBanner.classList.remove('shifted'); // Banner não deslocado
+                // Ajuste a direção do flex do banner para coluna em mobile
+                topBanner.style.flexDirection = 'column';
+                topBanner.style.alignItems = 'flex-start';
+                if (menuToggle) {
+                    menuToggle.innerHTML = '<i class="fas fa-bars"></i> Mostrar Menu';
+                }
+                overlay.style.display = 'none'; // Garante que o overlay esteja oculto
+            } else { // Desktop
+                sidebar.classList.add('open'); // Sidebar visível
+                mainContent.classList.add('shifted'); // Conteúdo deslocado
+                topBanner.classList.add('shifted'); // Banner deslocado
+                // Restaura a direção do flex do banner para linha em desktop
+                topBanner.style.flexDirection = 'row';
+                topBanner.style.alignItems = 'center';
+                if (menuToggle) {
+                    menuToggle.innerHTML = '<i class="fas fa-times"></i> Esconder Menu'; // Ícone de fechar
+                }
+                overlay.style.display = 'none'; // Garante que o overlay esteja oculto em desktop
+            }
+        }
+
+        // Event listener para o clique no botão de alternar o menu
+        if (menuToggle) {
+            menuToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('open');
+                mainContent.classList.toggle('shifted');
+                topBanner.classList.toggle('shifted'); // Alterna a classe do banner também
+
+                if (sidebar.classList.contains('open')) {
+                    menuToggle.innerHTML = '<i class="fas fa-times"></i> Esconder Menu';
+                    if (window.innerWidth <= 768) { // Apenas mostra o overlay em mobile
+                         overlay.style.display = 'block';
+                    }
+                } else {
+                    menuToggle.innerHTML = '<i class="fas fa-bars"></i> Mostrar Menu';
+                    overlay.style.display = 'none';
+                }
             });
+        } else {
+            console.error("Erro: O botão menuToggle não foi encontrado!");
+        }
+        // Event listener para o overlay (fechar menu ao clicar fora em mobile)
+        overlay.addEventListener('click', function() {
+            if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
+                sidebar.classList.remove('open');
+                overlay.style.display = 'none';
+                if (menuToggle) { // Atualiza o texto do botão se o menu for fechado pelo overlay
+                    menuToggle.innerHTML = '<i class="fas fa-bars"></i> Mostrar Menu';
+                }
+            }
         });
-    });
 
-</script>
+        // Event Delegation para cliques nos cards (substitui o forEach direto)
+        document.addEventListener('click', function(event) {
+            let targetCard = event.target.closest('.card');
+            if (targetCard) {
+                // Previne o duplo clique padrão se o card já está finalizado ou em separação/aguardando transferência
+                const isFinalizado = targetCard.dataset.finalizado === '1';
+                const emSeparacao = parseInt(targetCard.dataset.separacao);
+                const tipoEntrega = targetCard.dataset.entrega;
+
+                if (emSeparacao === 1 || isFinalizado || (emSeparacao === 2 && tipoEntrega === 'no-show')) {
+                    return; // Não faz nada se o card não for clicável
+                }
+                // Se o card for clicável, chamamos o handleCardDoubleClick
+                handleCardDoubleClick(targetCard.dataset.id, isFinalizado, emSeparacao, tipoEntrega);
+            }
+        });
+
+
+        // Carrega os filtros salvos ao carregar a página e aplica os filtros DOM
+        document.addEventListener('DOMContentLoaded', function() {
+            const rotaFiltroSalvo = localStorage.getItem('rotaFiltro');
+            const cidadeFiltroSalvo = localStorage.getItem('cidadeFiltro');
+            const entregaFiltroSalvo = localStorage.getItem('entregaFiltro');
+            const separacaoFiltroSalvo = localStorage.getItem('separacaoFiltro');
+            const dataInicioFiltroSalvo = localStorage.getItem('dataInicioFiltro');
+            const dataFimFiltroSalvo = localStorage.getItem('dataFimFiltro');
+
+            if (rotaFiltroSalvo) document.getElementById('filtroRota').value = rotaFiltroSalvo;
+            if (cidadeFiltroSalvo) document.getElementById('filtroCidade').value = cidadeFiltroSalvo;
+            if (entregaFiltroSalvo) document.getElementById('filtroEntrega').value = entregaFiltroSalvo;
+            if (separacaoFiltroSalvo) document.getElementById('filtroSeparacao').value = separacaoFiltroSalvo;
+
+            // Se os campos de data já foram preenchidos pelo Jinja na primeira carga,
+            // eles têm prioridade sobre o localStorage para evitar duplicidade.
+            if (dataInicioFiltroSalvo && !document.getElementById('dataInicio').value) {
+                document.getElementById('dataInicio').value = dataInicioFiltroSalvo;
+            }
+            if (dataFimFiltroSalvo && !document.getElementById('dataFim').value) {
+                document.getElementById('dataFim').value = dataFimFiltroSalvo;
+            }
+
+            // Inicia o fetch inicial dos registros (completa)
+            fetchAndUpdateRecords();
+
+            // ATENÇÃO: Agora o setInterval chama a função de atualização INCREMENTAL
+            // Esta função é otimizada para atualizar SOMENTE o que mudou na UI,
+            // mas só funciona na PRIMEIRA PÁGINA e SEM FILTROS ativos.
+            setInterval(updateCardsIncrementally, 8000); 
+            
+            // Chama a função uma vez ao carregar a página para definir o estado inicial do layout
+            updateLayoutBasedOnScreenSize();
+            // Adiciona listener para redimensionamento
+            window.addEventListener('resize', updateLayoutBasedOnScreenSize);
+
+        });
+
+        // --- FUNÇÃO ORIGINAL handleCardDoubleClick (mantida e compatibilizada) ---
+        async function handleCardDoubleClick(id, isFinalizada, emSeparacao, tipoEntrega) {
+            console.log(`Duplo clique no registro ID: ${id}, Finalizado: ${isFinalizada}, Em Separação: ${emSeparacao}, Tipo de Entrega: ${tipoEntrega}`);
+
+            // A lógica de bloqueio para emSeparacao === 1 (Em Separação), finalizada === 1,
+            // ou emSeparacao === 2 (Aguardando Transferência) E tipoEntrega === 'no-show'
+            // já está sendo tratada no event delegation. Este `if` é um fallback/confirmação.
+            if (emSeparacao === 1 || isFinalizada === 1 || (emSeparacao === 2 && tipoEntrega === 'no-show')) {
+                 showMessage('Este registro não pode ser editado neste momento.');
+                 return;
+            }
+
+            // Se já estiver "Em Separação" (1) ou "Aguardando Transferência" (2),
+            // apenas redireciona para a página de associação.
+            if (emSeparacao === 0) { // Se o status é 0 (Aguardando Carregamento)
+                try {
+                    const response = await fetch(`/api/update_separacao_status/${id}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ em_separacao_status: 1 }) // Envia o novo status 1 (Em Separação)
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('Status atualizado com sucesso:', data);
+                        showMessage(`Status do registro ${id} atualizado para "Em Separação"!`);
+                        // Não é necessário fetchAndUpdateRecords aqui pois updateCardsIncrementally irá pegar a mudança
+                        window.location.href = `/associacao?id=${id}`; // Redireciona para associação
+                    } else {
+                        const errorData = await response.json();
+                        showMessage(`Erro ao atualizar status: ${errorData.error || response.statusText}`);
+                        console.error('Erro na resposta da API:', errorData);
+                    }
+                } catch (error) {
+                    console.error('Erro na requisição fetch:', error);
+                    showMessage('Erro de rede ou interno ao tentar atualizar o status. Verifique o console para mais detalhes.');
+                }
+            } else if (emSeparacao === 2) { // Se o status é 2 (Aguardando Transferência)
+                console.log(`Registro ID: ${id} já está aguardando transferência.`);
+                window.location.href = `/associacao?id=${id}`; // Redireciona para associação
+            } else {
+                console.warn(`Estado de separação desconhecido ou não tratável para clique: ${emSeparacao}. Redirecionando mesmo assim.`);
+                window.location.href = `/associacao?id=${id}`;
+            }
+        }
+    </script>
 </body>
 </html>

@@ -1,241 +1,385 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Menu Principal - Sistema Operacional</title>
+    <title>{% block title %}SysSPX - Gerenciamento{% endblock %}</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <!-- Fonte Inter (usada no dashboard) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS CDN (mantido do seu código original, se ainda for usado) -->
     <script src="https://cdn.tailwindcss.com"></script>
+
     <style>
+        /* ESTILOS DE LAYOUT GLOBAIS */
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6; /* Tailwind gray-100 */
+            font-family: 'Inter', sans-serif; /* Usando a fonte Inter do dashboard */
             margin: 0;
-            padding: 0;
-            display: flex; /* Usa flexbox para layout principal */
-            min-height: 100vh; /* Garante que a página ocupe pelo menos a altura total da viewport */
+            background-color: #f4f4f4;
+            color: #333;
+            display: flex; /* Permite layout flexível com sidebar e conteúdo */
+            min-height: 100vh;
+            overflow-x: hidden; /* Evita rolagem horizontal durante a transição */
         }
 
-        /* Estilo para o menu lateral */
+        /* Estilos do Menu Lateral (Sidebar) - Consolidado do dashboard */
         .sidebar {
-            width: 250px; /* Largura fixa do menu lateral */
-            background-color: #1f2937; /* Tailwind gray-800 */
-            color: #fff;
-            padding: 1.5rem 1rem; /* Tailwind py-6 px-4 */
+            height: 100%;
+            width: 250px; /* Largura padrão para desktop */
+            position: fixed; /* Fixa o sidebar na tela */
+            z-index: 1000; /* Garante que fique acima de outros elementos */
+            top: 0;
+            left: 0;
+            background-color: #343a40; /* Cor de fundo escura */
+            overflow-x: hidden;
+            transition: transform 0.5s ease; /* Transição suave para esconder/mostrar */
+            padding-top: 20px; /* Espaço do topo */
+            box-shadow: 2px 0 5px rgba(0,0,0,0.5); /* Sombra para profundidade */
+            color: white;
             display: flex;
             flex-direction: column;
-            transition: transform 0.3s ease-in-out; /* Adiciona transição para o menu responsivo */
-            transform: translateX(0); /* Menu visível por padrão em telas maiores */
-            z-index: 20; /* Garante que o menu fique acima do conteúdo */
+            align-items: center; /* Centraliza itens como logo e título */
+            justify-content: flex-start;
+            transform: translateX(-250px); /* Padrão: sidebar escondido em mobile e inicialização */
         }
 
-        /* Esconde o menu lateral por padrão em telas pequenas */
-        @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-100%); /* Esconde o menu lateral */
-                position: fixed; /* Fixa a posição para que não role com o conteúdo */
-                height: 100vh; /* Altura total da viewport */
-            }
-             .sidebar.open {
-                 transform: translateX(0); /* Mostra o menu quando a classe 'open' está presente */
-             }
+        .sidebar.open {
+            transform: translateX(0); /* Mostra o sidebar */
         }
 
+        .sidebar .logo-sidebar {
+            width: 120px; /* Tamanho da logo na sidebar */
+            margin-bottom: 20px;
+            border-radius: 8px; /* Cantos arredondados */
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3); /* Sombra */
+        }
 
-        .sidebar h2 {
-            font-size: 1.25rem; /* Tailwind text-xl */
-            font-weight: 600; /* Tailwind font-semibold */
-            margin-bottom: 1.5rem; /* Tailwind mb-6 */
-            text-align: center;
-            color: #9ca3af; /* Tailwind gray-400 */
+        .sidebar h2.menu-title { /* Título do menu na sidebar */
+            color: white;
+            margin-bottom: 20px;
+            font-size: 1.4em; /* Tamanho do título do menu */
         }
 
         .sidebar ul {
-            list-style: none;
+            list-style-type: none;
             padding: 0;
-            margin: 0;
+            width: 100%;
         }
 
-        .sidebar li {
-            margin-bottom: 0.75rem; /* Tailwind mb-3 */
-        }
-
-        .sidebar a {
-            display: block;
-            color: #d1d5db; /* Tailwind gray-300 */
+        .sidebar ul li a {
+            padding: 15px 25px;
             text-decoration: none;
-            padding: 0.75rem 1rem; /* Tailwind py-3 px-4 */
-            border-radius: 0.375rem; /* Tailwind rounded-md */
-            transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+            font-size: 1.1em;
+            color: #f8f9fa;
+            display: flex; /* Para alinhar ícone e texto */
+            align-items: center; /* Para alinhar verticalmente */
+            transition: 0.3s;
+            text-align: left; /* Alinhar texto à esquerda */
         }
 
-        .sidebar a:hover {
-            background-color: #374151; /* Tailwind gray-700 */
-            color: #fff;
+        .sidebar ul li a i { /* Estilo para os ícones */
+            margin-right: 10px; /* Espaço entre ícone e texto */
         }
 
-        /* Estilo para o conteúdo principal */
+        .sidebar ul li a:hover {
+            background-color: #007bff; /* Cor de destaque ao passar o mouse */
+            color: white;
+        }
+        
+        /* Estilos do Conteúdo Principal - Consolidado do dashboard */
         .main-content {
-            flex-grow: 1; /* Permite que o conteúdo principal ocupe o espaço restante */
+            flex-grow: 1;
             display: flex;
             flex-direction: column;
+            margin-left: 0; /* Padrão: sem margem à esquerda */
+            transition: margin-left 0.5s ease, width 0.5s ease; /* Transição suave */
+            width: 100%; /* Padrão: largura total */
+            padding: 0; /* Garante que não há padding extra */
         }
 
-        /* Estilo para o banner */
-        .banner {
-            background-color: #f30909; /* Tailwind red-700 */
-            padding: 1rem 1.25rem; /* Tailwind p-4 p-5 */
+        .main-content.shifted {
+            margin-left: 250px; /* Espaço para o sidebar visível em desktop */
+            width: calc(100% - 250px); /* Ajusta a largura quando o menu está visível */
+        }
+
+        /* ESTILOS ESPECÍFICOS DO BANNER - Consolidado do dashboard */
+        .top-banner {
+            background-color: #f11a0a; /* Cor de fundo clara */
+            padding: 10px 20px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap; /* Permite quebra de linha em telas menores */
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Adiciona uma sombra */
+            justify-content: space-between; /* Mantém itens nas extremidades */
+            border-bottom: 1px solid #e0e0e0;
+            position: fixed; /* Fixa o banner no topo */
+            width: 100%; /* Começa com largura total */
+            top: 0;
+            left: 0;
+            z-index: 1010; /* Garante que o banner fique acima do conteúdo */
+            box-shadow: 0 2px 4px rgba(233, 231, 231, 0.05);
+            transition: all 0.3s ease-in-out;
         }
-
-        .banner-content {
-            display: flex;
-            align-items: center;
+        .top-banner.shifted { /* Adiciona esta classe para o banner se mover com o sidebar */
+            width: calc(100% - 250px); /* Ajusta a largura quando sidebar visível */
+            left: 250px; /* Desloca o banner para a direita */
         }
-
-        .banner h1 {
-            color: #fff;
-            font-size: 1.5rem; /* Tailwind text-2xl */
-            font-weight: 700; /* Tailwind font-bold */
-            margin: 0;
-        }
-
-        .logo-banner {
-            height: 50px; /* Altura do logo no banner */
+        
+        /* Estilos da logo do banner */
+        .top-banner .logo {
+            height: 60px; /* Aumentado o tamanho da logo */
             width: auto;
-            margin-right: 1rem; /* Tailwind mr-4 */
+            border-radius: 8px; /* Cantos arredondados */
+            box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.4); /* Adicionado sombra */
+            /* Removido margin-right, o flex-direction column na seção cuida do espaçamento */
+        }
+        
+        /* Estilos para o título do banner */
+        .top-banner .banner-title-section h3 {
+            font-size: 2em; /* Aumentado o tamanho da fonte */
+            color: white; /* Cor branca para o texto */
+            margin-bottom: 0; /* Removendo margens extras se houver */
         }
 
-         /* Botão para abrir/fechar o menu lateral em telas pequenas */
+        /* Estilo para a seção que contém logo e botão (nova) */
+        .banner-left-section {
+            display: flex;
+            flex-direction: column; /* Organiza logo e botão em coluna */
+            align-items: flex-start; /* Alinha os itens à esquerda dentro da coluna */
+            gap: 10px; /* Espaço entre a logo e o botão */
+        }
+
+        /* Botão para abrir/fechar o menu lateral - Estilo do dashboard */
         .menu-toggle {
-            display: none; /* Esconde o botão em telas maiores */
-            background-color: #fff; /* Fundo branco */
-            color: #f30909; /* Cor do texto/ícone */
-            padding: 0.5rem 0.75rem; /* Tailwind py-2 px-3 */
-            border-radius: 0.375rem; /* Tailwind rounded-md */
-            font-size: 1.25rem; /* Tailwind text-xl */
-            cursor: pointer;
+            background: none;
             border: none;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            color: #f8f9fa; /* Cor do texto/ícone branca */
+            font-size: 1.5em; /* Ajustado para ser visível e clicável */
+            cursor: pointer;
+            padding: 0; /* Remover padding padrão para melhor controle de espaçamento */
+            line-height: 1;
         }
 
-        @media (max-width: 768px) {
-            .menu-toggle {
-                display: block; /* Mostra o botão em telas pequenas */
-            }
-        }
-
-
-        /* Estilo para a área central com o logo */
-        .central-content {
-            flex-grow: 1; /* Permite que a área central ocupe o espaço restante */
+        /* Estilos do Container para o conteúdo principal */
+        .main-page-content-wrapper { /* Novo wrapper para o conteúdo central original */
+            padding: 20px;
+            overflow-x: auto;
+            margin-top: 80px; /* Ajustado para dar mais espaço, considerando a logo maior no banner */
+            flex-grow: 1; /* Permite que ocupe o espaço restante verticalmente */
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center; /* Centraliza o conteúdo vertical e horizontalmente */
-            padding: 2rem; /* Tailwind p-8 */
             text-align: center;
         }
-
+        
+        /* Estilos do logo central e texto */
         .logo-central {
             max-width: 250px; /* Tamanho máximo do logo central */
             height: auto;
             margin-bottom: 1.5rem; /* Tailwind mb-6 */
         }
 
-        .central-content h2 {
+        .central-content h2 { /* Reusando este nome de classe, agora dentro do wrapper */
             font-size: 2rem; /* Tailwind text-3xl */
             font-weight: 700; /* Tailwind font-bold */
             color: #1f2937; /* Tailwind gray-800 */
             margin-bottom: 1rem; /* Tailwind mb-4 */
         }
 
-        .central-content p {
+        .central-content p { /* Reusando este nome de classe, agora dentro do wrapper */
             font-size: 1.125rem; /* Tailwind text-lg */
             color: #4b5563; /* Tailwind gray-600 */
             max-width: 600px; /* Limita a largura do parágrafo */
         }
 
+        /* Flash messages */
+        .flashes {
+            list-style-type: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+        .flashes li {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .flash.success { background-color: #d4edda; color: #155724; border-color: #c3e6cb; }
+        .flash.danger { background-color: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+        .flash.warning { background-color: #fff3cd; color: #856404; border-color: #ffeeba; }
+
+        /* MEDIA QUERIES PARA RESPONSIVIDADE - Consolidado do dashboard */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 180px; /* Reduz a largura do sidebar em telas menores */
+                transform: translateX(-180px); /* Escondido por padrão em mobile */
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0; /* Ocupa toda a largura em mobile */
+                width: 100%;
+            }
+            .main-content.shifted { /* Não desloca em mobile */
+                margin-left: 0;
+                width: 100%;
+            }
+            .top-banner { /* Ajustes para o banner em telas menores */
+                width: 100%;
+                left: 0;
+                flex-direction: column; /* Em mobile, o banner pode se tornar uma coluna */
+                align-items: flex-start; /* Alinha os itens do banner no início */
+                padding-top: 15px; /* Ajuste o padding superior se a logo estiver muito alta */
+                padding-bottom: 15px; /* Ajuste o padding inferior */
+            }
+            .top-banner.shifted { /* O banner não se desloca com o sidebar em mobile */
+                width: 100%;
+                left: 0;
+            }
+            .top-banner .logo {
+                height: 50px; /* Ajusta o tamanho da logo no banner para mobile */
+                margin-bottom: 10px; /* Espaço abaixo da logo */
+            }
+            .top-banner .menu-toggle {
+                margin-top: 5px; /* Espaço entre logo e botão em mobile */
+            }
+            .top-banner .banner-title-section {
+                width: 100%; /* Garante que o título ocupe toda a largura disponível */
+                text-align: center; /* Centraliza o título em mobile */
+            }
+            .main-page-content-wrapper {
+                margin-top: 120px; /* Mais espaço para o conteúdo em mobile se o banner for maior */
+            }
+        }
     </style>
+    {% block head_extra %}{% endblock %} {# Para CSS ou meta tags adicionais em páginas filhas #}
 </head>
+
 <body>
-
-    <div class="sidebar" id="sidebar">
-    
-        <h2>Menu de Navegação</h2>
+    <!-- Menu Lateral (Sidebar) -->
+    <div id="mySidebar" class="sidebar">
+        <!-- Substitua 'imagem/shopee32.png' pelo caminho real da sua logo para o sidebar -->
+        <img src="{{ url_for('static', filename='imagem/shopee32.png') }}"
+             onerror="this.onerror=null; this.src='https://placehold.co/120x120/343a40/ffffff?text=LOGO';"
+             alt="Logo SysSPX" class="logo-sidebar">
+        <h2 class="menu-title">Menu</h2>
         <ul>
-
-
-<li><a href="{{ url_for('menu_principal') }}">Página Inicial</a></li>
-<li><a href="{{ url_for('registros') }}">Painel do Operador</a></li>
-<li><a href="{{ url_for('registro_no_show') }}">Listar Registros No-Show</a></li>
-<li><a href="{{ url_for('associacao_no_show') }}">Criar Registro No-Show</a></li>
-<li><a href="{{ url_for('registros_finalizados') }}">Relatório de Registros</a></li>
-                <li><a href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-                {% if current_user.is_authenticated %}
-                    <li><a href="{{ url_for('painel_gerencial') }}"><i class="fas fa-chart-line"></i> Painel Gerencial</a></li>
-                {% endif %}
-                <li><a href="{{ url_for('pacotes_rota') }}"><i class="fas fa-route"></i> Pacotes por Rota</a></li>
-                <li><a href="{{ url_for('listar_registros') }}"><i class="fas fa-list-alt"></i> Listar Registros (Filtro)</a></li>
-                <li><a href="{{ url_for('gerenciar_usuarios') }}"><i class="fas fa-users-cog"></i> Gerenciar Usuários</a></li>
-                <li><a href="{{ url_for('cadastro_usuario') }}"><i class="fas fa-user-plus"></i> Cadastrar Novo Usuário</a></li>
-                <li><a href="{{ url_for('log_atividades') }}"><i class="fas fa-clipboard-list"></i> Log de Atividades</a></li>
-                <li><a href="{{ url_for('status_entrega') }}"></i> Status de Entrega</a></li>
-                <li><a href="{{ url_for('adicionar_situacao_pedido') }}"></i>Situação dos Pedidos</a></li>
-                <li><a href="{{ url_for('adicionar_etapa') }}"></i>Etapas da Entrega</a></li>
-                <li><a href="{{ url_for('menu_principal') }}"></i> Configurações</a></li>
-                {% if current_user.is_authenticated %}
-                    <li><a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
-                {% else %}
-                    <li><a href="{{ url_for('login2') }}"><i class="fas fa-sign-in-alt"></i> Login Sistema</a></li>
-                {% endif %}
-
+            {# Links de menu comuns a todas as páginas, usando a estrutura do sidebar com ícones #}
+            <li><a href="{{ url_for('menu_principal') }}"><i class="fas fa-home"></i> Página Inicial</a></li>
+            <li><a href="{{ url_for('registros') }}"><i class="fas fa-clipboard-list"></i> Painel do Operador</a></li>
+            <li><a href="{{ url_for('registro_no_show') }}"><i class="fas fa-list-alt"></i> Listar Registros No-Show</a></li>
+            <li><a href="{{ url_for('associacao_no_show') }}"><i class="fas fa-clipboard-check"></i> Criar Registro No-Show</a></li>
+            <li><a href="{{ url_for('registros_finalizados') }}"><i class="fas fa-file-alt"></i> Relatório de Registros</a></li>
+            <li><a href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+            {% if current_user.is_authenticated %}
+                <li><a href="{{ url_for('painel_gerencial') }}"><i class="fas fa-chart-line"></i>Gerenciamento de Rota</a></li>
+            {% endif %}
+            <li><a href="{{ url_for('pacotes_rota') }}"><i class="fas fa-route"></i> Pacotes por Rota</a></li>
+            <li><a href="{{ url_for('listar_registros') }}"><i class="fas fa-list-alt"></i> Listar Registros (Filtro)</a></li>
+            <li><a href="{{ url_for('gerenciar_usuarios') }}"><i class="fas fa-users-cog"></i> Gerenciar Usuários</a></li>
+            <li><a href="{{ url_for('cadastro_usuario') }}"><i class="fas fa-user-plus"></i> Cadastrar Novo Usuário</a></li>
+            <li><a href="{{ url_for('log_atividades') }}"><i class="fas fa-clipboard-list"></i> Log de Atividades</a></li>
+            <li><a href="{{ url_for('status_entrega') }}"><i class="fas fa-truck"></i> Entregas Por Motorista</a></li>
+            <li><a href="{{ url_for('adicionar_situacao_pedido') }}"><i class="fas fa-tags"></i> Situação dos Pedidos</a></li>
+            <li><a href="{{ url_for('adicionar_etapa') }}"><i class="fas fa-truck-ramp-box"></i> Etapas da Entrega</a></li>
+            <li><a href="{{ url_for('menu_principal') }}"><i class="fas fa-cog"></i> Configurações</a></li>
+            {% if current_user.is_authenticated %}
+                <li><a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
+            {% else %}
+                <li><a href="{{ url_for('login2') }}"><i class="fas fa-sign-in-alt"></i> Login Sistema</a></li>
+            {% endif %}
         </ul>
     </div>
 
-    <div class="main-content">
-        <div class="banner">
-            <div class="banner-content">
-                {# Certifique-se de ter uma pasta static com a imagem #}
-                <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" class="logo-banner" alt="Logo Shopee">
-                <h1>Sistema de Gerenciamento Operacional</h1>
+    <!-- Conteúdo Principal da Página -->
+    <div id="mainContent" class="main-content">
+        <div class="top-banner">
+            <!-- Seção esquerda do banner: Logo e Botão de Menu -->
+            <div class="banner-left-section">
+                <img src="{{ url_for('static', filename='imagem/shopee32.png') }}"
+                     onerror="this.onerror=null; this.src='https://placehold.co/60x60/f8f9fa/000000?text=LOGO';"
+                     alt="Logo da Empresa" class="logo">
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i> Esconder Menu
+                </button>
             </div>
-             <button class="menu-toggle" id="menu-toggle">☰</button>
+            
+            <!-- Seção do título do banner -->
+            <div class="banner-title-section">
+                {% block top_banner_title %}
+                    <h3 class="mb-0 ms-2">SGO - Sistema de Gerenciamento Operacional</h3>
+                {% endblock %}
+            </div>
         </div>
 
-        <div class="central-content">
-             {# Certifique-se de ter uma pasta static com a imagem #}
-             <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" class="logo-central" alt="Logo Shopee Grande">
+        <!-- Conteúdo específico da página (anteriormente 'central-content') -->
+        <div class="main-page-content-wrapper">
+            <img src="{{ url_for('static', filename='imagem/shopee32.png') }}" class="logo-central" alt="Logo Shopee Grande">
             <h2>Bem-vindo ao Sistema</h2>
             <p>Utilize o menu lateral para navegar entre as diferentes funcionalidades do sistema de gerenciamento operacional.</p>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Script para alternar a visibilidade do menu lateral em telas pequenas
-        const menuToggle = document.getElementById('menu-toggle');
-        const sidebar = document.getElementById('sidebar');
+        document.addEventListener('DOMContentLoaded', function() {
+            var sidebar = document.getElementById('mySidebar');
+            var mainContent = document.getElementById('mainContent');
+            var menuToggle = document.getElementById('menuToggle');
+            var topBanner = document.querySelector('.top-banner');
 
-        menuToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('open');
-        });
-
-         // Fecha o menu lateral ao clicar em um link (opcional)
-        const sidebarLinks = document.querySelectorAll('.sidebar a');
-        sidebarLinks.forEach(link => {
-            link.addEventListener('click', () => {
-                if (window.innerWidth <= 768) { // Verifica se está em tela pequena
-                    sidebar.classList.remove('open');
+            // Função para atualizar a visibilidade do sidebar e classes de conteúdo
+            function updateLayoutBasedOnScreenSize() {
+                if (window.innerWidth <= 768) { // Mobile
+                    sidebar.classList.remove('open'); // Garante que o sidebar está fechado
+                    mainContent.classList.remove('shifted'); // Garante que o conteúdo não está deslocado
+                    topBanner.classList.remove('shifted'); // Banner não deslocado
+                    // Ajuste a direção do flex do banner para coluna em mobile
+                    topBanner.style.flexDirection = 'column';
+                    topBanner.style.alignItems = 'flex-start';
+                    if (menuToggle) {
+                        menuToggle.innerHTML = '<i class="fas fa-bars"></i> Mostrar Menu';
+                    }
+                } else { // Desktop
+                    sidebar.classList.add('open'); // Sidebar visível
+                    mainContent.classList.add('shifted'); // Conteúdo deslocado
+                    topBanner.classList.add('shifted'); // Banner deslocado
+                    // Restaura a direção do flex do banner para linha em desktop
+                    topBanner.style.flexDirection = 'row';
+                    topBanner.style.alignItems = 'center';
+                    if (menuToggle) {
+                        menuToggle.innerHTML = '<i class="fas fa-times"></i> Esconder Menu'; // Ícone de fechar
+                    }
                 }
-            });
+            }
+
+            // Chama a função ao carregar a página e ao redimensionar
+            updateLayoutBasedOnScreenSize();
+            window.addEventListener('resize', updateLayoutBasedOnScreenSize);
+
+            if (menuToggle) {
+                menuToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('open');
+                    mainContent.classList.toggle('shifted');
+                    topBanner.classList.toggle('shifted'); // Alterna a classe do banner também
+
+                    if (sidebar.classList.contains('open')) {
+                        menuToggle.innerHTML = '<i class="fas fa-times"></i> Esconder Menu';
+                    } else {
+                        menuToggle.innerHTML = '<i class="fas fa-bars"></i> Mostrar Menu';
+                    }
+                });
+            } else {
+                console.error("Erro: O botão menuToggle não foi encontrado!");
+            }
         });
     </script>
-
+    {% block scripts_extra %}{% endblock %} {# Para scripts adicionais em páginas filhas #}
 </body>
 </html>
