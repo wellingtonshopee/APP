@@ -652,13 +652,53 @@ def cadastro_usuario():
 # --- Integrando as permissões nas suas rotas existentes (exemplos) ---
 # Você precisará adicionar permission_required em todas as rotas que deseja proteger
 
+# --- ROTA /status_entrega COM FILTROS ---
 @app.route('/status_entrega')
 @login_required
 @permission_required('status_entrega')
 def status_entrega():
-    # Você pode adicionar filtros ou paginação aqui se a lista de registros for muito grande
-    registros = Registro.query.order_by(Registro.data_hora_login.desc()).all()
-    return render_template('status_entrega.html', registros=registros)
+    # Obter parâmetros de filtro da URL
+    data_filter = request.args.get('data_filter')
+    nome_filter = request.args.get('nome_filter')
+    rota_filter = request.args.get('rota_filter')
+
+    # Iniciar a consulta aos registros
+    query = Registro.query
+
+    # Aplicar filtro por data
+    if data_filter:
+        try:
+            # Converte a string de data (YYYY-MM-DD) para um objeto date
+            filter_date = datetime.strptime(data_filter, '%Y-%m-%d').date()
+            # Filtra registros onde a parte da data de data_hora_login é igual à data do filtro
+            # db.func.date() é uma função de banco de dados para extrair a parte da data de um datetime
+            query = query.filter(db.func.date(Registro.data_hora_login) == filter_date)
+        except ValueError:
+            flash("Formato de data inválido para o filtro.", "danger")
+
+    # Aplicar filtro por nome
+    if nome_filter:
+        # Usa ilike para pesquisa case-insensitive (ideal para PostgreSQL, MySQL)
+        # Para SQLite, 'like' geralmente já é case-insensitive, mas pode variar.
+        query = query.filter(Registro.nome.ilike(f'%{nome_filter}%'))
+
+    # Aplicar filtro por rota
+    if rota_filter:
+        # Filtra pela rota, case-insensitive
+        query = query.filter(Registro.rota.ilike(f'%{rota_filter}%'))
+
+    # Ordenar os resultados (mantido como estava)
+    registros = query.order_by(Registro.data_hora_login.desc()).all()
+
+    return render_template(
+        'status_entrega.html',
+        registros=registros,
+        # Passar os valores dos filtros de volta para o template para preencher os inputs
+        data_filter=data_filter,
+        nome_filter=nome_filter,
+        rota_filter=rota_filter
+    )
+
 
 # --- Rota API para Atualizar Etapa de um Registro (POST) ---
 @app.route('/api/atualizar_etapa_registro/<int:registro_id>', methods=['POST'])
@@ -3691,6 +3731,7 @@ def log_atividades():
 ###Rota Listar registros ---@app.route('/listar_registros')
 @app.route('/listar_registros')
 @login_required 
+@permission_required('listar_registros')
 def listar_registros():
     # 2. Use PacoteRastreado nas suas consultas:
     rotas_existentes = db.session.query(PacoteRastreado.rota_vinculada).distinct().all() # << AQUI

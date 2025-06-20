@@ -46,15 +46,16 @@ PERMISSIONS = {
     'gerenciar_usuarios': 'Gerenciar Usuários',
     'adicionar_etapa': 'Etapas Entregas',
     'pacotes_rota': 'Pacotes por Rota',
+    'listar_registros':'Lista Registros',
     'log_de_atividades':'Log de Atividades',
     'menu_principal': 'Menu Principal',
     'painel_final_page': 'Acessar Painel de Atendimento',
-    'painel_gerencial': 'Painel Gerencial',
+    'painel_gerencial': 'Gerenciamento de Rota',
     'registros': 'Painel do Operador',
     'registro_no_show': 'Listar Registro no Show',
     'registros_finalizados': 'Relatorio de Registros',
     'adicionar_situacao_pedido': 'Situações de Pedido',
-    'status_entrega':'Status entrega',
+    'status_entrega':'Entregas por Motorista',
     # Adicione outras rotas conforme necessário, mantendo a chave como o nome da função da rota
 }
 
