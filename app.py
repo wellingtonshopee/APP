@@ -88,6 +88,12 @@ supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['ALLOWED_EXTENSIONS'] = {'txt'} # Certifique-se de que está definido aqui!
 
+# --- CÓDIGO ADICIONADO PARA CRIAR O DIRETÓRIO DE UPLOAD SE NÃO EXISTIR ---
+# Isso deve vir APÓS a definição de app.config['UPLOAD_FOLDER']
+UPLOAD_FOLDER = app.config['UPLOAD_FOLDER']
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
 # --- INICIALIZAÇÃO DO FLASK-LOGIN ---
 login_manager = LoginManager() # Crie a instância do LoginManager
 login_manager.init_app(app)    # VINCULE o LoginManager à sua aplicação Flask
