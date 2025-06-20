@@ -2,12 +2,18 @@
 
 # Importações principais do Flask e extensões
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, abort, current_app, session
-from flask_login import LoginManager, current_user, login_user, logout_user, login_required
+from flask_login import LoginManager, current_user, login_user, logout_user, login_required, UserMixin #
 from flask_migrate import Migrate
 import supabase
 from werkzeug.security import generate_password_hash, check_password_hash
 from collections import Counter
 from io import BytesIO
+import json
+# === ADICIONADO: Importações para Flask-WTF ===
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField, BooleanField, SelectMultipleField, SubmitField
+from wtforms.validators import DataRequired, Email, Length, EqualTo, ValidationError
+
 
 # Importações de tempo e data
 from datetime import datetime, timedelta, timezone
@@ -504,6 +510,8 @@ def logout():
 
 # --- Rotas de Gerenciamento de Usuários (APENAS ADMIN) ---
 
+# --- Rotas de Gerenciamento de Usuários (APENAS ADMIN) ---
+
 @app.route('/usuarios')
 @login_required 
 @permission_required('Gerenciar Usuários') # Exige permissão para esta página
@@ -512,43 +520,80 @@ def listar_usuarios():
     return render_template('listar_usuarios.html', usuarios=usuarios)
 
 @app.route('/usuario/novo', methods=['GET', 'POST'])
-@login_required 
-@permission_required('Gerenciar Usuários') # Exige permissão para esta página
+@login_required
+@permission_required('Gerenciar Usuários')
 def novo_usuario():
+    # Usando RegistroUsuarioForm, ajuste se for CadastroUsuarioForm
     form = RegistroUsuarioForm()
+
     # Preencher as opções de páginas/permissões dinamicamente
-    form.paginas_acesso.choices = [(p.id, p.nome_pagina) for p in Permissao.query.order_by(Permissao.nome_pagina).all()]
+    # Assumindo que 'paginas_acesso' é para um relacionamento many-to-many com Permissao
+    if hasattr(form, 'paginas_acesso'): # Verifica se o campo existe no formulário
+        form.paginas_acesso.choices = [(p.id, p.nome_pagina) for p in Permissao.query.order_by(Permissao.nome_pagina).all()]
 
     if form.validate_on_submit():
-        user = Usuario(username=form.username.data, email=form.email.data, is_admin=form.is_admin.data, matricula="N/A", nome_completo=form.username.data) # Added matricula and nome_completo as required by Usuario model
-        user.set_password(form.password.data)
+        try:
+            # 1. Cria a instância do usuário.
+            # Use o modelo 'User' consistentemente.
+            # Os campos 'matricula' e 'nome_completo' devem vir do formulário.
+            new_user = User(
+                username=form.username.data,
+                email=form.email.data,
+                is_admin=form.is_admin.data,
+                matricula=form.matricula.data, # Garanta que seu form tem este campo
+                nome_completo=form.nome_completo.data # Garanta que seu form tem este campo
+            )
+            # 2. HASH da senha de forma segura.
+            # Este método 'set_password' deve estar na sua classe User (em models.py).
+            new_user.set_password(form.password.data)
 
-        # Adicionar as permissões selecionadas
-        selected_perms = Permissao.query.filter(Permissao.id.in_(form.paginas_acesso.data)).all()
-        user.permissoes.extend(selected_perms)
+            # 3. Adiciona as permissões (se estiver usando relacionamento many-to-many).
+            if hasattr(form, 'paginas_acesso') and form.paginas_acesso.data:
+                selected_perms = Permissao.query.filter(Permissao.id.in_(form.paginas_acesso.data)).all()
+                new_user.permissoes.extend(selected_perms)
 
-        db.session.add(user)
-        db.session.commit()
+            # 4. Adiciona o novo usuário à sessão do banco de dados.
+            db.session.add(new_user)
+            db.session.flush() # Força a atribuição do ID ao new_user antes do commit do log
 
-        # Logar a criação do usuário
-        log_entry = LogAtividade(
-            usuario_id=current_user.id if current_user.is_authenticated else None,
-            acao='Criação de Usuário (Sistema)',
-            detalhes=f'Usuário {user.username} (ID: {user.id}) criado por {current_user.username if current_user.is_authenticated else "sistema"}. Permissões: {[p.nome_pagina for p in user.permissoes]}',
-            ip_origem=request.remote_addr
-        )
-        db.session.add(log_entry)
-        db.session.commit()
+            # 5. Logar a criação do usuário.
+            # Use 'user_id' e certifique-se de que 'new_user.id' já tem um valor.
+            log_entry = LogAtividade(
+                user_id=current_user.id if current_user.is_authenticated else None,
+                acao='Criação de Usuário (Sistema)',
+                detalhes=f'Usuário {new_user.username} (ID: {new_user.id}) criado por {current_user.username if current_user.is_authenticated else "sistema"}. Permissões: {[p.nome_pagina for p in new_user.permissoes]}',
+                ip_origem=request.remote_addr
+            )
+            db.session.add(log_entry)
 
-        flash(f'Usuário {form.username.data} cadastrado com sucesso!', 'success')
-        return redirect(url_for('listar_usuarios'))
+            # 6. Salva as mudanças no banco de dados.
+            db.session.commit()
+
+            flash(f'Usuário {new_user.username} cadastrado com sucesso!', 'success')
+            return redirect(url_for('listar_usuarios'))
+
+        except Exception as e:
+            db.session.rollback() # Reverte qualquer alteração em caso de erro
+
+            # Melhora o tratamento de erros para o usuário final
+            if "duplicate key value violates unique constraint" in str(e):
+                if "user_pkey" in str(e):
+                    flash('Erro ao cadastrar usuário: Um ID de usuário duplicado foi detectado. Por favor, contate o administrador para corrigir a sequência do banco de dados.', 'danger')
+                    current_app.logger.error(f"Erro de ID duplicado ao cadastrar usuário (provável sequência desalinhada): {e}", exc_info=True)
+                elif "user_username_key" in str(e):
+                    flash('Erro ao cadastrar usuário: O nome de usuário já existe. Por favor, escolha outro.', 'danger')
+                elif "user_email_key" in str(e):
+                    flash('Erro ao cadastrar usuário: O email já existe. Por favor, use outro.', 'danger')
+                else:
+                    flash(f'Erro de duplicidade ao cadastrar usuário: {e}', 'danger')
+            else:
+                flash(f'Ocorreu um erro inesperado ao cadastrar usuário: {e}', 'danger')
+
+            current_app.logger.error(f"Erro no cadastro de novo usuário: {e}", exc_info=True)
+            return render_template('novo_usuario.html', form=form) # Permanece na página com o formulário e erros
+
+    # Para requisições GET ou formulário inválido
     return render_template('novo_usuario.html', form=form)
-
-# app.py (sua rota de edição de usuário ajustada)
-
-# Certifique-se de que está importando o nome correto do formulário
-from forms import SistemaLoginForm, CadastroUsuarioForm, EditarUsuarioForm, NovaSenhaForm # <-- AQUI!
-#                   ^ Use o nome exato da classe definida em forms.py
 
 
 
@@ -598,6 +643,7 @@ def alterar_senha_usuario(usuario_id):
         flash(f'Senha do usuário {usuario.username} atualizada com sucesso!', 'success')
         return redirect(url_for('listar_usuarios'))
     return render_template('alterar_senha_usuario.html', form=form, usuario=usuario)
+
 
 
 # --- Rotas de Log de Atividades ---

@@ -1,13 +1,13 @@
 # models.py
 
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import or_ # Mantido, caso esteja em uso em outro lugar que não o modelo
+from sqlalchemy import or_
 from datetime import datetime
 import pytz # Para manipulação de fuso horário, se get_data_hora_brasilia precisar
 from flask_login import UserMixin
-import json # NOVO: Importado para lidar com JSON em permissions
+import json
 
-# === ADICIONADO: Importações para hashing de senha ===
+# === Importações para hashing de senha ===
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # Importe get_data_hora_brasilia e outras constantes de config.py
@@ -201,7 +201,7 @@ class User(db.Model, UserMixin):
 
     # Relacionamento para permissões granulares baseadas em Permissao
     permissoes_objeto = db.relationship('Permissao', secondary=user_permissoes, lazy='subquery',
-                                         backref=db.backref('users_with_access', lazy=True))
+                                            backref=db.backref('users_with_access', lazy=True))
 
     # --- Métodos para UserMixin e Permissões ---
     def get_id(self):
@@ -253,7 +253,6 @@ class LogAtividade(db.Model):
     # Coluna do ID do usuário, nomeada como 'user_id'
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True) 
     
-    # === DESCOMENTE ESTA LINHA AQUI! ===
     user = db.relationship('User', backref='logs_atividade') # Relacionamento com o modelo User
     
     acao = db.Column(db.String(255), nullable=False)
