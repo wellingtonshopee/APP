@@ -377,7 +377,7 @@
 <li><a href="{{ url_for('registros_finalizados') }}">Relatório de Registros</a></li>
                 <li><a href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
                 {% if current_user.is_authenticated %}
-                    <li><a href="{{ url_for('painel_gerencial') }}"><i class="fas fa-chart-line"></i> Grenciamento de Rota</a></li>
+                    <li><a href="{{ url_for('painel_gerencial') }}"><i class="fas fa-chart-line"></i> Gerenciamento de Rota</a></li>
                 {% endif %}
                 <li><a href="{{ url_for('pacotes_rota') }}"><i class="fas fa-route"></i> Pacotes por Rota</a></li>
                 <li><a href="{{ url_for('listar_registros') }}"><i class="fas fa-list-alt"></i> Listar Registros (Filtro)</a></li>
@@ -386,7 +386,7 @@
                 <li><a href="{{ url_for('log_atividades') }}"><i class="fas fa-clipboard-list"></i> Log de Atividades</a></li>
                 <li><a href="{{ url_for('status_entrega') }}"></i> Status de Entrega</a></li>
                 <li><a href="{{ url_for('adicionar_situacao_pedido') }}"></i>Situação dos Pedidos</a></li>
-                <li><a href="{{ url_for('adicionar_etapa') }}"></i>Etapas da Entrega</a></li>
+                <li><a href="{{ url_for('adicionar_etapa') }}"></i>Entregas por Motorista</a></li>
                 <li><a href="{{ url_for('menu_principal') }}"></i> Configurações</a></li>
                 {% if current_user.is_authenticated %}
                     <li><a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
