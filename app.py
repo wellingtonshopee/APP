@@ -2283,8 +2283,6 @@ def finalizar_no_show(id):
         return redirect(url_for('registro_no_show', _anchor=f'no-show-registro-{id}'))
     
 @app.route('/midia')
-@login_required
-@permission_required('midia')
 def exibir_midia():
     """Renderiza a página HTML com a exibição de mídia (vídeos e slides)."""
     print("DEBUG: Rota /midia acessada. Renderizando midia.html")
