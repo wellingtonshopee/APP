@@ -2589,24 +2589,23 @@ def adicionar_situacao_pedido():
 @login_required
 @permission_required('registros_finalizados')
 def registros_finalizados():
-    # Parâmetro para selecionar o banco de dados
-    db_name = request.args.get('db_name', 'all') # Padrão: 'all' para exibir ambos
+    db_name = request.args.get('db_name', 'all')
 
     data_filtro_str = request.args.get('data', '')
+    data_fim_filtro_str = request.args.get('data_fim', '') # Certifique-se de pegar o data_fim do request
     tipo_entrega_filtro = request.args.get('tipo_entrega', '')
     rota_filtro = request.args.get('rota', '')
     finalizado_filtro_str = request.args.get('finalizado', '')
     
-    pagina = request.args.get('pagina', 1, type=int)
+    # REMOVIDA: A variável 'pagina' não é mais necessária para a exibição de todos os registros
+    # pagina = request.args.get('pagina', 1, type=int)
     
-    # **NOTA:** Certifique-se de que REGISTROS_POR_PAGINA está definida em algum lugar do seu código.
-    # Exemplo (coloque no topo do seu arquivo, junto com as outras constantes):
-    # REGISTROS_POR_PAGINA = 10 
-    per_page = REGISTROS_POR_PAGINA
+    # REMOVIDA: 'per_page' não é mais utilizada para a lógica de exibição de todos os registros
+    # per_page = REGISTROS_POR_PAGINA
 
     registros_items = []
     no_show_items = []
-    display_db_name = "Todos os Registros" # Padrão
+    display_db_name = "Todos os Registros"
 
     # Condicionalmente consulta a tabela 'registros' (Modelo Registro)
     if db_name == 'registros' or db_name == 'all':
@@ -2615,9 +2614,19 @@ def registros_finalizados():
         if data_filtro_str:
             try:
                 data_filtro_dt = datetime.strptime(data_filtro_str, '%Y-%m-%d').date()
-                query_registros = query_registros.filter(db.func.date(Registro.data_hora_login) == data_filtro_dt)
+                query_registros = query_registros.filter(db.func.date(Registro.data_hora_login) >= data_filtro_dt)
             except ValueError:
                 pass
+        
+        # Adição do filtro de data_fim para 'registros'
+        if data_fim_filtro_str:
+            try:
+                data_fim_dt = datetime.strptime(data_fim_filtro_str, '%Y-%m-%d').date()
+                # Adicionar 1 dia para incluir o dia final completo
+                query_registros = query_registros.filter(db.func.date(Registro.data_hora_login) <= data_fim_dt)
+            except ValueError:
+                pass
+
 
         if tipo_entrega_filtro:
             query_registros = query_registros.filter(Registro.tipo_entrega.ilike(f'%{tipo_entrega_filtro}%'))
@@ -2638,7 +2647,16 @@ def registros_finalizados():
         if data_filtro_str:
             try:
                 data_filtro_dt = datetime.strptime(data_filtro_str, '%Y-%m-%d').date()
-                query_no_show = query_no_show.filter(db.func.date(NoShow.data_hora_login) == data_filtro_dt)
+                query_no_show = query_no_show.filter(db.func.date(NoShow.data_hora_login) >= data_filtro_dt)
+            except ValueError:
+                pass
+
+        # Adição do filtro de data_fim para 'no_show'
+        if data_fim_filtro_str:
+            try:
+                data_fim_dt = datetime.strptime(data_fim_filtro_str, '%Y-%m-%d').date()
+                # Adicionar 1 dia para incluir o dia final completo
+                query_no_show = query_no_show.filter(db.func.date(NoShow.data_hora_login) <= data_fim_dt)
             except ValueError:
                 pass
 
@@ -2666,28 +2684,32 @@ def registros_finalizados():
         all_records = registros_items + no_show_items
         display_db_name = "Todos os Registros"
 
-
     # --- Ordena os resultados ---
-    all_records = sorted(all_records, key=lambda x: x.data_hora_login, reverse=True)
+    # Garante que None/datas inválidas sejam tratadas para evitar erros de ordenação
+    all_records = sorted(all_records, key=lambda x: x.data_hora_login if x.data_hora_login else datetime.min, reverse=True)
 
-    # --- Paginação manual da lista combinada ---
-    total_registros = len(all_records)
-    total_paginas = ceil(total_registros / per_page) if total_registros > 0 else 1
-    
-    start_index = (pagina - 1) * per_page
-    end_index = start_index + per_page
-    paginated_records = all_records[start_index:end_index]
+    # REMOVIDA: Toda a lógica de paginação manual da lista combinada
+    # total_registros = len(all_records)
+    # total_paginas = ceil(total_registros / per_page) if total_registros > 0 else 1
+    # start_index = (pagina - 1) * per_page
+    # end_index = start_index + per_page
+    # paginated_records = all_records[start_index:end_index]
 
     return render_template('registros_finalizados.html',
-                            registros=paginated_records, # Passa a lista combinada e paginada
-                            total_paginas=total_paginas,
-                            pagina=pagina,
-                            data=data_filtro_str,
-                            tipo_entrega=tipo_entrega_filtro,
-                            rota=rota_filtro,
-                            finalizado=finalizado_filtro_str,
-                            db_name=db_name, # Passa o nome do DB selecionado para o template
-                            display_db_name=display_db_name) # Nome amigável para exibição
+                           # Agora passa todos os registros encontrados para o template
+                           registros=all_records, 
+                           # Definindo total_paginas como 1 e pagina como 1,
+                           # isso fará com que a seção de paginação no HTML não seja exibida
+                           total_paginas=1, 
+                           pagina=1, 
+                           data=data_filtro_str,
+                           data_fim=data_fim_filtro_str, # Passa o data_fim para o template para manter o valor no filtro
+                           tipo_entrega=tipo_entrega_filtro,
+                           rota=rota_filtro,
+                           finalizado=finalizado_filtro_str,
+                           db_name=db_name,
+                           display_db_name=display_db_name)
+
 
 
 
