@@ -391,12 +391,12 @@
     </div>
 
     <div class="text-center mt-8">
-        {# ESTE é o ÚNICO botão "Ver Lista de Registros" com o ID. #}
+        {# ESTE é o ÚNICO botão "Ver Lista" com o ID. #}
         <a id="btnVerListaRegistros" 
            href="{{ url_for('registros') }}" 
            data-original-href="{{ url_for('registros') }}" {# Armazena o href original #}
            class="inline-block bg-gray-600 text-white px-6 py-3 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
-            Ver Lista de Registros
+            
         </a>
     </div>
 
@@ -517,7 +517,7 @@ async function salvarAssociacao(id) {
             const data = await response.json();
             if (response.ok) {
                 showMessage(data.message, 'success');
-                setTimeout(() => { window.location.reload(); }, 1000);
+                setTimeout(() => { window.location.href = "{{ url_for('registros') }}"; }, 1000);
             } else {
                 showMessage(data.error || 'Erro ao finalizar carregamento.', 'error');
             }
@@ -540,7 +540,7 @@ async function salvarAssociacao(id) {
             const data = await response.json();
             if (response.ok) {
                 showMessage(data.message, 'success');
-                setTimeout(() => { window.location.reload(); }, 1000);
+                setTimeout(() => { window.location.href = "{{ url_for('registros') }}"; }, 1000);
             } else {
                 showMessage(data.error || 'Erro ao desassociar registro.', 'error');
             }
