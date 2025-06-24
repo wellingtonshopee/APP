@@ -89,6 +89,18 @@ class Registro(db.Model):
     situacao_pedido_id = db.Column(db.Integer, db.ForeignKey('situacao_pedido.id'), nullable=True)
     situacao_pedido = db.relationship('SituacaoPedido', backref='registros_associados_situacao')
 
+    # === NOVOS CAMPOS PARA CONTROLE DE CONCORRÊNCIA ===
+    # ID do usuário que atualmente está 'em_separacao' com este registro
+    # Aponta para a chave primária da tabela 'user'
+    locked_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    # Relacionamento para acessar o objeto User que bloqueou o registro
+    # 'User' deve ser o nome da sua classe de modelo de usuário.
+    locked_by_user = db.relationship('User', backref='locked_registros')
+
+    # Data e hora em que o registro foi bloqueado
+    locked_at = db.Column(db.DateTime, nullable=True)
+    # =================================================
+
     def __repr__(self):
         return f"<Registro(id={self.id}, matricula='{self.matricula}', rota='{self.rota}', status='{self.status}')>"
 
@@ -201,7 +213,7 @@ class User(db.Model, UserMixin):
 
     # Relacionamento para permissões granulares baseadas em Permissao
     permissoes_objeto = db.relationship('Permissao', secondary=user_permissoes, lazy='subquery',
-                                            backref=db.backref('users_with_access', lazy=True))
+                                         backref=db.backref('users_with_access', lazy=True))
 
     # --- Métodos para UserMixin e Permissões ---
     def get_id(self):
