@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    
+
     <style>
         /* ESTILOS DE LAYOUT GLOBAIS */
         body {
@@ -86,7 +86,7 @@
             background-color: #007bff; /* Cor de destaque ao passar o mouse */
             color: white;
         }
-        
+
         /* Estilos do Conteúdo Principal - Consolidado do dashboard */
         .main-content {
             flex-grow: 1;
@@ -124,7 +124,7 @@
             width: calc(100% - 250px); /* Ajusta a largura quando sidebar visível */
             left: 250px; /* Desloca o banner para a direita */
         }
-        
+
         /* Estilos da logo do banner */
         .top-banner .logo {
             height: 60px; /* Aumentado o tamanho da logo */
@@ -133,7 +133,7 @@
             box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.4); /* Adicionado sombra */
             /* Removido margin-right, o flex-direction column na seção cuida do espaçamento */
         }
-        
+
         /* Estilos para o título do banner */
         .top-banner .banner-title-section h3 {
             font-size: 2em; /* Aumentado o tamanho da fonte */
@@ -175,7 +175,8 @@
             /* justify-content: center; Centraliza o conteúdo verticalmente */
             /* text-align: center; */
         }
-        
+
+
         /* Estilos do logo central e texto (se aplicável, reajustado do seu código original) */
         .logo-central {
             max-width: 250px; /* Tamanho máximo do logo central */
@@ -354,6 +355,29 @@
         .finalizado-label { background-color: #6c757d; } /* Cinza */
         .cancelado-label { background-color: #dc2626; } /* Vermelho */
 
+        /* Estilo para o botão "Selecionar" */
+        .card .select-button {
+            margin-top: 15px; /* Espaço entre o conteúdo e o botão */
+            padding: 10px 15px;
+            background-color: #007bff; /* Ajustado para azul */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            text-align: center;
+            transition: background-color 0.2s ease;
+            align-self: flex-end; /* Alinha o botão à direita dentro do flexbox do card */
+            width: fit-content; /* Ajusta a largura do botão ao seu conteúdo */
+        }
+        .card .select-button:hover {
+            background-color: #0056b3; /* Um tom mais escuro de azul para o hover */
+        }
+        .card .select-button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
         /* Estilos para a paginação */
         .paginacao {
             text-align: center;
@@ -458,11 +482,9 @@
             }
         }
     </style>
-</head>
+    </head>
 <body>
-    <!-- Menu Lateral (Sidebar) -->
     <div id="mySidebar" class="sidebar">
-        <!-- Substitua 'imagem/shopee32.png' pelo caminho real da sua logo para o sidebar -->
         <img src="{{ url_for('static', filename='imagem/shopee32.png') }}"
              onerror="this.onerror=null; this.src='https://placehold.co/120x120/343a40/ffffff?text=LOGO';"
              alt="Logo SysSPX" class="logo-sidebar">
@@ -495,13 +517,10 @@
         </ul>
     </div>
 
-    <!-- Overlay para fechar o menu ao clicar fora em mobile -->
     <div class="overlay" id="overlay"></div>
 
-    <!-- Conteúdo Principal da Página -->
     <div id="mainContent" class="main-content">
-        <div class="top-banner">
-            <!-- Seção esquerda do banner: Logo e Botão de Menu -->
+        <div class="top-banner" id="topBanner"> {# Adicionado ID para acesso no JS #}
             <div class="banner-left-section">
                 <img src="{{ url_for('static', filename='imagem/shopee32.png') }}"
                      onerror="this.onerror=null; this.src='https://placehold.co/60x60/f8f9fa/000000?text=LOGO';"
@@ -511,7 +530,6 @@
                 </button>
             </div>
             
-            <!-- Seção do título do banner -->
             <div class="banner-title-section">
                 <h3>Fila de Carregamento - Sistema de Gerenciamento Operacional</h3>
             </div>
@@ -552,7 +570,6 @@
             </div>
         </div>
 
-        <!-- Conteúdo principal da página de registros (cards e paginação) -->
         <div class="main-page-content-wrapper">
             <div class="container">
                 <div class="cards" id="cardsContainer">
@@ -596,9 +613,9 @@
             }
         }
         // Recarrega após 8 segundos (mantido do seu código original)
-        setTimeout(function() {
-            location.reload(true);
-        }, 8000);
+        // setTimeout(function() { // Comentado para evitar recarregar a página inteira, a atualização incremental é suficiente
+        //     location.reload(true);
+        // }, 8000);
 
         // Função para formatar data e hora (mantida)
         function formatarDataHora(isoString) {
@@ -706,9 +723,10 @@
 
             const horaFinalizacaoText = formatarDataHora(r.hora_finalizacao);
 
-            // Retorna o HTML do card
-            // ATENÇÃO: Adicionados data-attributes para 'finalizada', 'em_separacao' e 'cancelado'
-            // Estes são essenciais para a função updateCardsIncrementally comparar e atualizar cards.
+            // Determina se o botão deve estar desabilitado
+            const isDisabled = (r.em_separacao === 1 || r.finalizada === 1 || (r.em_separacao === 2 && (r.tipo_entrega || '').toLowerCase() === 'no-show')) ? 'disabled' : '';
+
+            // Retorna o HTML do card com o botão
             return `
                 <div class="${cardClasses}"
                     data-id="${r.id}"
@@ -726,6 +744,7 @@
                     <p><strong>Cidade:</strong> <em>${r.cidade_entrega || ''}</em></p>
                     <p><strong>Hora Finalização:</strong> ${horaFinalizacaoText}</p>
                     ${statusText ? `<span class="status-label ${statusClass}">${statusText}</span>` : ''}
+                    <button class="select-button" data-id="${r.id}" ${isDisabled}>Selecionar</button>
                 </div>
             `;
         }
@@ -865,7 +884,6 @@
                 // console.log('Atualização incremental ignorada devido a filtros ativos ou paginação.');
                 return; 
             }
-
             console.log('Iniciando atualização incremental de registros...', new Date().toLocaleTimeString());
 
             try {
@@ -1017,6 +1035,7 @@
         const menuToggle = document.getElementById('menuToggle'); // Renomeado de sidebarToggle para menuToggle
         const mainContent = document.getElementById('mainContent');
         const overlay = document.getElementById('overlay');
+        const topBanner = document.getElementById('topBanner'); // Adicionado para referência ao banner
 
         // Função para atualizar a visibilidade do sidebar e classes de conteúdo
         function updateLayoutBasedOnScreenSize() {
@@ -1076,20 +1095,43 @@
             }
         });
 
-        // Event Delegation para cliques nos cards (substitui o forEach direto)
-        document.addEventListener('click', function(event) {
+        // Event Delegation para DUPLO CLIQUES nos cards (mantido, caso ainda queira)
+        document.addEventListener('dblclick', function(event) {
             let targetCard = event.target.closest('.card');
-            if (targetCard) {
-                // Previne o duplo clique padrão se o card já está finalizado ou em separação/aguardando transferência
+            // Garante que o duplo clique não foi no botão "Selecionar"
+            if (targetCard && !event.target.classList.contains('select-button')) {
+                const id = targetCard.dataset.id;
                 const isFinalizado = targetCard.dataset.finalizado === '1';
                 const emSeparacao = parseInt(targetCard.dataset.separacao);
                 const tipoEntrega = targetCard.dataset.entrega;
 
+                // A lógica de bloqueio para emSeparacao === 1 (Em Separação), finalizada === 1,
+                // ou emSeparacao === 2 (Aguardando Transferência) E tipoEntrega === 'no-show'
+                // já está sendo tratada no event delegation. Este `if` é um fallback/confirmação.
                 if (emSeparacao === 1 || isFinalizado || (emSeparacao === 2 && tipoEntrega === 'no-show')) {
+                    showMessage('Este registro não pode ser editado neste momento.');
                     return; // Não faz nada se o card não for clicável
                 }
                 // Se o card for clicável, chamamos o handleCardDoubleClick
-                handleCardDoubleClick(targetCard.dataset.id, isFinalizado, emSeparacao, tipoEntrega);
+                handleCardDoubleClick(id, isFinalizado, emSeparacao, tipoEntrega);
+            }
+        });
+
+        // NOVO Event Delegation para o CLIQUE no botão "Selecionar"
+        document.addEventListener('click', function(event) {
+            // Verifica se o elemento clicado (ou um de seus pais) é o botão "Selecionar"
+            const selectButton = event.target.closest('.select-button');
+            if (selectButton && !selectButton.disabled) { // Só age se for o botão e não estiver desabilitado
+                const cardElement = selectButton.closest('.card');
+                if (cardElement) {
+                    const id = cardElement.dataset.id;
+                    const isFinalizado = cardElement.dataset.finalizado === '1';
+                    const emSeparacao = parseInt(cardElement.dataset.separacao);
+                    const tipoEntrega = cardElement.dataset.entrega;
+
+                    // Chama a mesma função handleCardDoubleClick que o duplo clique
+                    handleCardDoubleClick(id, isFinalizado, emSeparacao, tipoEntrega);
+                }
             }
         });
 
@@ -1134,14 +1176,14 @@
 
         // --- FUNÇÃO ORIGINAL handleCardDoubleClick (mantida e compatibilizada) ---
         async function handleCardDoubleClick(id, isFinalizada, emSeparacao, tipoEntrega) {
-            console.log(`Duplo clique no registro ID: ${id}, Finalizado: ${isFinalizada}, Em Separação: ${emSeparacao}, Tipo de Entrega: ${tipoEntrega}`);
+            console.log(`Ação no registro ID: ${id}, Finalizado: ${isFinalizada}, Em Separação: ${emSeparacao}, Tipo de Entrega: ${tipoEntrega}`);
 
             // A lógica de bloqueio para emSeparacao === 1 (Em Separação), finalizada === 1,
             // ou emSeparacao === 2 (Aguardando Transferência) E tipoEntrega === 'no-show'
             // já está sendo tratada no event delegation. Este `if` é um fallback/confirmação.
             if (emSeparacao === 1 || isFinalizada === 1 || (emSeparacao === 2 && tipoEntrega === 'no-show')) {
-                 showMessage('Este registro não pode ser editado neste momento.');
-                 return;
+                    showMessage('Este registro não pode ser editado neste momento.');
+                    return;
             }
 
             // Se já estiver "Em Separação" (1) ou "Aguardando Transferência" (2),
