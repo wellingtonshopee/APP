@@ -1395,6 +1395,7 @@ def associacao():
 
 ## --- ROTA API para atualizar o status em_separacao ---
 @app.route('/api/update_separacao_status/<int:registro_id>', methods=['POST'])
+@login_required # Garante que apenas usuários logados possam acessar esta rota
 def api_update_separacao_status(registro_id):
     try:
         data = request.get_json()
@@ -1407,34 +1408,67 @@ def api_update_separacao_status(registro_id):
         if not isinstance(new_status, int) or new_status not in [0, 1, 2, 3]:
             return jsonify({"error": "Status inválido. Deve ser 0, 1, 2 ou 3."}), 400
 
-        # >>>>>>>>>>> AQUI ESTÁ A MUDANÇA PRINCIPAL <<<<<<<<<<<
-        # Substitua qualquer chamada a 'get_registro_by_id' por Registro.query.get()
         registro = Registro.query.get(registro_id)
-        # >>>>>>>>>>> FIM DA MUDANÇA PRINCIPAL <<<<<<<<<<<
 
         if not registro:
             return jsonify({"error": "Registro não encontrado."}), 404
 
-        # **** ADICIONE ESTA VERIFICAÇÃO COM A NOVA MENSAGEM ****
-        if registro.em_separacao == 1:
-            return jsonify({"error": "Essa Rota ja esta em Separação por outro Operador!"}), 400
-        # **** FIM DA VERIFICAÇÃO ADICIONADA ****
-
         # Impede a atualização se o registro já estiver finalizado ou cancelado
-        if registro.finalizada == 1 or registro.cancelado == 1:
-            return jsonify({"error": "Este registro já foi finalizado ou cancelado e não pode ser atualizado."}), 400
+        if registro.finalizada == 1:
+            return jsonify({"error": "Este registro já foi finalizado e não pode ser alterado."}), 409 # Usar 409 Conflict
+        
+        if registro.cancelado == 1:
+            return jsonify({"error": "Este registro foi cancelado e não pode ser alterado."}), 409 # Usar 409 Conflict
 
-        # Atualiza o status 'em_separacao'
-        registro.em_separacao = new_status
-        db.session.commit() # Salva a mudança no banco de dados
+        # --- LÓGICA DE CONCORRÊNCIA COM locked_by_user_id ---
+        if registro.em_separacao == 1: # Se o registro já está em separação
+            if registro.locked_by_user_id is not None and registro.locked_by_user_id != current_user.id:
+                # Se está em separação por OUTRO usuário
+                # Tenta obter o nome completo do usuário que bloqueou
+                locked_by_username = "outro operador"
+                if registro.locked_by_user and registro.locked_by_user.nome_completo:
+                    locked_by_username = registro.locked_by_user.nome_completo
 
-        return jsonify({"message": f"Status do registro {registro_id} atualizado para {new_status} (Em Separação).", "status": new_status}), 200
+                return jsonify({"error": f"Essa Rota já está em Separação por {locked_by_username}!"}), 409 # 409 Conflict
+            else:
+                # Se está em separação pelo MESMO usuário (pode ser um duplo clique, refresh, etc.)
+                # Permite que ele continue, apenas redireciona para a página de associação.
+                # Não é um erro, então retorna 200 OK.
+                return jsonify({"message": "Registro já está em separação (pelo mesmo operador).", "status_unchanged": True}), 200
+        
+        # Se o registro não está em separação (em_separacao == 0) e a requisição é para colocá-lo em separação (new_status == 1)
+        if new_status == 1 and registro.em_separacao == 0:
+            registro.em_separacao = new_status
+            registro.locked_by_user_id = current_user.id # Atribui o ID do usuário logado
+            registro.locked_at = get_data_hora_brasilia() # Registra a hora do bloqueio
+            db.session.commit() # Salva as mudanças no banco de dados
+
+            return jsonify({
+                "message": f"Status do registro {registro_id} atualizado para 'Em Separação' por {current_user.nome_completo or current_user.username}!",
+                "status": new_status
+            }), 200
+        
+        # Lógica para outras transições de status (ex: de 2 para 3, que liberaria o locked_by_user_id)
+        # Se esta rota também for usada para finalizar, adicione a lógica aqui para limpar o locked_by_user_id
+        # Exemplo (se new_status for para "finalizado" ou "transferido"):
+        # if new_status == STATUS_EM_SEPARACAO['FINALIZADO'] or new_status == STATUS_EM_SEPARACAO['TRANSFERIDO']:
+        #     if registro.locked_by_user_id == current_user.id: # Apenas se o usuário atual o bloqueou
+        #         registro.locked_by_user_id = None
+        #         registro.locked_at = None
+        #     registro.em_separacao = new_status
+        #     registro.hora_finalizacao = get_data_hora_brasilia() # Atualiza a hora de finalização
+        #     db.session.commit()
+        #     return jsonify({"message": f"Registro {registro_id} atualizado e liberado.", "status": new_status}), 200
+
+
+        # Caso a transição de status não seja permitida ou reconhecida aqui
+        return jsonify({"error": "Transição de status inválida ou não suportada para este registro."}), 400
 
     except Exception as e:
-        # Registra o erro para depuração (opcional, mas recomendado)
-        app.logger.error(f"Erro ao atualizar status de separação para registro {registro_id}: {e}")
+        # Registra o erro para depuração
+        current_app.logger.error(f"Erro ao atualizar status de separação para registro {registro_id}: {e}")
         return jsonify({"error": "Ocorreu um erro interno ao processar a requisição."}), 500
-    
+
 
 # Rota para associar/salvar gaiola/estacao
 # app.py
@@ -2283,6 +2317,8 @@ def finalizar_no_show(id):
         return redirect(url_for('registro_no_show', _anchor=f'no-show-registro-{id}'))
     
 @app.route('/midia')
+@login_required
+@permission_required('midia')
 def exibir_midia():
     """Renderiza a página HTML com a exibição de mídia (vídeos e slides)."""
     print("DEBUG: Rota /midia acessada. Renderizando midia.html")
@@ -2707,8 +2743,6 @@ def registros_finalizados():
                            finalizado=finalizado_filtro_str,
                            db_name=db_name,
                            display_db_name=display_db_name)
-
-
 
 
 # app.py
