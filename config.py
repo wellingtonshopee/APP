@@ -38,6 +38,7 @@ PERMISSIONS = {
     'apagar_etapa': 'Apagar Etapas',
     'apagar_situacao_pedido': 'Apagar Situações de Pedido',
     'alternar_status_usuario': 'Ativar/Desativar Usuários',
+    'associacao':'Associação',
     'associacao_no_show': 'Criar Registros No-Show',
     'cadastro_usuario': 'Cadastro de Usuario',
     'dashboard': 'Dashboard',
