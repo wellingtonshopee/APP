@@ -1576,14 +1576,25 @@ def cancelar_registro(id):
     if registro.em_separacao == 3 or registro.em_separacao == 4:
         return jsonify({"error": "Registro já está finalizado ou cancelado."}), 400
 
+    # --- NOVO: Obtém o motivo do cancelamento do corpo da requisição JSON ---
+    data = request.get_json() # Pega o corpo JSON da requisição
+    motivo_cancelamento = data.get('observacao') # Acessa a chave 'observacao'
+
+    if not motivo_cancelamento:
+        return jsonify({"error": "Motivo do cancelamento não fornecido."}), 400
+    # --- FIM NOVO ---
+
     registro.em_separacao = 4  # Define como Cancelado (status 4)
-    # Opcional: Você pode manter registro.cancelado = 1 se for útil para outros relatórios/filtros
-    # ou remover esta linha se em_separacao for a única fonte da verdade para o status final.
     registro.cancelado = 1
-    
-    db.session.commit()
-    
-    return jsonify({"message": "Registro cancelado com sucesso!"}), 200
+    registro.motivo_cancelamento = motivo_cancelamento # --- NOVO: Salva o motivo ---
+
+    try:
+        db.session.commit()
+        return jsonify({"message": "Registro cancelado com sucesso!"}), 200
+    except Exception as e:
+        db.session.rollback() # Garante que nada será salvo se houver um erro
+        print(f"Erro ao cancelar registro: {e}") # Log para depuração
+        return jsonify({"error": "Erro interno ao cancelar o registro."}), 500
 
 
 @app.route('/finalizar_carregamento_id_status_separacao/<int:id>', methods=['POST'])
