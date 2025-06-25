@@ -118,7 +118,7 @@
     <div class="card">
         <h2>Fila de Carregamento</h2>
 
-        <p class="erro" id="rotaErro" style="display:none;">A rota deve estar no formato "A-01".</p>
+        <p class="erro" id="rotaErro" style="display:none;">Rota formato incorreto. Use o formato: Ex.: A-01.</p>
         <p class="erro" id="locationError">Aguardando localização...</p> {# Elemento para mensagens de localização #}
 
         {% if erro %}
@@ -320,33 +320,22 @@
         // Event listener para o campo de rota com auto-formatação e validação
         rotaInput.addEventListener('input', function() {
             let rotaValor = this.value.trim().toUpperCase();
+            const originalLength = rotaValor.length;
 
             // Tenta auto-formatar se o padrão "LetraNúmeroNúmero" for detectado (Ex: A15 -> A-15)
             if (regexRotaAutoFormat.test(rotaValor) && rotaValor.length === 3) {
                 rotaValor = rotaValor[0] + '-' + rotaValor.substring(1);
-            }
-
-            // Impede que o cursor vá para o final se a formatação ocorrer
-            const currentCaretPos = this.selectionStart;
-            this.value = rotaValor;
-            if (rotaValor.length === 4 && currentCaretPos === 3) { // Se o hífen foi inserido na posição 3 (A-15)
-                this.setSelectionRange(currentCaretPos + 1, currentCaretPos + 1);
+                this.value = rotaValor; // Atualiza o valor do input imediatamente
             } else {
-                this.setSelectionRange(currentCaretPos, currentCaretPos);
+                this.value = rotaValor; // Garante que o valor está em maiúsculas
             }
 
             // Validação visual da rota
             if (validarRota(rotaValor)) {
                 rotaErro.style.display = 'none';
             } else {
-                // Só mostra erro se o usuário digitou algo que não seja um prefixo válido para o formato final
-                if (rotaValor.length >= 1 && rotaValor.length <= 4) {
-                    if (!regexRotaValida.test(rotaValor) && !/^[A-Z]-?[0-9]?$/.test(rotaValor)) {
-                        rotaErro.style.display = 'block';
-                    } else {
-                        rotaErro.style.display = 'none';
-                    }
-                } else if (rotaValor.length > 4) {
+                // Mostra o erro apenas se o campo não estiver vazio e não corresponder ao formato final
+                if (rotaValor.length > 0 && !regexRotaValida.test(rotaValor)) {
                     rotaErro.style.display = 'block';
                 } else {
                     rotaErro.style.display = 'none';
@@ -370,11 +359,12 @@
                 return;
             }
 
-            // Se a rota não for válida, impede o submit e mostra erro
+            // Validação final da rota antes de submeter
             if (!validarRota(rotaInput.value.trim())) {
-                event.preventDefault();
+                event.preventDefault(); // Impede o envio do formulário
                 rotaErro.style.display = 'block';
-                // showMessage('Por favor, corrija o formato da rota para "A-01" antes de prosseguir.', 'error');
+                rotaErro.textContent = 'Rota formato incorreto. Use o formato: A-01.'; // Garante que a mensagem correta seja exibida
+                console.warn('Tentativa de login com rota inválida.');
             }
         });
 
