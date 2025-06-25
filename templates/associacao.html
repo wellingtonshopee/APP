@@ -174,6 +174,77 @@
         /* Estilo para botão desabilitado */
         .opacity-50 { opacity: 0.5; }
         .pointer-events-none { pointer-events: none; }
+
+        /* --- ESTILOS DO MODAL --- */
+        #cancelPasswordModal {
+            display: none; /* Escondido por padrão */
+            position: fixed; /* Fixado na tela */
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%); /* Centraliza o modal */
+            background-color: white;
+            padding: 25px;
+            border: 1px solid #ccc;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            z-index: 1000; /* Garante que fique acima de outros elementos */
+            border-radius: 8px;
+            width: 90%; /* Largura responsiva */
+            max-width: 400px; /* Largura máxima */
+        }
+
+        #modalBackdrop {
+            display: none; /* Escondido por padrão */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5); /* Fundo semi-transparente */
+            z-index: 999; /* Fica abaixo do modal, mas acima do conteúdo */
+        }
+
+        #cancelPasswordModal h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #333;
+            text-align: center;
+        }
+
+        #cancelPasswordModal p {
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+            color: #555;
+        }
+
+        #cancelPasswordModal input[type="password"],
+        #cancelPasswordModal textarea {
+            width: calc(100% - 16px); /* 100% menos o padding */
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box; /* Inclui padding e borda na largura total */
+        }
+
+        #cancelPasswordModal textarea {
+            resize: vertical; /* Permite redimensionar apenas verticalmente */
+        }
+
+        #cancelPasswordModal .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        #cancelPasswordModal .modal-buttons button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s ease;
+        }
     </style>
 </head>
 <body class="pagina-associacao">
@@ -261,7 +332,7 @@
                 <p><strong>Data/Hora Chegada:</strong> {{ r.data_hora_login|formata_data_hora }}</p>
                 <p><strong>Hora Finalização:</strong> {% if r.hora_finalizacao %}{{ r.hora_finalizacao|formata_data_hora }}{% else %}Não Finalizado{% endif %}</p>
 
-                 {# NOVO: Exibir o motivo do cancelamento se o registro estiver no status CANCELADO (em_separacao == 4) #}
+                {# NOVO: Exibir o motivo do cancelamento se o registro estiver no status CANCELADO (em_separacao == 4) #}
         {% if r.em_separacao == 4 %}
             <p class="text-red-600 mt-2">
                 <strong>Motivo do Cancelamento:</strong> {{ r.motivo_cancelamento if r.motivo_cancelamento else 'Não informado' }}
@@ -393,16 +464,31 @@
     <div class="text-center mt-8">
         {# ESTE é o ÚNICO botão "Ver Lista" com o ID. #}
         <a id="btnVerListaRegistros" 
-           href="{{ url_for('registros') }}" 
-           data-original-href="{{ url_for('registros') }}" {# Armazena o href original #}
-           class="inline-block bg-gray-600 text-white px-6 py-3 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
-            
+            href="{{ url_for('registros') }}" 
+            data-original-href="{{ url_for('registros') }}" {# Armazena o href original #}
+            class="inline-block bg-gray-600 text-white px-6 py-3 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+         
         </a>
     </div>
 
+    <div id="cancelPasswordModal">
+        <h3>Cancelar Registro</h3>
+        <p>Por favor, digite a senha para confirmar o cancelamento:</p>
+        <input type="password" id="cancelSenhaInput" placeholder="Senha" autofocus>
+        <p>Informe o motivo do cancelamento:</p>
+        <textarea id="cancelMotivoInput" placeholder="Motivo do cancelamento" rows="3"></textarea>
+        <div class="modal-buttons">
+            <button onclick="confirmCancelAction()" style="background-color:#ef4444; color:white;">Confirmar Cancelamento</button>
+            <button onclick="closeCancelModal()" style="background-color:#6b7280; color:white;">Cancelar</button>
+        </div>
+    </div>
+    <div id="modalBackdrop"></div>
 </main>
 
 <script>
+    // Variável para armazenar o ID do registro que está sendo cancelado
+    let currentCancellingId = null;
+
     // Função para exibir mensagens de feedback (sucesso/erro)
     function showMessage(text, type) {
         const messageBox = document.getElementById('messageBox');
@@ -437,71 +523,68 @@
     }
 
     // Lida com o salvamento da associação (com validação de formato da gaiola e campos obrigatórios)
-async function salvarAssociacao(id) {
-    const form = document.querySelector(`#registro-${id} .form-associar`);
-    if (!form) {
-        showMessage("Erro: Formulário não encontrado.", "error");
-        return;
-    }
-
-    const gaiolaInput = form.querySelector('input[name="gaiola"]');
-    const estacaoInput = form.querySelector('input[name="estacao"]');
-    const ruaInput = form.querySelector('input[name="rua"]'); // Adicione esta linha
-
-    const gaiolaValue = gaiolaInput ? gaiolaInput.value.trim() : '';
-    const estacaoValue = estacaoInput ? estacaoInput.value.trim() : '';
-    const ruaValue = ruaInput ? ruaInput.value.trim() : ''; // Adicione esta linha
-
-    // Pega o tipo de entrega do card para saber se é 'No-Show'
-    const cardElement = document.getElementById(`registro-${id}`);
-    const tipoEntregaElement = cardElement ? Array.from(cardElement.querySelectorAll('p')).find(p => p.querySelector('strong') && p.querySelector('strong').textContent.includes('Tipo de Entrega:')) : null;
-    const isNoShow = tipoEntregaElement && tipoEntregaElement.textContent.includes('No-Show');
-
-    // --- NOVA VALIDAÇÃO: CAMPOS OBRIGATÓRIOS (Gaiola e Estação) ---
-    // A validação para 'rua' é especial para 'No-Show', vamos tratar ela separadamente
-    if (gaiolaValue === '' || estacaoValue === '') {
-        showMessage("Os campos 'Gaiola' e 'Estação' são obrigatórios.", "error");
-        if (gaiolaValue === '') gaiolaInput.focus();
-        else estacaoInput.focus();
-        return; // Impede o envio se os campos estiverem vazios
-    }
-
-    // Validação específica para 'Rua' se for 'No-Show'
-    if (isNoShow && ruaValue === '') {
-        showMessage("Para 'No-Show', o campo 'Rua' é obrigatório.", "error");
-        ruaInput.focus();
-        return; // Impede o envio se a Rua estiver vazia para No-Show
-    }
-    // --- FIM DA NOVA VALIDAÇÃO ---
-
-    // Validação da Gaiola na HORA DE SALVAR (mantém esta lógica)
-    const emSeparacaoStatus = cardElement ? cardElement.dataset.emSeparacao : null;
-    if (emSeparacaoStatus !== '2' && gaiolaValue !== '' && !validarFormatoGaiola(gaiolaValue)) {
-        showMessage("Formato da Gaiola inválido. Use o padrão 'A-01' (Ex: C-15, E-03).", "error");
-        if (gaiolaInput) gaiolaInput.focus();
-        return; // Impede o envio se a validação de formato falhar
-    }
-
-    const formData = new FormData(form);
-
-    try {
-        const response = await fetch(form.action, {
-            method: 'POST',
-            body: formData
-        });
-        const data = await response.json();
-
-        if (response.ok) {
-            showMessage(data.message, 'success');
-            setTimeout(() => { window.location.reload(); }, 1000);
-        } else {
-            showMessage(data.error || 'Erro ao salvar associação.', 'error');
+    async function salvarAssociacao(id) {
+        const form = document.querySelector(`#registro-${id} .form-associar`);
+        if (!form) {
+            showMessage("Erro: Formulário não encontrado.", "error");
+            return;
         }
-    } catch (error) {
-        console.error('Erro de rede ao salvar associação:', error);
-        showMessage('Erro de rede ao salvar associação.', 'error');
+
+        const gaiolaInput = form.querySelector('input[name="gaiola"]');
+        const estacaoInput = form.querySelector('input[name="estacao"]');
+        const ruaInput = form.querySelector('input[name="rua"]');
+
+        const gaiolaValue = gaiolaInput ? gaiolaInput.value.trim() : '';
+        const estacaoValue = estacaoInput ? estacaoInput.value.trim() : '';
+        const ruaValue = ruaInput ? ruaInput.value.trim() : '';
+
+        // Pega o tipo de entrega do card para saber se é 'No-Show'
+        const cardElement = document.getElementById(`registro-${id}`);
+        const tipoEntregaElement = cardElement ? Array.from(cardElement.querySelectorAll('p')).find(p => p.querySelector('strong') && p.querySelector('strong').textContent.includes('Tipo de Entrega:')) : null;
+        const isNoShow = tipoEntregaElement && tipoEntregaElement.textContent.includes('No-Show');
+
+        // --- VALIDAÇÃO: CAMPOS OBRIGATÓRIOS (Gaiola e Estação) ---
+        if (gaiolaValue === '' || estacaoValue === '') {
+            showMessage("Os campos 'Gaiola' e 'Estação' são obrigatórios.", "error");
+            if (gaiolaValue === '') gaiolaInput.focus();
+            else estacaoInput.focus();
+            return; // Impede o envio se os campos estiverem vazios
+        }
+
+        // Validação específica para 'Rua' se for 'No-Show'
+        if (isNoShow && ruaValue === '') {
+            showMessage("Para 'No-Show', o campo 'Rua' é obrigatório.", "error");
+            ruaInput.focus();
+            return; // Impede o envio se a Rua estiver vazia para No-Show
+        }
+        // Validação da Gaiola na HORA DE SALVAR (mantém esta lógica)
+        const emSeparacaoStatus = cardElement ? cardElement.dataset.emSeparacao : null;
+        if (emSeparacaoStatus !== '2' && gaiolaValue !== '' && !validarFormatoGaiola(gaiolaValue)) {
+            showMessage("Formato da Gaiola inválido. Use o padrão 'A-01' (Ex: C-15, E-03).", "error");
+            if (gaiolaInput) gaiolaInput.focus();
+            return; // Impede o envio se a validação de formato falhar
+        }
+
+        const formData = new FormData(form);
+
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            if (response.ok) {
+                showMessage(data.message, 'success');
+                setTimeout(() => { window.location.reload(); }, 1000);
+            } else {
+                showMessage(data.error || 'Erro ao salvar associação.', 'error');
+            }
+        } catch (error) {
+            console.error('Erro de rede ao salvar associação:', error);
+            showMessage('Erro de rede ao salvar associação.', 'error');
+        }
     }
-}
 
     // Funções para os botões de ação (Finalizar, Desassociar, Carregar, etc.)
     async function finalizarCarregamento(id) {
@@ -573,27 +656,35 @@ async function salvarAssociacao(id) {
         }
     }
 
-    // --- FUNÇÃO CANCELAR REGISTRO MODIFICADA ---
-    async function cancelarRegistro(id) {
-        // Senha para cancelamento (FIXA NO FRONTEND - NÃO RECOMENDADO PARA PRODUÇÃO)
+    // --- FUNÇÕES DO MODAL DE CANCELAMENTO ---
+    function cancelarRegistro(id) {
+        currentCancellingId = id; // Armazena o ID do registro
+        document.getElementById('cancelSenhaInput').value = ''; // Limpa o campo de senha
+        document.getElementById('cancelMotivoInput').value = ''; // Limpa o campo de motivo
+        document.getElementById('cancelPasswordModal').style.display = 'block';
+        document.getElementById('modalBackdrop').style.display = 'block';
+        document.getElementById('cancelSenhaInput').focus(); // Foca no campo de senha
+    }
+
+    function closeCancelModal() {
+        document.getElementById('cancelPasswordModal').style.display = 'none';
+        document.getElementById('modalBackdrop').style.display = 'none';
+        currentCancellingId = null; // Reseta o ID
+        showMessage('Operação de cancelamento abortada.', 'info');
+    }
+
+    async function confirmCancelAction() {
+        const id = currentCancellingId; // Pega o ID armazenado
         const senhaCorreta = '98993245'; // <<<<<<< SENHA ATUALIZADA AQUI!
-
-        const senhaDigitada = prompt('Para cancelar o registro, digite a senha:');
-
-        if (senhaDigitada === null) { // Usuário clicou em "Cancelar" no prompt da senha
-            showMessage('Operação de cancelamento abortada.', 'info');
-            return;
-        }
+        const senhaDigitada = document.getElementById('cancelSenhaInput').value;
+        const observacao = document.getElementById('cancelMotivoInput').value;
 
         if (senhaDigitada !== senhaCorreta) {
             showMessage('Senha incorreta. Cancelamento não autorizado.', 'error');
             return;
         }
 
-        // Se a senha estiver correta, solicita a observação
-        const observacao = prompt('Por favor, informe o motivo do cancelamento:');
-
-        if (observacao === null || observacao.trim() === '') { // Usuário clicou em "Cancelar" ou não digitou nada
+        if (observacao.trim() === '') {
             showMessage('Motivo do cancelamento não informado. Operação abortada.', 'info');
             return;
         }
@@ -606,12 +697,12 @@ async function salvarAssociacao(id) {
             const response = await fetch(`/cancelar_registro/${id}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                // Envia a observação no corpo da requisição
                 body: JSON.stringify({ observacao: observacao })
             });
             const data = await response.json();
             if (response.ok) {
                 showMessage(data.message, 'success');
+                closeCancelModal(); // Fecha o modal após sucesso
                 setTimeout(() => { window.location.reload(); }, 1500);
             } else {
                 showMessage(data.error || 'Erro ao cancelar registro.', 'error');
@@ -621,6 +712,8 @@ async function salvarAssociacao(id) {
             showMessage('Erro de rede ao cancelar.', 'error');
         }
     }
+    // --- FIM DAS FUNÇÕES DO MODAL ---
+
 
     async function carregarNoShow(id) {
         if (!confirm('Tem certeza que deseja marcar este registro No-Show como "Carregado"?')) {
@@ -728,7 +821,7 @@ async function salvarAssociacao(id) {
                     }
                     // Se a string limpa tiver 4 caracteres e for no padrão Letra-2Dígitos (Ex: "A-15"), apenas mantém.
                     else if (cleanedValue.length === 4 && /^[A-Z]\d{2}$/.test(cleanedValue.replace('-', ''))) {
-                         formattedValue = cleanedValue.charAt(0) + '-' + cleanedValue.substring(1, 3);
+                            formattedValue = cleanedValue.charAt(0) + '-' + cleanedValue.substring(1, 3);
                     }
                     // Se for mais longo que o esperado (ex: A123, A-123)
                     else if (cleanedValue.length > 4) {
