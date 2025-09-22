@@ -2,7 +2,7 @@
 
 # Importações principais do Flask e extensões
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, abort, current_app, session
-from flask_login import LoginManager, current_user, login_user, logout_user, login_required, UserMixin #
+from flask_login import LoginManager, current_user, login_user, logout_user, login_required, UserMixin
 from flask_migrate import Migrate
 import supabase
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -14,7 +14,6 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SelectMultipleField, SubmitField
 from wtforms.validators import DataRequired, Email, Length, EqualTo, ValidationError
 
-
 # Importações de tempo e data
 from datetime import datetime, timedelta, timezone
 import pytz
@@ -24,7 +23,7 @@ from functools import wraps
 # Importações de SQLAlchemy e funções de banco de dados
 from sqlalchemy import distinct, func,cast, Date, or_
 from supabase import create_client, Client
-from dotenv import load_dotenv # Importa para carregar variáveis do .env
+from dotenv import load_dotenv
 
 # Importações de componentes do seu projeto (models, forms, config)
 from models import db, Login, Registro, NoShow, Etapa, Cidade, SituacaoPedido, PacoteRastreado, User, Permissao, LogAtividade
@@ -33,34 +32,35 @@ from config import STATUS_EM_SEPARACAO, STATUS_REGISTRO_PRINCIPAL, REGISTROS_POR
 from sqlalchemy.orm import joinedload
 
 # Outras importações (verifique se realmente usa cada uma no app.py)
-import os # Importado para acessar variáveis de ambiente
+import os
 import threading
 import random
 import requests
 import feedparser
 from math import ceil
-from io import BytesIO
-import psycopg2
 from bs4 import BeautifulSoup
-from forms import SistemaLoginForm, CadastroUsuarioForm, EditarUsuarioForm, NovaSenhaForm
 
 # Carrega as variáveis de ambiente do arquivo .env
-# ESSA LINHA É CRÍTICA E DEVE ESTAR NO INÍCIO, ANTES DE ACESSAR OS.ENVIRON.GET()
 load_dotenv()
 
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
-
-# 2. Initialize Flask app
+# Inicialize o aplicativo Flask
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'sua_chave_secreta_aqui'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres.fjurmbfvfuzhyrwkduav:Qaz241059#MLP140308@aws-0-us-east-2.pooler.supabase.com:5432/postgres'
+app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY", "sua_chave_secreta_aqui") # MELHORIA: Lê a chave do .env também
+
+# --- Configuração do SQLAlchemy (usando variável de ambiente) ---
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if not DATABASE_URL:
+    print("ERRO: Variável de ambiente DATABASE_URL não encontrada.")
+    exit(1)
+    
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL # CORREÇÃO: Usando a variável do .env
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Inicializa as extensões com o app
 db.init_app(app)
+migrate = Migrate(app, db) # CORREÇÃO: Inicialização do Flask-Migrate
 
 # --- Configuração e Inicialização do Cliente Supabase ---
-# Lendo as variáveis de ambiente pelos SEUS NOMES
 SUPABASE_URL = os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")
 
@@ -68,32 +68,25 @@ SUPABASE_KEY = os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")
 if not SUPABASE_URL or not SUPABASE_KEY:
     print("ERRO: Variáveis de ambiente SUPABASE_URL ou SUPABASE_ANON_KEY não encontradas.")
     print("Por favor, certifique-se de que estão definidas no seu ambiente ou em um arquivo .env.")
-    # Fallback para valores hardcoded (apenas para desenvolvimento ou se você tem certeza)
-    # Recomendo FORTEMENTE NÃO USAR ISSO EM PRODUÇÃO.
-    # Se você for usar para testes, copie os valores EXATOS do seu .env
-    SUPABASE_URL = "https://fjurmbfvfuzhyrwkduav.supabase.co"
-    SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqdXJtYmZ2ZnV6aHlyd2tkdWF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc4MzA3MzAsImV4cCI6MjA2MzQwNjczMH0.N2mmpuXW6kEkDRINj0WG8KW6Y4JsiPZ0oG-wP0CLBqQ"
-    # Note que se a URL/KEY do fallback for usada, a mensagem de ERRO acima ainda aparecerá.
-    # Você pode querer remover a mensagem de erro se o fallback for um comportamento esperado em dev.
+    exit(1) # CORREÇÃO: Sai do programa se as variáveis críticas não estiverem definidas
 
-# Inicializa o cliente Supabase GLOBALMENTE
-# É uma boa prática usar um nome de variável diferente para a instância, como 'supabase_client'
 supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # --- Fim da Configuração do Cliente Supabase ---
 
 
-
+# ... Seu código para a função allowed_file ...
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 # Adicione estas linhas AQUI, após 'app = Flask(__name__)' e antes de qualquer rota
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['ALLOWED_EXTENSIONS'] = {'txt'} # Certifique-se de que está definido aqui!
 
-# --- CÓDIGO ADICIONADO PARA CRIAR O DIRETÓRIO DE UPLOAD SE NÃO EXISTIR ---
-# Isso deve vir APÓS a definição de app.config['UPLOAD_FOLDER']
 UPLOAD_FOLDER = app.config['UPLOAD_FOLDER']
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
-
+    
 # --- INICIALIZAÇÃO DO FLASK-LOGIN ---
 login_manager = LoginManager() # Crie a instância do LoginManager
 login_manager.init_app(app)    # VINCULE o LoginManager à sua aplicação Flask
